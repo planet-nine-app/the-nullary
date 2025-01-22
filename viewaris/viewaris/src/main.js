@@ -5,6 +5,8 @@ const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__T
 
 console.log('heereklrjljrlj');
 
+const baseURL = 'https://dev.dolores.allyabase.com/';
+
 let fountUser;
 let doloresUser;
 
@@ -49,6 +51,21 @@ console.warn(err);
   }
 }
 
-const feed = await invoke("get_feed", {uuid: doloresUser.uuid, tags: "[]"});
+try {
+const feed = await invoke("get_feed", {uuid: doloresUser.uuid, tags: ""});
+
+const uuid = feed.videos[0].uuid;
+const videoURL = `${baseURL}user/${doloresUser.uuid}/short-form/video/${uuid}`;
+
+const video = document.createElement('video');
+video.setAttribute('style', 'height: 100vh; width: auto; max-width: 100%; object-fit: contain;');
+video.setAttribute('src', videoURL);
+video.setAttribute('autoplay', true);
+
+document.getElementById('container').appendChild(video);
+
 
 console.log(feed);
+} catch(err) {
+console.log('here is the err', err);
+}
