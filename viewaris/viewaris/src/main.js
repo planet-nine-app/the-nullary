@@ -75,6 +75,92 @@ feed.videos.forEach(vid => {
   const video = document.createElement('video');
   video.classList.add('video');
   video.setAttribute('src', videoURL);
+  video.setAttribute('playsinline', ''); // Important for iOS
+  video.setAttribute('webkit-playsinline', ''); // For older iOS versions
+  video.setAttribute('preload', 'metadata');
+  video.setAttribute('poster', ''); // You might want to add a poster image
+  
+  // Add play button overlay
+  const playButton = document.createElement('button');
+  playButton.classList.add('play-button');
+  playButton.innerHTML = '▶️';
+  playButton.style.position = 'absolute';
+  playButton.style.top = '50%';
+  playButton.style.left = '50%';
+  playButton.style.transform = 'translate(-50%, -50%)';
+  playButton.style.fontSize = '48px';
+  playButton.style.background = 'none';
+  playButton.style.border = 'none';
+  playButton.style.cursor = 'pointer';
+  playButton.style.zIndex = '2';
+  
+  // Make container relative for absolute positioning of play button
+  div.style.position = 'relative';
+
+  // Handle play button click
+  playButton.addEventListener('click', () => {
+    if (video.paused) {
+      video.play()
+        .then(() => {
+          playButton.style.display = 'none';
+        })
+        .catch(error => {
+          console.error('Playback failed:', JSON.stringify(error));
+        });
+    } else {
+      video.pause();
+      playButton.style.display = 'block';
+    }
+  });
+
+  div.appendChild(video);
+  div.appendChild(playButton);
+  document.getElementById('container').appendChild(div);
+
+  // Show/hide play button based on video state
+  video.addEventListener('play', () => {
+    playButton.style.display = 'none';
+  });
+
+  video.addEventListener('pause', () => {
+    playButton.style.display = 'block';
+  });
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry) => {
+    const vid = entry.target;
+    const playButton = vid.parentElement.querySelector('.play-button');
+
+    if (entry.isIntersecting) {
+      // On Android, we'll wait for user interaction
+      if (!vid.paused) {
+        vid.play()
+          .catch(error => {
+            console.log('Auto-play failed:', error);
+            // Show play button if autoplay fails
+            if (playButton) playButton.style.display = 'block';
+          });
+      }
+    } else {
+      vid.pause();
+      if (playButton) playButton.style.display = 'block';
+    }
+  });
+}, { threshold: 0.5 });
+
+
+
+/*feed.videos.forEach(vid => {
+  const uuid = vid.uuid;
+  const videoURL = `${baseURL}user/${doloresUser.uuid}/short-form/video/${uuid}`;
+
+  const div = document.createElement('div');
+  div.classList.add('video-cell');
+
+  const video = document.createElement('video');
+  video.classList.add('video');
+  video.setAttribute('src', videoURL);
   video.setAttribute('autoplay', false);
 //  video.setAttribute('loop', true);
 
@@ -94,7 +180,7 @@ try {
 	      vid.pause();
 	  }
       });
-  }, { threshold: 0.5 });
+  }, { threshold: 0.5 });*/
 
   document.querySelectorAll('video').forEach(video => {
 console.log('video selector got ', video);
@@ -160,7 +246,3 @@ console.log(err);
 //document.getElementById('container').appendChild(video);
 
 
-console.log(feed);
-} catch(err) {
-console.log('here is the err', err);
-}
