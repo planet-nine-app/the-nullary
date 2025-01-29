@@ -65,127 +65,82 @@ video.setAttribute('style', 'height: 100vh; width: auto; max-width: 100%; object
 video.setAttribute('src', videoURL);
 video.setAttribute('autoplay', true);*/
 
-function createVideoElement(videoURL, uuid) {
-            const div = document.createElement('div');
-            div.classList.add('video-cell');
-            
-            const video = document.createElement('video');
-            video.classList.add('video');
-            video.setAttribute('playsinline', '');
-            video.setAttribute('webkit-playsinline', '');
-            video.setAttribute('preload', 'metadata');
-            video.crossOrigin = 'anonymous'; // Add if needed for CORS
-            
-            // Create loading indicator
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.classList.add('loading-indicator');
-            loadingIndicator.textContent = 'Loading video...';
-            loadingIndicator.style.display = 'block';
-            
-            // Create error message element
-            const errorMessage = document.createElement('div');
-            
-            errorMessage.classList.add('error-message');
-            
-            // Create play button
-            const playButton = document.createElement('button');
-            playButton.classList.add('play-button');
-            playButton.innerHTML = '▶️';
-            
-            // Set video source after adding event listeners
-            video.addEventListener('loadedmetadata', () => {
-                loadingIndicator.style.display = 'none';
-                console.log(`Video ${uuid} metadata loaded`);
-            });
-            
-            video.addEventListener('error', (e) => {
-                loadingIndicator.style.display = 'none';
-                errorMessage.style.display = 'block';
-                errorMessage.textContent = `Error loading video: ${e.target.error?.message || 'Unknown error'}`;
-                console.error(`Video ${uuid} error:`, e.target.error);
-            });
-            
-            // Add canplay event listener
-            video.addEventListener('canplay', () => {
-                loadingIndicator.style.display = 'none';
-                console.log(`Video ${uuid} can play`);
-            });
-            
-            // Handle play button click with improved error handling
-            playButton.addEventListener('click', () => {
-                if (video.paused) {
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => {
-                                playButton.style.display = 'none';
-                                console.log(`Video ${uuid} playing`);
-                            })
-                            .catch(error => {
-                                console.error(`Video ${uuid} play error:`, error);
-                                errorMessage.style.display = 'block';
-                                errorMessage.textContent = 'Error playing video. Please try again.';
-                            });
-                    }
-                } else {
-                    video.pause();
-                    playButton.style.display = 'block';
-                }
-            });
-            
-            // Show/hide play button based on video state
-            video.addEventListener('play', () => {
-                playButton.style.display = 'none';
-            });
-            
-            video.addEventListener('pause', () => {
-                playButton.style.display = 'block';
-            });
-            
-            if (Hls.isSupported()) {
-	      const hls = new Hls();
-	      hls.loadSource(videoURL);
-	      hls.attachMedia(video);
-	    }
-	    else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-	      video.src = videoURL;
-	    }
-            //video.src = videoURL;
-            
-            div.appendChild(video);
-            div.appendChild(playButton);
-            div.appendChild(loadingIndicator);
-            div.appendChild(errorMessage);
-            
-            return div;
-        };
-
-const container = document.getElementById('container');
 feed.videos.forEach(vid => {
   const uuid = vid.uuid;
   const videoURL = `${baseURL}user/${doloresUser.uuid}/short-form/video/${uuid}`;
 
-  const div = createVideoElement(videoURL, uuid);
-  container.appendChild(div);
+  const div = document.createElement('div');
+  div.classList.add('video-cell');
+
+  const video = document.createElement('video');
+  video.classList.add('video');
+  video.setAttribute('src', videoURL);
+  video.setAttribute('playsinline', ''); // Important for iOS
+  video.setAttribute('webkit-playsinline', ''); // For older iOS versions
+  video.setAttribute('preload', 'metadata');
+  video.setAttribute('poster', ''); // You might want to add a poster image
+  
+  // Add play button overlay
+  const playButton = document.createElement('button');
+  playButton.classList.add('play-button');
+  playButton.innerHTML = '▶️';
+  playButton.style.position = 'absolute';
+  playButton.style.top = '50%';
+  playButton.style.left = '50%';
+  playButton.style.transform = 'translate(-50%, -50%)';
+  playButton.style.fontSize = '48px';
+  playButton.style.background = 'none';
+  playButton.style.border = 'none';
+  playButton.style.cursor = 'pointer';
+  playButton.style.zIndex = '2';
+  
+  // Make container relative for absolute positioning of play button
+  div.style.position = 'relative';
+
+  // Handle play button click
+  playButton.addEventListener('click', () => {
+    if (video.paused) {
+      video.play()
+        .then(() => {
+          playButton.style.display = 'none';
+        })
+        .catch(error => {
+          console.error('Playback failed:', JSON.stringify(error));
+        });
+    } else {
+      video.pause();
+      playButton.style.display = 'block';
+    }
+  });
+
+  div.appendChild(video);
+  div.appendChild(playButton);
+  document.getElementById('container').appendChild(div);
+
+  // Show/hide play button based on video state
+  video.addEventListener('play', () => {
+    playButton.style.display = 'none';
+  });
+
+  video.addEventListener('pause', () => {
+    playButton.style.display = 'block';
+  });
 });
 
 const observer = new IntersectionObserver((entries) => {
   entries.forEach((entry) => {
     const vid = entry.target;
     const playButton = vid.parentElement.querySelector('.play-button');
-    const elems = document.querySelectorAll('.error-message');
 
     if (entry.isIntersecting) {
-      if (vid.paused) {
+      // On Android, we'll wait for user interaction
+      if (!vid.paused) {
         vid.play()
           .catch(error => {
             console.log('Auto-play failed:', error);
-            elems.forEach($ => $.textContent = 'Auto-play failed: ' + error);
             // Show play button if autoplay fails
             if (playButton) playButton.style.display = 'block';
           });
-      } else {
-
       }
     } else {
       vid.pause();
