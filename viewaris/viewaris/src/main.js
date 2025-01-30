@@ -21,12 +21,16 @@ console.log('contents', fountUserString);
 console.log('problem', err);
   try {
     fountUser = await invoke("create_fount_user");
+console.log('fountUser', fountUser);
     await mkdir('', {baseDir: BaseDirectory.AppLocalData});
+console.log('made dir');
     await mkdir('fount', {baseDir: BaseDirectory.AppLocalData});
+console.log('made fount dir');
 //    await create('fount/user', { baseDir: BaseDirectory.AppLocalData })
     await writeTextFile('fount/user.json', JSON.stringify(fountUser), {
       baseDir: BaseDirectory.AppLocalData,
     });
+console.log('made fount user');
   } catch(err) {
 console.warn(err);
   }

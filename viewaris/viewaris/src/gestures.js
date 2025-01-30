@@ -10,18 +10,21 @@ const gestures = {
     const swipeWatcher = {};
 
     element.addEventListener('touchstart', (event) => {
+      event.preventDefault();
       const touch = event.touches[0];
       swipeWatcher.startX = touch.screenX;
       swipeWatcher.startY = touch.screenY;
     });
 
     element.addEventListener('touchmove', (event) => {
+      event.preventDefault();
       const touch = event.touches[0];
       swipeWatcher.endX = touch.screenX;
       swipeWatcher.endY = touch.screenY;
     });
 
     element.addEventListener('touchend', (event) => {
+      event.preventDefault();
       const xDiff = swipeWatcher.endX - swipeWatcher.startX;
       const yDiff = swipeWatcher.endY - swipeWatcher.startY;
       
