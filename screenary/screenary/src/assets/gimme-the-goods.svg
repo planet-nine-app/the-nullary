@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <!-- Animation definitions -->
+    <style>
+      @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+      }
+      @keyframes spreadAndGrow {
+        from {
+          transform: translate(0, 0) scale(1);
+        }
+        to {
+          transform: translate(var(--tx), var(--ty)) scale(2);
+        }
+      }
+      .hidden {
+        opacity: 0;
+      }
+      .container {
+        opacity: 1;
+        transition: opacity 1s;
+      }
+      .circle {
+        transition: transform 1s;
+      }
+      .animated .container {
+        opacity: 0;
+      }
+      .animated .circle-1 {
+        transform: translate(-100px, -100px) scale(2);
+      }
+      .animated .circle-2 {
+        transform: translate(100px, -100px) scale(2);
+      }
+      .animated .circle-3 {
+        transform: translate(0, 100px) scale(2);
+      }
+    </style>
+  </defs>
+
+  <!-- Main group for animation -->
+  <g id="main-group">
+    <!-- Rounded square background -->
+    <rect class="container" x="100" y="100" width="200" height="200" rx="20" ry="20" 
+          fill="#e0e0e0" stroke="#333" stroke-width="2"/>
+    
+    <!-- Three circles with placeholder content -->
+    <g class="circle circle-1">
+      <circle cx="160" cy="160" r="30" fill="#ff9999"/>
+      <text x="160" y="165" text-anchor="middle" fill="#333">SVG 1</text>
+    </g>
+    
+    <g class="circle circle-2">
+      <circle cx="240" cy="160" r="30" fill="#99ff99"/>
+      <text x="240" y="165" text-anchor="middle" fill="#333">SVG 2</text>
+    </g>
+    
+    <g class="circle circle-3">
+      <circle cx="200" cy="220" r="30" fill="#9999ff"/>
+      <text x="200" y="225" text-anchor="middle" fill="#333">SVG 3</text>
+    </g>
+  </g>
+
+  <script type="text/javascript">
+    // Animation trigger function
+    function triggerAnimation() {
+      const mainGroup = document.getElementById('main-group');
+      mainGroup.classList.toggle('animated');
+    }
+  </script>
+</svg>
