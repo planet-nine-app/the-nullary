@@ -1,4 +1,4 @@
-import gestures from './gestures.js';
+import gestures from './input/gestures.js';
 
 // Global state
 let isGloballyMuted = true; // Start muted by default
@@ -7,19 +7,19 @@ let isGloballyMuted = true; // Start muted by default
 const mockVideos = [
     {
         uuid: '1',
-        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        url: './gil.mp4',
         title: 'Big Buck Bunny',
         description: 'A sample video for testing'
     },
     {
         uuid: '2',
-        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+        url: './gil.mp4',
         title: 'Elephants Dream',
         description: 'Another sample video'
     },
     {
         uuid: '3',
-        url: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        url: './gil.mp4',
         title: 'For Bigger Blazes',
         description: 'One more sample video'
     }
@@ -206,135 +206,133 @@ function createVideoElement(videoURL, uuid, videoData) {
     return div;
 }
 
-// Initialize the app with mock data
-const container = document.getElementById('container');
-mockVideos.forEach(video => {
-    const div = createVideoElement(video.url, video.uuid, video);
-    container.appendChild(div);
-});
+const appendViewary = () => {
+  const container = document.getElementById('main');
+  mockVideos.forEach(video => {
+      const div = createVideoElement(video.url, video.uuid, video);
+      container.appendChild(div);
+  });
 
-// Set up intersection observer for autoplay
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-        const vid = entry.target;
-        const playButton = vid.parentElement.querySelector('.play-button');
-        const progressBar = vid.parentElement.parentElement.querySelector('.progress-bar');
-        const elems = document.querySelectorAll('.error-message');
+  const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+          const vid = entry.target;
+          const playButton = vid.parentElement.querySelector('.play-button');
+          const progressBar = vid.parentElement.parentElement.querySelector('.progress-bar');
+          const elems = document.querySelectorAll('.error-message');
 
-        if (entry.isIntersecting) {
-            if (vid.paused) {
-                vid.muted = isGloballyMuted;
-                vid.play()
-                    .catch(error => {
-                        console.log('Auto-play failed:', error);
-                        elems.forEach($ => $.textContent = 'Auto-play failed: ' + error);
-                        if (playButton) playButton.style.display = 'block';
-                    });
-            }
-            // Reset progress bar when video comes into view
-            if (progressBar) {
-                progressBar.style.width = '0%';
-            }
-        } else {
-            vid.pause();
-            if (playButton) playButton.style.display = 'block';
-            // Reset progress bar when video goes out of view
-            if (progressBar) {
-                progressBar.style.width = '0%';
-            }
-        }
-    });
-}, { threshold: 0.5 });
+          if (entry.isIntersecting) {
+              if (vid.paused) {
+                  vid.muted = isGloballyMuted;
+                  vid.play()
+                      .catch(error => {
+                          console.log('Auto-play failed:', error);
+                          elems.forEach($ => $.textContent = 'Auto-play failed: ' + error);
+                          if (playButton) playButton.style.display = 'block';
+                      });
+              }
+              // Reset progress bar when video comes into view
+              if (progressBar) {
+                  progressBar.style.width = '0%';
+              }
+          } else {
+              vid.pause();
+              if (playButton) playButton.style.display = 'block';
+              // Reset progress bar when video goes out of view
+              if (progressBar) {
+                  progressBar.style.width = '0%';
+              }
+          }
+      });
+  }, { threshold: 0.5 });
 
-// Observe all videos
-document.querySelectorAll('video').forEach(video => {
-    observer.observe(video);
-    
-    video.addEventListener('ended', () => {
-        const nextVideo = video.parentElement.parentElement.nextElementSibling;
-        if (nextVideo) {
-            nextVideo.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
+  document.querySelectorAll('video').forEach(video => {
+      observer.observe(video);
+      
+      video.addEventListener('ended', () => {
+          const nextVideo = video.parentElement.parentElement.nextElementSibling;
+          if (nextVideo) {
+              nextVideo.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+              });
+          }
+      });
+  });
 
-// Add gesture support
-document.querySelectorAll('.video-cell').forEach(videoCell => {
-    // Touch swipe support
-    gestures.addSwipeGestureListener(videoCell, (direction) => {
-        let targetVideo;
-        if (direction === 'up') {
-            targetVideo = videoCell.nextElementSibling;
-        } else if (direction === 'down') {
-            targetVideo = videoCell.previousElementSibling;
-        }
-        
-        if (targetVideo) {
-            targetVideo.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
+  document.querySelectorAll('.video-cell').forEach(videoCell => {
+      // Touch swipe support
+      gestures.addSwipeGestureListener(videoCell, (direction) => {
+          let targetVideo;
+          if (direction === 'up') {
+              targetVideo = videoCell.nextElementSibling;
+          } else if (direction === 'down') {
+              targetVideo = videoCell.previousElementSibling;
+          }
+          
+          if (targetVideo) {
+              targetVideo.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+              });
+          }
+      });
 
-    // Mouse swipe support
-    gestures.addMouseSwipeListener(videoCell, (direction) => {
-        let targetVideo;
-        if (direction === 'up') {
-            targetVideo = videoCell.nextElementSibling;
-        } else if (direction === 'down') {
-            targetVideo = videoCell.previousElementSibling;
-        }
-        
-        if (targetVideo) {
-            targetVideo.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
+      // Mouse swipe support
+      gestures.addMouseSwipeListener(videoCell, (direction) => {
+          let targetVideo;
+          if (direction === 'up') {
+              targetVideo = videoCell.nextElementSibling;
+          } else if (direction === 'down') {
+              targetVideo = videoCell.previousElementSibling;
+          }
+          
+          if (targetVideo) {
+              targetVideo.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+              });
+          }
+      });
+  });
 
-// Add keyboard controls
-document.addEventListener('keydown', (e) => {
-    const currentVideo = document.querySelector('.video-cell:nth-child(1)');
-    if (!currentVideo) return;
+  // Add keyboard controls
+  document.addEventListener('keydown', (e) => {
+      const currentVideo = document.querySelector('.video-cell:nth-child(1)');
+      if (!currentVideo) return;
 
-    switch(e.key) {
-        case 'ArrowUp':
-            const prevVideo = currentVideo.previousElementSibling;
-            if (prevVideo) {
-                prevVideo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-            break;
-        case 'ArrowDown':
-            const nextVideo = currentVideo.nextElementSibling;
-            if (nextVideo) {
-                nextVideo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-            break;
-        case ' ': // Spacebar
-            e.preventDefault();
-            const video = currentVideo.querySelector('video');
-            if (video) {
-                if (video.paused) {
-                    video.play();
-                } else {
-                    video.pause();
-                }
-            }
-            break;
-        case 'm':
-        case 'M':
-            const muteButton = currentVideo.querySelector('.mute-button');
-            if (muteButton) {
-                muteButton.click();
-            }
-            break;
-    }
-});
+      switch(e.key) {
+          case 'ArrowUp':
+              const prevVideo = currentVideo.previousElementSibling;
+              if (prevVideo) {
+                  prevVideo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+              break;
+          case 'ArrowDown':
+              const nextVideo = currentVideo.nextElementSibling;
+              if (nextVideo) {
+                  nextVideo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+              break;
+          case ' ': // Spacebar
+              e.preventDefault();
+              const video = currentVideo.querySelector('video');
+              if (video) {
+                  if (video.paused) {
+                      video.play();
+                  } else {
+                      video.pause();
+                  }
+              }
+              break;
+          case 'm':
+          case 'M':
+              const muteButton = currentVideo.querySelector('.mute-button');
+              if (muteButton) {
+                  muteButton.click();
+              }
+              break;
+      }
+  });
+};
 
-
+export default appendViewary;

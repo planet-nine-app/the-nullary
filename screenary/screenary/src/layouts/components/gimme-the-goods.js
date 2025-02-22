@@ -6,98 +6,114 @@ const theGoodsSVG =  document.createElementNS("http://www.w3.org/2000/svg", "svg
   theGoodsSVG.setAttribute('viewBox', '0 0 400 400');
   theGoodsSVG.setAttribute('x', '5%');
   theGoodsSVG.setAttribute('y', '45%');
-  theGoodsSVG.setAttribute('width', '512');
-  theGoodsSVG.setAttribute('height', '512');
+  theGoodsSVG.setAttribute('width', '20%');
+  theGoodsSVG.setAttribute('height', '20%');
+  theGoodsSVG.setAttribute('style', 'background-color: green;');
 
   theGoodsSVG.innerHTML = 
   `<defs>
-    <style>
-      @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-      }
-      @keyframes spreadAndGrow {
-        from {
-          transform: translate(0, 0) scale(1);
-        }
-        to {
-          transform: translate(var(--tx), var(--ty)) scale(2);
-        }
-      }
-      .hidden {
-        opacity: 0;
-      }
-      .container {
-        opacity: 1;
-        transition: opacity 1s;
-      }
-      .circle {
-        transition: transform 1s;
-      }
-      .animated .container {
-        opacity: 0;
-      }
-      .animated .circle-1 {
-        transform: translate(-100px, -100px) scale(2);
-      }
-      .animated .circle-2 {
-        transform: translate(100px, -100px) scale(2);
-      }
-      .animated .circle-3 {
-        transform: translate(0, 100px) scale(2);
-      }
-    </style>
-  </defs>
+    </defs>
 
-  <!-- Main group for animation -->
   <g id="main-group">
-    <!-- Rounded square background -->
-    <rect class="container" x="100" y="100" width="200" height="200" rx="20" ry="20" 
+    <rect class="goods-container" x="0" y="0" width="100%" height="100%" rx="20" ry="20" 
           fill="#e0e0e0" stroke="#333" stroke-width="2" id="the-goods-background"/>
     
-    <!-- Three circles with placeholder content -->
-    <g class="circle circle-1" id="lexary">
-      <circle cx="160" cy="160" r="30" fill="#ff9999"/>
-      <text x="160" y="165" text-anchor="middle" fill="#333">SVG 1</text>
+    <g id="lexary">
+      <circle id="circle1" cx="160" cy="160" r="30" fill="#ff9999">
+        <text x="160" y="165" text-anchor="middle" fill="#333">SVG 1</text>
+      </circle>
     </g>
     
-    <g class="circle circle-2" id="photary">
-      <circle cx="240" cy="160" r="30" fill="#99ff99"/>
-      <text x="240" y="165" text-anchor="middle" fill="#333">SVG 2</text>
+    <g id="photary">
+      <circle id="circle2" cx="240" cy="160" r="30" fill="#99ff99">
+        <text x="240" y="165" text-anchor="middle" fill="#333">SVG 2</text>
+      </circle>
     </g>
     
-    <g class="circle circle-3" id="viewary">
-      <circle cx="200" cy="220" r="30" fill="#9999ff"/>
-      <text x="200" y="225" text-anchor="middle" fill="#333">SVG 3</text>
+    <g id="viewary">
+      <circle id="circle3" cx="200" cy="220" r="30" fill="#9999ff">
+        <text x="200" y="225" text-anchor="middle" fill="#333">SVG 3</text>
+      </circle>
     </g>
   </g>
 `;
 
 const theGoods = {
   svg: theGoodsSVG,
-  rect: {
-    x: "5%",
-    y: "45%",
-    width: "10%",
-    height: "10%"
-  },
+  rect: {x: 0, y: 0, width: 0, height: 0}
 };
 
 let expanded = false;
 
+const smallCircle = {width: 60, height: 60};
+const bigCircle = {width: 120, height: 120};
+
+const circle1position1 = {x: 130, y: 130, ...smallCircle};
+const circle1position2 = {x: 130, y: 230, ...bigCircle};
+
+const circle2position1 = {x: 210, y: 130, ...smallCircle};
+const circle2position2 = {x: 210, y: 230, ...bigCircle};
+
+const circle3position1 = {x: 130, y: 210, ...smallCircle};
+const circle3position2 = {x: 290, y: 230, ...bigCircle};
+
 function triggerAnimation() {
-  const mainGroup = document.getElementById('main-group');
-  mainGroup.classList.toggle('animated');
-
+//  const mainGroup = document.getElementById('main-group');
+//  mainGroup.classList.toggle('animated');
+  
   expanded = !expanded;
-}
 
+  const fadeOut = animations.fade(expanded, 500);
+console.log(fadeOut);
+  document.getElementById('the-goods-background').appendChild(fadeOut);
 
+  const circle1 = document.getElementById('circle1');
+console.log('circle1', circle1);
+  const circle2 = document.getElementById('circle2');
+  const circle3 = document.getElementById('circle3');
+
+  const from1 = expanded ? circle1position1 : circle1position2;
+  const to1 = expanded ? circle1position2 : circle1position1;
+  const from2 = expanded ? circle2position1 : circle2position2;
+  const to2 = expanded ? circle2position2 : circle2position1;
+  const from3 = expanded ? circle3position1 : circle3position2;
+  const to3 = expanded ? circle3position2 : circle3position1;
+
+  let move1, move2, move3;
+
+  move1 = animations.fromToSVG(circle1, from1, to1, 200, true);
+  move2 = animations.fromToSVG(circle2, from2, to2, 200, true);
+  move3 = animations.fromToSVG(circle3, from3, to3, 200, true);
+console.log('move1', move1);
+
+  move1.map(animation => {
+    circle1.appendChild(animation);
+    animation.beginElement();
+  });
+  move2.map(animation => {
+    circle2.appendChild(animation);
+    animation.beginElement();
+  });
+  move3.map(animation => {
+    circle3.appendChild(animation);
+    animation.beginElement();
+  });
+
+  console.log('should be animating');
+};
 
 const gimmeTheGoods = (position) => {
-  const animation = animations.fromTo(theGoods.svg, theGoods.rect, position, 500, () => {
-    console.log('animation ended');
-  });    
+console.log('should reposition the goods');
+  const animationSet = animations.fromToSVG(theGoods.svg, theGoods.rect, position, 500, false);
+
+  if(expanded) {
+    triggerAnimation();
+  } 
+
+  animationSet.map(animation => {
+    theGoods.svg.appendChild(animation);
+    animation.beginElement();
+  });
 };
 
 let viewary;
@@ -110,22 +126,43 @@ gimmeTheGoods.addSelections = (_viewary, _photary, _lexary) => {
   lexary = _lexary;
 };
 
-gimmeTheGoods.attach = (container) => {
+gimmeTheGoods.attach = (container, startingRect) => {
+
+  theGoods.rect = startingRect;
+
 console.log('appending');
   container.appendChild(theGoods.svg);
 console.log('should have attached');
 
-  document.getElementById('viewary', () => {
-    expanded && viewary();
+  document.getElementById('viewary').addEventListener('click', () => {
+console.log('viewary clicked');
+    if(expanded) {
+      viewary();
+    } else {
+      triggerAnimation();
+    }
   });
-  document.getElementById('photary', () => {
-    expanded && viewary();
+  document.getElementById('photary').addEventListener('click', () => {
+console.log('photary clicked');
+    if(expanded) {
+      photary();
+    } else {
+      triggerAnimation();
+    }
   });
-  document.getElementById('lexary', () => {
-    expanded && viewary();
+  document.getElementById('lexary').addEventListener('click', () => {
+console.log('lexary clicked');
+    if(expanded) {
+      lexary();
+    } else {
+      triggerAnimation();
+    } 
   });
 
-  document.getElementById('the-goods-background').addEventListener('click', triggerAnimation);
+  document.getElementById('the-goods-background').addEventListener('click', () => {
+console.log('background tapped');
+    triggerAnimation();
+  });
 };
 
 console.log('exporting gimme the goods');

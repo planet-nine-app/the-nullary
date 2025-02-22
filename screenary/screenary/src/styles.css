@@ -223,6 +223,7 @@ body, html {
 /* Add hover effect for better visibility */
 .video-cell:hover .progress-container {
     height: 4px;
+    z-index: 3;
 }
 
 /* Make progress bar more visible on mobile */
