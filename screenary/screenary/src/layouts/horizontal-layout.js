@@ -1,5 +1,7 @@
 import gridPoints from './constants/grid-points.js';
 import appendViewary from '../viewary.js';
+import appendPhotary from '../photary.js';
+import appendLexary from '../lexary.js';
 import gimmeTheGoods from './components/gimme-the-goods.js';
 import gimmeTheBases from './components/discover-bases.js';
 
@@ -36,6 +38,7 @@ console.log('should have appended viewary');
 };
 
 const photary = () => {
+  appendPhotary();
 
   moveToMiddle();
 
@@ -43,6 +46,7 @@ const photary = () => {
 };
 
 const lexary = () => {
+  appendLexary();
 
   moveToMiddle();
 
