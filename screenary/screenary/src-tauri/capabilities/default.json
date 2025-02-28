@@ -5,6 +5,25 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "fs:default",
+    "fs:allow-open",
+    "fs:allow-write",
+    "fs:allow-read",
+    "fs:allow-rename",
+    "fs:allow-mkdir",
+    "fs:allow-remove",
+    "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope-appdata-recursive",
+      "allow": [
+        {
+          "path": "$APPDATA/**",
+          "path": "$APPDATA/services/**",
+          "path": "$APPDATA/users/**"
+        }
+      ],
+      "deny": ["$APPDATA/db/*.stronghold"]
+    },
     "opener:default"
   ]
 }

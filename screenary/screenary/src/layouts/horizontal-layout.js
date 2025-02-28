@@ -2,6 +2,7 @@ import gridPoints from './constants/grid-points.js';
 import appendViewary from '../viewary.js';
 import appendPhotary from '../photary.js';
 import appendLexary from '../lexary.js';
+import appendDiscoverBases from '../discover-bases.js';
 import gimmeTheGoods from './components/gimme-the-goods.js';
 import gimmeTheBases from './components/discover-bases.js';
 
@@ -54,6 +55,7 @@ const lexary = () => {
 };
 
 const discovery = () => {
+  appendDiscoverBases();
 
   moveToBottom();
 

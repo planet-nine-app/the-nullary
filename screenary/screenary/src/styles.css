@@ -50,6 +50,22 @@ body, html {
     background-color: #000;
 }
 
+.lexary-container {
+    height: 100vh;
+    width: 100vw;
+    overflow-y: scroll;
+    position: relative;
+    background-color: #000;
+}
+
+.discover-bases-container {
+    height: 100vh;
+    width: 100vw;
+    overflow-y: scroll;
+    position: relative;
+    background-color: #000;
+}
+
 .video-cell {
     height: 100vh;
     width: 100%;
@@ -85,6 +101,18 @@ body, html {
     background-color: green;
 }
 
+.base-cell {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    scroll-snap-align: start;
+    position: relative;
+    background-color: green;
+}
+
 .video-container {
     height: 100%;
     width: 100%;
@@ -105,6 +133,16 @@ body, html {
 }
 
 .post-container {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.base-container {
     height: 100%;
     width: 100%;
     position: relative;
@@ -186,6 +224,11 @@ body, html {
 }
 
 .text-container {
+    display: flex;
+    background-color: blue;
+}
+
+.bsse-text-container {
     display: flex;
     background-color: blue;
 }

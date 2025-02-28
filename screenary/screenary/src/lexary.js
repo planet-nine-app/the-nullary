@@ -59,7 +59,7 @@ function createPostElement(mediaURL, uuid, postData) {
 
 function appendLexary() {
   const container = document.getElementById('main');
-  container.classList.add('photary-container');
+  container.classList.add('lexary-container');
   container.classList.remove('container');
   mockPosts.forEach((post) => {
     const div = createPostElement(post.url, post.uuid, post);
