@@ -1,150 +1,161 @@
 const { invoke } = window.__TAURI__.core;
 const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__TAURI__.fs;
 
-let bases = {};
+let bases;
 let bdoUser;
 let doloresUser;
 
-async function createUsers() {
-  const devBase = {
-    name: 'DEV',
-    description: 'this is a development base for people to use. It is not gauranteed to work, and may be unstable.',
-    location: {
-      latitude: 36.788,
-      longitude: -119.417,
-      postalCode: '94102'
-    },
-    soma: {
-      lexary: [
-        'science',
-        'books'
-      ],
-      photary: [
-        'cats'
-      ],
-      viewary: [
-        'thevids'
-      ]
-    },
-    dns: {
-      bdo: 'https://dev.bdo.allyabase.com/',
-      dolores: 'https://dev.dolores.allyabase.com/'
-    },
-    joined: false
-  };
+const devBase = {
+  name: 'DEV',
+  description: 'this is a development base for people to use. It is not gauranteed to work, and may be unstable.',
+  location: {
+    latitude: 36.788,
+    longitude: -119.417,
+    postalCode: '94102'
+  },
+  soma: {
+    lexary: [
+      'science',
+      'books'
+    ],
+    photary: [
+      'cats'
+    ],
+    viewary: [
+      'thevids'
+    ]
+  },
+  dns: {
+    bdo: 'https://dev.bdo.allyabase.com/',
+    dolores: 'https://dev.dolores.allyabase.com/'
+  },
+  joined: false
+};
 
+async function getHomeBase() {
   try {
-    await connectToBase(devBase);
-    devBase.uuid = doloresUser.uuid; 
+    const homeBase = await readTextFile('bases/home.json', {baseDir: BaseDirectory.AppLocalData});
+    return homeBase;
+  } catch(err) { 
+    return devBase;
+  }
+};
 
-    bases[devBase.uuid] = devBase;
+async function connectToHomeBase() {
+  try {    
+    let homeBase = await getHomeBase();
+    if(!homeBase.users) {
+      homeBase = await connectToBase(homeBase);
+console.log('after connecting homeBase is: ', homeBase);
+    }
+
+    if(!bases) {
+      bases = {};
+    }
+
+    bases[Math.random() * 100000 + ''] = homeBase; // TODO: what are base ids?
 
     try {
       await mkdir('', {baseDir: BaseDirectory.AppLocalData});
     } catch(err) { console.log(err) }
 
     try {
-      await mkdir('services', {baseDir: BaseDirectory.AppLocalData});
-    } catch(err) { console.log(err) }
-
-    await writeTextFile('services/bdo.json', JSON.stringify(bdoUser), {
-      baseDir: BaseDirectory.AppLocalData
-    });
-    await writeTextFile('services/dolores.json', JSON.stringify(doloresUser), {
-      baseDir: BaseDirectory.AppLocalData
-    });
-
-    try {
       await mkdir('bases', {baseDir: BaseDirectory.AppLocalData});
     } catch(err) { console.log(err) }
 
-    await writeTextFile('bases/bases.json', JSON.stringify(bases), {
-      baseDir: BaseDirectory.AppLocalData,
-    });
+    try {
+      await writeTextFile('bases/bases.json', JSON.stringify(bases), {
+        baseDir: BaseDirectory.AppLocalData,
+      });
+    } catch(err) { console.log(err) }
+
+    return homeBase;
   } catch(err) {
     console.warn(err);
   }
 };
 
 async function fetchAndSaveBases() {
+  let homeBase = await getHomeBase();
   try {
-    let updatedBases = await invoke('get_bases', {uuid: bdoUser.uuid, bdoUrl: bases[doloresUser.uuid].dns && bases[doloresUser.uuid].dns.bdo});
+    let bdoUser = homeBase.users && homeBase.users.bdo;
+    if(!bdoUser) {
+      homeBase = await connectToHomeBase();
+console.log('homeBase is', homeBase);
+      bdoUser = homeBase.users && homeBase.users.bdo;
+    }
+    let doloresUser = homeBase.users && homeBase.users.dolores;
+    let bdoUrl = homeBase.dns && homeBase.dns.bdo;
+    if(bdoUrl[bdoUrl.length - 1] !== '/') {
+      bdoUrl += '/';
+    }
+    let updatedBases = await invoke('get_bases', {uuid: bdoUser.uuid, bdoUrl});
+
+    for(var baseId in updatedBases) {
+      updatedBases[baseId] = await connectToBase(updatedBases[baseId]);
+    }
+
     const basesString = await readTextFile('bases/bases.json', {
       baseDir: BaseDirectory.AppLocalData,
     });
 
-    bases = {...JSON.parse(basesString), ...updatedBases};
+    const allBases = {...JSON.parse(basesString), ...updatedBases};
 
-    await writeTextFile('bases/bases.json', JSON.stringify(bases), {
-      baseDir: BaseDirectory.AppLocalData,
-    });
+    try {
+      await writeTextFile('bases/bases.json', JSON.stringify(allBases), {
+        baseDir: BaseDirectory.AppLocalData,
+      });
+    } catch(err) { console.error('This is a big problem', err) }
 
-    return bases;
+    return allBases;
   } catch(err) {
-    await createUsers();
-    return fetchAndSaveBases();
+console.error('here\'s the prob bob', err);
+//    await connectToHomeBase();
+//    return fetchAndSaveBases();
   }
-};
-
-async function createDoloresUsers() {
-  for(var baseId in bases) {
-    const base = bases[baseId];
-console.log('base before users');
-    base.users = base.users || {};
-console.log('base after users', base.users);
-    for(var service in base.dns) {
-      if(base.users[service] && base.users[service].uuid) {
-        continue;
-      }
-      const invokeString = `create_${service}_user`;
-      const opts = {};
-      opts[`${service}Url`] = base.dns[service];
-      try {
-        const user = await invoke(invokeString, opts);
-console.log(user);
-        base.users[service] = user;
-console.log('and base', base.users, service, user);
-      } catch(err) { console.log(err) }
-    }
-  }
-
-console.log('after all of that bases are: ', bases);
-
-  await writeTextFile('bases/bases.json', JSON.stringify(bases), {
-    baseDir: BaseDirectory.AppLocalData,
-  });
 };
 
 async function getBases() {
-  let bases;
-  try {
-    bases = await fetchAndSaveBases();
-console.log('in first try bases', bases);
-  } catch(err) {
-    try {
-      bdoUser = JSON.parse(fs.readFileSync('services/bdo.json'));
-console.log('got saved user', bdoUser);
-    } catch(err) {
-      await createUsers();
-console.log('now bdoUser is: ', bdoUser);
-    }
-console.log('in catch bases', bases);
-    await createDoloresUsers();
-    return bases;
-  }
+  const bases = await fetchAndSaveBases();
+
+  return bases;
 };
 
-async function connectToBase(base) {
-  try {
-    bdoUser = await invoke('create_bdo_user', {bdoUrl: 'https://dev.bdo.allyabase.com/'}); // TODO: make this dynamic
-    doloresUser = await invoke('create_dolores_user', {doloresUrl: 'https://dev.dolores.allyabase.com/'});
-  } catch(err) {
-    console.warn('failed to make dev dolores user', err);
+async function connectToBase(_base) {
+  let base = JSON.parse(JSON.stringify(_base));
+  for(var service in base.dns) {
+    if(base.users && base.users[service] && base.users[service].uuid) {
+      continue;
+    }
+    const invokeString = `create_${service}_user`;
+    const opts = {};
+    const serviceURL = `${service}Url`;
+    opts[serviceURL] = base.dns[service];
+    if(opts[serviceURL][opts[serviceURL].length - 1] !== '/') {
+      opts[serviceURL] += '/';
+    }
+    try {
+      const user = await invoke(invokeString, opts);
+console.log(user);
+      base.users = base.users || {};
+      base.users[service] = user;
+console.log('and base', base.users, service, user);
+    } catch(err) { console.log(err) }
   }
+
+  return base;
 };
 
 async function getFeed() {
-  const bases = await getBases();
+  let bases;
+  try {
+  const basesString = await readTextFile('bases/bases.json', {
+    baseDir: BaseDirectory.AppLocalData,
+  });
+  bases = JSON.parse(basesString);
+  } catch(err) {
+console.warn('could not get bases in getFeed', err);
+  }
 
 console.log('bases in getFeed look like: ', bases);
 
@@ -159,7 +170,10 @@ console.log('bases in getFeed look like: ', bases);
 console.log(base);
     const uuid = base.users && base.users.dolores && base.users.dolores.uuid;
 console.log(uuid);
-    const doloresURL = base.dns.dolores;
+    let doloresURL = base.dns && base.dns.dolores;
+    if(doloresURL[doloresURL.length - 1] !== '/') {
+      doloresURL += '/';
+    }
 console.log(doloresURL);
 
     if(!(uuid && doloresURL)) {
