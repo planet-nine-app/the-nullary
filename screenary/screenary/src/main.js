@@ -5,16 +5,13 @@ import verticalLayout from './layouts/vertical-layout.js';
 
 console.log('imports worked');
 
-baseCommand.getBases()
+/*baseCommand.getBases()
   .then(baseCommand.getFeed)
   .then(feed => {
     console.log('got a feed with ' + feed.allPosts.length + ' posts');
   })
   .catch(console.warn);
-
-/*baseCommand.getFeed().then(feed => {
-  console.log('got a feed with ' + feed.allPosts.length + ' posts');
-}).catch(console.warn);*/
+*/
 
 if(window.innerWidth >= window.innerHeight) {
 console.log('horizontal');

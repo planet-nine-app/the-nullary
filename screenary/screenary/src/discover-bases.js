@@ -1,4 +1,5 @@
 import gestures from './input/gestures.js';
+import getBaseRow from './layouts/components/svgs/base-row.js';
 
 const mockBases = [
   {
@@ -76,13 +77,13 @@ const mockBases = [
 ];
 
 function createBaseElement(base) {
-  const div = document.createElement('div');
-  div.classList.add('base-cell');
+//  const div = document.createElement('div');
+//  div.classList.add('base-cell');
 
   const baseContainer = document.createElement('div');
   baseContainer.classList.add('base-container');
 
-  const textContainer = document.createElement('div');
+/*  const textContainer = document.createElement('div');
   textContainer.classList.add('base-text-container');
   textContainer.innerHTML = `<p>${base.description}</p>`;
 
@@ -95,11 +96,16 @@ function createBaseElement(base) {
   });
 
   baseContainer.appendChild(textContainer);
-  baseContainer.appendChild(joinContainer);
+  baseContainer.appendChild(joinContainer); */
 
-  div.appendChild(baseContainer);
+  const baseRow = getBaseRow(base.name, base.description, base.soma, () => {});
+  baseContainer.appendChild(baseRow);
+  
+  return baseContainer;
 
-  return div;
+//  div.appendChild(baseContainer);
+
+//  return div;
 };
 
 function appendDiscoverBases() {

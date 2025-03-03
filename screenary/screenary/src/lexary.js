@@ -2,11 +2,13 @@ import gestures from './input/gestures.js';
 import loadingIndicator from './layouts/components/loading-indicator.js';
 import imageSelector from './layouts/components/image-selector.js';
 import video from './layouts/components/video.js';
+import getLexaryRow from './layouts/components/svgs/lexary-row.js';
 
 const mockPosts = [
   {
         uuid: '1',
         url: 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg',
+        images: ['https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg'],
         title: 'Big Buck Bunny',
         description: 'A sample video for testing'
     },
@@ -21,6 +23,7 @@ const mockPosts = [
         uuid: '3',
         url: './gil.mp4',
         title: 'For Bigger Blazes',
+        images: ['https://wallpapercave.com/wp/wp9329705.jpg'],
         mediaType: 'video',
         description: 'One more sample video'
     }
@@ -33,7 +36,7 @@ function createPostElement(mediaURL, uuid, postData) {
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
 
-  const textContainer = document.createElement('div');
+/*  const textContainer = document.createElement('div');
   textContainer.classList.add('post-text-container');
   textContainer.innerHTML = `<p>${postData.description}</p>`;
 
@@ -54,7 +57,15 @@ function createPostElement(mediaURL, uuid, postData) {
 
   div.appendChild(postContainer);
 
-  return div;  
+  return div; */
+
+  const lexaryRow = getLexaryRow(postData.description, postData.images);
+console.log(postContainer);
+  postContainer.appendChild(lexaryRow);
+
+//  return postContainer;
+  div.appendChild(postContainer);
+  return div;
 };
 
 function appendLexary() {

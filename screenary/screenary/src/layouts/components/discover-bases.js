@@ -12,7 +12,7 @@ const discoverBasesSVG = document.createElementNS("http://www.w3.org/2000/svg", 
 
 discoverBasesSVG.innerHTML = `
   <rect width="100%" height="100%" fill="orange" id="discover-bases-container"/>
-  <image x="5" y="5" width="190" height="90" opacity="1" href="./allyabase.jpg">
+  <image x="105" y="155" width="190" height="90" opacity="1" href="./allyabase.jpg">
   </image>
   <text x="55" y="95" style="text-align: center;">allyabase are belong to us</text>
 `;
