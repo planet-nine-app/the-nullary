@@ -1,4 +1,5 @@
 import gestures from './input/gestures.js';
+import getImageSelector from './layouts/components/image-selector.js';
 import loadingIndicator from './layouts/components/loading-indicator.js';
 
 
@@ -7,6 +8,7 @@ const mockPhotos = [
     {
         uuid: '1',
         url: 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg',
+        images: ['https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg', 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg'],
         title: 'Big Buck Bunny',
         description: 'A sample video for testing'
     },
@@ -35,8 +37,8 @@ function createImageElement(imageURL, uuid, imageData) {
   textContainer.classList.add('text-container');
   textContainer.innerHTML = `<p>${imageData.text}</p>`;
 
-  const image = document.createElement('img');
-  image.classList.add('image');
+  const image = getImageSelector(imageData.images);
+/*  image.classList.add('image');
   image.src = imageURL;
 
   console.log('image src is: ', image.src);
@@ -55,10 +57,10 @@ function createImageElement(imageURL, uuid, imageData) {
 
   image.addEventListener('onLoad', (e) => {
     indicator.removeFromParent();
-  });
+  });*/
 
   imageContainer.appendChild(image);
-  imageContainer.appendChild(indicator);
+  //imageContainer.appendChild(indicator);
   
   div.appendChild(textContainer);
   div.appendChild(imageContainer);;

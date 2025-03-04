@@ -3,6 +3,7 @@ import appendViewary from '../viewary.js';
 import appendPhotary from '../photary.js';
 import appendLexary from '../lexary.js';
 import appendDiscoverBases from '../discover-bases.js';
+import getPlanetNineLogo from './components/svgs/planet-nine-logo.js';
 import gimmeTheGoods from './components/gimme-the-goods.js';
 import gimmeTheBases from './components/discover-bases.js';
 
@@ -67,6 +68,9 @@ console.log('should layout the layout');
   const container = document.getElementById('container');
 console.log('window dimensions', window.innerWidth, window.innerHeight);
   container.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+
+  const logo = getPlanetNineLogo();
+  container.appendChild(logo);
   
   gimmeTheGoods.addSelections(viewary, photary, lexary);
   gimmeTheGoods.attach(container, gridPoints.middleLeft(LAYOUT_DIRECTION));
