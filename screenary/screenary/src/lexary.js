@@ -9,6 +9,7 @@ const mockPosts = [
         uuid: '1',
         url: 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg',
         images: ['https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg'],
+        isVertical: true,
         title: 'Big Buck Bunny',
         description: 'A sample video for testing'
     },
@@ -16,6 +17,7 @@ const mockPosts = [
         uuid: '2',
         url: 'https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:wwdgpsqzc5jeidoyupoyn6lg/bafkreienfrv6xyd4zgj2egqtxikdjl3aycaxgkwkoup6wtvhzgtfxlx45m@jpg',
         title: 'Elephants Dream',
+        isVertical: false,
         mediaType: 'image',
         description: 'Another sample video'
     },
@@ -24,7 +26,8 @@ const mockPosts = [
         url: './gil.mp4',
         title: 'For Bigger Blazes',
         images: ['https://wallpapercave.com/wp/wp9329705.jpg'],
-        mediaType: 'video',
+        isVertical: 'false',
+        mediaType: 'image',
         description: 'One more sample video'
     }
 ];
@@ -32,6 +35,8 @@ const mockPosts = [
 function createPostElement(mediaURL, uuid, postData) {
   const div = document.createElement('div');
   div.classList.add('post-cell');
+  div.classList.add('vertical-post');
+  div.classList.add('horizontal-post');
 
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
