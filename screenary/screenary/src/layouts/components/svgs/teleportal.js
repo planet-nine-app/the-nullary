@@ -77,7 +77,10 @@ function getTeleportal(teleported, onClick) {
 
   container.addEventListener('click', (evt) => {
 console.log('teleportal clicked');
+    onClick(evt);
   });
 
   return container;
 }
+
+export default getTeleportal;

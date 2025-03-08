@@ -19,7 +19,6 @@ let pref = () => {};
 
 findPlanetNine.addSelections = (_teleport, _pref) => {
   teleport = _teleport;
-teleport();
   pref = _pref;
 };
 

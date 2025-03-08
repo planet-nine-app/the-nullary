@@ -1,5 +1,5 @@
 import gestures from './input/gestures.js';
-import getTeleportal from './layouts/components/svgs/telepotal.js';
+import getTeleportal from './layouts/components/svgs/teleportal.js';
 
 const mockProducts = [
   {
@@ -59,7 +59,8 @@ function createProductElement(product) {
 
   const teleported = constructTeleported(product);
   const teleportal = getTeleportal(teleported, (evt) => {
-    console.log('product ${product.uuid} clicked');
+    console.log(`product ${product.uuid} clicked`);
+    
   });
 
   productContainer.appendChild(teleportal);
@@ -68,3 +69,15 @@ function createProductElement(product) {
 
   return div;
 };
+
+function teleportEmIn() {
+  const container = document.getElementById('main');
+  container.classList.add('lexary-container');
+  container.classList.remove('container');
+  mockProducts.forEach((product) => {
+    const div = createProductElement(product);
+    container.appendChild(div);
+  });
+};
+
+export default teleportEmIn;
