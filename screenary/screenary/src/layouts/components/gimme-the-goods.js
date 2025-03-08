@@ -63,7 +63,7 @@ function triggerAnimation() {
   
   expanded = !expanded;
 
-  const fadeOut = animations.fade(expanded, 500);
+  const fadeOut = animations.fade(expanded ? 1 : 0, expanded ? 0 : 1, 500);
 console.log(fadeOut);
   document.getElementById('the-goods-background').appendChild(fadeOut);
 

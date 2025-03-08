@@ -3,7 +3,8 @@ import appendViewary from '../viewary.js';
 import appendPhotary from '../photary.js';
 import appendLexary from '../lexary.js';
 import appendDiscoverBases from '../discover-bases.js';
-import getPlanetNineLogo from './components/svgs/planet-nine-logo.js';
+import teleportEmIn from '../teleport-em-in.js';
+import findPlanetNine from './components/planet-nine-logo.js';
 import gimmeTheGoods from './components/gimme-the-goods.js';
 import gimmeTheBases from './components/discover-bases.js';
 
@@ -63,14 +64,29 @@ const discovery = () => {
   viewState = 4;
 };
 
+const teleport = () => {
+console.log('the layout\'s teleport gets called');
+  teleportEmIn();
+console.log('should have telepoted em in');
+
+  moveToBottom();
+
+  viewState = 5;
+};
+
+const pref = () => {
+  // noop for now
+};
+
 const layout = () => {
 console.log('should layout the layout');
   const container = document.getElementById('container');
 console.log('window dimensions', window.innerWidth, window.innerHeight);
   container.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
 
-  const logo = getPlanetNineLogo();
-  container.appendChild(logo);
+//  const logo = findPlaneNinegid();
+  findPlanetNine.addSelections(teleport, pref);
+  findPlanetNine.attach(container, gridPoints.topRight(LAYOUT_DIRECTION));
   
   gimmeTheGoods.addSelections(viewary, photary, lexary);
   gimmeTheGoods.attach(container, gridPoints.middleLeft(LAYOUT_DIRECTION));

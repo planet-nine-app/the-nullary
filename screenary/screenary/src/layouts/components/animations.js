@@ -58,14 +58,11 @@ const animations = {
     return animations;
   },
 
-  fade: (out, duration, onEnd) => {
-    const from = out ? 1 : 0;
-    const to = out ? 0 : 1;
-
+  fade: (fromValue, toValue, duration, onEnd) => {
     const animation = document.createElementNS("http://www.w3.org/2000/svg", "animate");
     animation.setAttribute("attributeName", "opacity");
-    animation.setAttribute("from", from);
-    animation.setAttribute("to", to);
+    animation.setAttribute("from", fromValue);
+    animation.setAttribute("to", toValue);
     animation.setAttribute("dur", `${duration}ms`);
     animation.setAttribute("begin", "1ms");
     animation.setAttribute("fill", "freeze");
