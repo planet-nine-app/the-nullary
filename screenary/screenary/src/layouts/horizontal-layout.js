@@ -35,7 +35,7 @@ const viewary = () => {
   appendViewary();
 console.log('should have appended viewary');
 
-  moveToMiddle();
+  moveToBottom();
 
   viewState = 1;
 };
@@ -43,7 +43,7 @@ console.log('should have appended viewary');
 const photary = () => {
   appendPhotary();
 
-  moveToMiddle();
+  moveToBottom();
 
   viewState = 2;
 };
@@ -51,7 +51,7 @@ const photary = () => {
 const lexary = () => {
   appendLexary();
 
-  moveToMiddle();
+  moveToBottom();
 
   viewState = 3;
 };
@@ -80,19 +80,19 @@ const pref = () => {
 
 const layout = () => {
 console.log('should layout the layout');
-  const container = document.getElementById('container');
+  const fullScreenSVG = document.getElementById('full-screen-svg');
 console.log('window dimensions', window.innerWidth, window.innerHeight);
-  container.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+  fullScreenSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
 
 //  const logo = findPlaneNinegid();
   findPlanetNine.addSelections(teleport, pref);
-  findPlanetNine.attach(container, gridPoints.topRight(LAYOUT_DIRECTION));
+  findPlanetNine.attach(fullScreenSVG, gridPoints.topRight(LAYOUT_DIRECTION));
   
   gimmeTheGoods.addSelections(viewary, photary, lexary);
-  gimmeTheGoods.attach(container, gridPoints.middleLeft(LAYOUT_DIRECTION));
+  gimmeTheGoods.attach(fullScreenSVG, gridPoints.middleLeft(LAYOUT_DIRECTION));
 
   gimmeTheBases.addSelections(discovery);
-  gimmeTheBases.attach(container, gridPoints.middleRight(LAYOUT_DIRECTION));
+  gimmeTheBases.attach(fullScreenSVG, gridPoints.middleRight(LAYOUT_DIRECTION));
 
 console.log('should have attached');
 

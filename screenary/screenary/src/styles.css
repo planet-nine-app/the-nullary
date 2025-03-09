@@ -24,6 +24,15 @@ body, html {
     background-color: #000;
 }
 
+#main {
+    z-index: 1;
+}
+
+#full-screen-svg {
+    z-index: 10;
+    background-color: transparent;
+}
+
 .container {
     height: 100vh;
     width: 100vw;
@@ -51,11 +60,14 @@ body, html {
 }
 
 .lexary-container {
+    left: 0;
+    top: 0;
     height: 100vh;
     width: 100vw;
     overflow-y: scroll;
-    position: relative;
-    background-color: #000;
+    position: fixed;
+    background-color: purple;
+    z-index: 1;
 }
 
 .discover-bases-container {
@@ -101,12 +113,12 @@ body, html {
 }
 
 .vertical-post {
-    width: 100vw;
+    width: 80vw;
     height: 70vh;
 }
 
 .horizontal-post {
-    width: 100vw;
+    width: 80vw;
     height: 40vh;
 }
 

@@ -83,8 +83,8 @@ function getLexaryRow(text, images) {
   };
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  container.setAttribute('width', '75vh');
-  container.setAttribute('height', '75vh');
+  container.setAttribute('width', '75%');
+  container.setAttribute('height', '75%');
 
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   newElement.setAttribute('viewBox', '0 0 600 500');

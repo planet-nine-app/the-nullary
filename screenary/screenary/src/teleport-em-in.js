@@ -1,5 +1,6 @@
 import gestures from './input/gestures.js';
 import getTeleportal from './layouts/components/svgs/teleportal.js';
+import animations from './layouts/components/animations.js';
 
 const mockProducts = [
   {
@@ -49,19 +50,20 @@ function constructTeleported(product) {
   return svg;
 };
 
-function createProductElement(product) {
-  const div = document.createElement('div');
-  div.classList.add('post-cell');
-  div.classList.add('horizontal-post');
+function createProductElement(product, onClick) {
+  const div = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    div.setAttribute('width', '400');
+    div.setAttribute('height', '400');
+    div.setAttribute('class', 'teleportal');
+//    div.setAttribute('style', 'position: relative;');
+//  div.classList.add('post-cell');
+//  div.classList.add('horizontal-post');
 
-  const productContainer = document.createElement('div');
+  const productContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   productContainer.classList.add('post-container');
 
   const teleported = constructTeleported(product);
-  const teleportal = getTeleportal(teleported, (evt) => {
-    console.log(`product ${product.uuid} clicked`);
-    
-  });
+  const teleportal = getTeleportal(teleported, onClick);
 
   productContainer.appendChild(teleportal);
   
@@ -71,13 +73,40 @@ function createProductElement(product) {
 };
 
 function teleportEmIn() {
-  const container = document.getElementById('main');
+  const container = document.getElementById('container');
   container.classList.add('lexary-container');
   container.classList.remove('container');
+  let x = 600;
+  let y = 20;
   mockProducts.forEach((product) => {
-    const div = createProductElement(product);
+    const divsY = y;
+    const div = createProductElement(product, (evt) => {
+console.log('product clicked', product);
+      Array.from(container.children).forEach(elem => {
+        if(elem === div) {
+          const rect = {x: `${x}`, y: `${divsY}`, width: 400, height: 400};
+          const fromToAnimations = animations.fromToSVG(elem, rect, {x: 600, y: 50, width: rect.width, height: rect.height}, 250, false);
+console.log('fromToAnimations', fromToAnimations);
+          fromToAnimations.forEach($ => {
+            div.appendChild($);
+            $.beginElement();
+          });
+        } else {
+          if(Array.from(elem.classList).indexOf('teleportal') !== -1) {
+	    const fadeOut = animations.fade(1, 0, 250);
+	    elem.appendChild(fadeOut);
+	    fadeOut.beginElement();
+          }
+        }
+      });
+    });
+    div.setAttribute('x', `${x}`);
+    div.setAttribute('y', `${y}`);
+    y += 420;
     container.appendChild(div);
   });
+
+  container.setAttribute('viewBox', `0 0 1600 ${y + 20}`);
 };
 
 export default teleportEmIn;

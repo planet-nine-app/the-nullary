@@ -75,8 +75,12 @@ console.log(postContainer);
 
 function appendLexary() {
   const container = document.getElementById('main');
+  Array.from(container.classList).forEach($ => {
+    if($.indexOf('ontainer') !== -1) {
+      container.classList.remove($);
+    }
+  });
   container.classList.add('lexary-container');
-  container.classList.remove('container');
   mockPosts.forEach((post) => {
     const div = createPostElement(post.url, post.uuid, post);
     container.appendChild(div);
