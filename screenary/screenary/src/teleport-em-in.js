@@ -2,6 +2,15 @@ import gestures from './input/gestures.js';
 import getTeleportal from './layouts/components/svgs/teleportal.js';
 import animations from './layouts/components/animations.js';
 
+const addressFormJSON = {
+  name: "text",
+  address1: "text",
+  address2: "text",
+  city: "text",
+  state: "text",
+  zipCode: "number"
+};
+
 const mockProducts = [
   {
     uuid: '1',
@@ -87,6 +96,18 @@ console.log('product clicked', product);
           const rect = {x: `${x}`, y: `${divsY}`, width: 400, height: 400};
           const fromToAnimations = animations.fromToSVG(elem, rect, {x: 600, y: 50, width: rect.width, height: rect.height}, 250, false);
 console.log('fromToAnimations', fromToAnimations);
+
+          const addressForm = getForm(addressFormJSON);
+          const addressRect = {x: '600', y: '500', width: '400', height: '0'};
+          addressForm.setAttribute('x', addressRect.x);
+          addressForm.setAtrribute('y', addressRect.y);
+          addressForm.setAttribute('width', addressRect.width);
+          addressForm.setAttribute('height', addressRect.height);
+
+          const formFromToAnimations = animations.fromToSVG(addressForm, 
+
+          container.appendChild(addressForm);
+
           fromToAnimations.forEach($ => {
             div.appendChild($);
             $.beginElement();

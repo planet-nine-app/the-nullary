@@ -72,7 +72,7 @@ function getForm(formJSON) {
   return container;
 };
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600">
+/*<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600">
   <!-- Background -->
   <rect width="500" height="600" fill="#0f0f12"/>
   
@@ -160,4 +160,6 @@ function getForm(formJSON) {
   <text x="95" y="235" font-family="Arial, sans-serif" font-size="14" fill="#666666">Street address</text>
   <text x="95" y="375" font-family="Arial, sans-serif" font-size="14" fill="#666666">Enter city</text>
   <text x="95" y="445" font-family="Arial, sans-serif" font-size="14" fill="#666666">CA</text>
-</svg>
+</svg>*/
+
+export default getForm;
