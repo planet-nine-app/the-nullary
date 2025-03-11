@@ -6,6 +6,8 @@ use serde_json::Value;
 use sessionless::hex::FromHex;
 use sessionless::hex::IntoHex;
 use sessionless::{Sessionless, PrivateKey};
+use addie_rs::{Addie};
+use addie_rs::structs::PaymentIntent;
 use fount_rs::{Fount, FountUser};
 use fount_rs::structs::{Gateway};
 use bdo_rs::{BDO, Bases, Spellbook};
@@ -80,7 +82,33 @@ dbg!(e);
     }
 }
 
+#[tauri::command(rename_all = "snake_case")]
+async fn get_payment_intent_without_splits(amount: u32, currency: &str) -> Result<PaymentIntent, String> {
+    let s = get_sessionless().await;
+    let stripe = "stripe";
 
+    match s {
+        Ok(sessionless) => {
+            let addie = Addie::new(Some("https://dev.addie.allyabase.com/".to_string()), Some(sessionless));
+            let addie_user = match addie.create_user().await {
+                Ok(user) => user,
+                Err(_) => {
+                    dbg!("The problem is getting the user");
+                    return Ok(PaymentIntent::new())
+                }
+            };
+
+            match addie.get_payment_intent_without_splits(&addie_user.uuid, &stripe, &amount, &currency).await {
+                Ok(intent) => Ok(intent),
+                Err(err) => {
+                    dbg!("the intent failed for some reason {}", err);
+                    return Ok(PaymentIntent::new())
+                }
+            }
+        },
+        Err(_) => Ok(PaymentIntent::new())
+    }
+}
 
 #[tauri::command]
 async fn create_dolores_user(dolores_url: &str) -> Result<DoloresUser, String> {
@@ -124,7 +152,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![dbg, create_fount_user, create_bdo_user, get_bases, create_dolores_user, get_feed])
+        .invoke_handler(tauri::generate_handler![dbg, create_fount_user, create_bdo_user, get_bases, create_dolores_user, get_feed, get_payment_intent_without_splits])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

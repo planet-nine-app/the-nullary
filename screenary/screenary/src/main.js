@@ -13,6 +13,16 @@ console.log('imports worked');
   .catch(console.warn);
 */
 
+if(window.location.search) {
+console.log('got a location.search');
+  const sliceQ = window.location.search.slice(1, window.location.search.length);
+  const searches = sliceQ.split("&");
+  const paramTuples = searches.map(search => search.split("="));
+  paramTuples.forEach(tuple => query[tuple[0]] = tuple[1]);
+
+  console.log('query', query);
+}
+
 if(window.innerWidth >= window.innerHeight) {
 console.log('horizontal');
   horizontalLayout();

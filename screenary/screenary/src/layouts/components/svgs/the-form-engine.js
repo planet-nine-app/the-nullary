@@ -19,44 +19,51 @@ function getBackgroundAndGradients() {
   
   <!-- Define the gradient for active input borders -->
   <linearGradient id="inputGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#3eda82"/>
-    <stop offset="100%" stop-color="#9c42f5"/>
+    <stop offset="0%" stop-color="purple"/>
+    <stop offset="100%" stop-color="green"/>
   </linearGradient>
   
   <!-- Button Gradient -->
   <linearGradient id="buttonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-    <stop offset="0%" stop-color="#3eda82"/>
-    <stop offset="100%" stop-color="#9c42f5"/>
+    <stop id="submitButtonGradientStart" offset="0%" stop-color="green"/>
+    <stop id="submitButtonGradientEnd" offset="100%" stop-color="purple"/>
+  </linearGradient>
+
+  <linearGradient id="buttonPressedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="purple"/>
+    <stop offset="100%" stop-color="green"/>
   </linearGradient>`;
 
   return svg;
 };
 
 function getInput(x, y, text, inputType) {
+  const borderId = `${text}Border`;
+  const inputId = `${text}Input`;
 
   const svg = `<text x="${x}" y="${y}" font-family="Arial, sans-serif" font-size="14" fill="#bbbbbb">${text}</text>
       <!-- Field Background -->
-      <rect id="nameField" x="${x}" y="${y}" width="340" height="40" rx="8" fill="#1c1c20" 
+      <rect id="${borderId}" x="${x}" y="${y}" width="340" height="40" rx="8" fill="#1c1c20" 
             stroke="#444" stroke-width="2" class="input-field"/>
       <!-- Inset shadow effect -->
       <rect x="${x + 2}" y="${y + 12}" width="336" height="36" rx="6" fill="none" 
             stroke="#000" stroke-width="1" opacity="0.3"/>
       <!-- HTML Input Field -->
       <foreignObject x="${x}" y="${y + 10}" width="340" height="40">
-        <input xmlns="http://www.w3.org/1999/xhtml" type="text" placeholder="${name}" class="svg-input" data-field="name"/>
+        <input xmlns="http://www.w3.org/1999/xhtml" id="${inputId}" type="text" placeholder="${name}" class="svg-input" data-field="name" spellcheck="false" style="width:90%; height: 95%; background-color: transparent; color: white;"/>
       </foreignObject>`;
 
   return svg;
 };
 
 function getSubmitButton() {
-  return `<rect x="100" y="490" width="300" height="45" rx="22.5" fill="url(#buttonGradient)"/>
-      <foreignObject x="100" y="490" width="300" height="45">
-        <button xmlns="http://www.w3.org/1999/xhtml" class="submit-btn">SUBMIT</button>
-      </foreignObject>`;
+  return `<rect id="submitButton" x="100" y="490" width="300" height="45" rx="22.5" fill="url(#buttonGradient)">
+    </rect>
+    <text x="300" y="513" font-family="Arial, sans-serif" font-size="16" font-weight: "bold" fill="white" text-anchor="middle" dominant-baseline="middle">SUBMIT</text>
+`;
 };
 
-function getForm(formJSON) {
+function getForm(formJSON, onSubmit) {
   const inputs = Object.keys(formJSON).map(($, index) => $ === "form" ? '' : getInput(80, 70 * index + 130, $, formJSON[$]));
   
   const svg = getBackgroundAndGradients() + inputs.join('') + getSubmitButton();
@@ -68,6 +75,55 @@ function getForm(formJSON) {
   newElement.innerHTML = svg;
 
   container.appendChild(newElement);
+
+setTimeout(() => {
+  Object.keys(formJSON).map(($, index) => {
+    if($ === 'form') {
+      return;
+    }
+
+    const borderId = `${$}Border`;
+    const inputId = `${$}Input`;
+console.log('trying to get inputId: ', inputId);
+console.log('and that input is: ', document.getElementById(inputId));
+    document.getElementById(inputId).addEventListener('change', (evt) => {
+console.log(evt);
+      document.getElementById(borderId).setAttribute('stroke', 'url(#inputGradient)');
+    });
+  });
+
+  document.getElementById('submitButton').addEventListener('click', () => {
+console.log('this is getting clicked');
+    const animation = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    animation.setAttribute("attributeName", "offset");
+    animation.setAttribute("values", "-0.5; 2.5");
+    animation.setAttribute("dur", "300");
+    animation.setAttribute("repeatCount", "0");
+
+    const secondAnimation = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    animation.setAttribute("attributeName", "offset");
+    animation.setAttribute("values", "0.5; 3.5");
+    animation.setAttribute("dur", "300");
+    animation.setAttribute("repeatCount", "0");
+
+    document.getElementById('submitButtonGradientStart').appendChild(animation);
+    document.getElementById('submitButtonGradientEnd').appendChild(secondAnimation);
+
+    animation.beginElement();
+
+    const formValues = {};
+    Object.keys(formJSON).map(($, index) => {
+      if($ === 'form') {
+	return;
+      }
+
+      const inputId = `${$}Input`;
+      formValues[$] = document.getElementById(inputId).value;
+    });
+
+    onSubmit(formValues);
+  });
+}, 10);
 
   return container;
 };

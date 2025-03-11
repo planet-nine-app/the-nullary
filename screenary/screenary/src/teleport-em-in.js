@@ -1,6 +1,7 @@
 import gestures from './input/gestures.js';
 import getTeleportal from './layouts/components/svgs/teleportal.js';
 import animations from './layouts/components/animations.js';
+import getForm from './layouts/components/svgs/the-form-engine.js';
 
 const addressFormJSON = {
   name: "text",
@@ -61,8 +62,8 @@ function constructTeleported(product) {
 
 function createProductElement(product, onClick) {
   const div = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    div.setAttribute('width', '400');
-    div.setAttribute('height', '400');
+    div.setAttribute('width', '280');
+    div.setAttribute('height', '280');
     div.setAttribute('class', 'teleportal');
 //    div.setAttribute('style', 'position: relative;');
 //  div.classList.add('post-cell');
@@ -85,26 +86,43 @@ function teleportEmIn() {
   const container = document.getElementById('container');
   container.classList.add('lexary-container');
   container.classList.remove('container');
+  const positions = [{x: 200, y: 20}, {x: 500, y: 20}, {x: 800, y: 20}, {x: 1100, y: 20}];
   let x = 600;
   let y = 20;
-  mockProducts.forEach((product) => {
-    const divsY = y;
+  mockProducts.forEach((product, index) => {
+    const divsX = positions[index].x;
+    const divsY = positions[index].y;
     const div = createProductElement(product, (evt) => {
 console.log('product clicked', product);
       Array.from(container.children).forEach(elem => {
         if(elem === div) {
-          const rect = {x: `${x}`, y: `${divsY}`, width: 400, height: 400};
-          const fromToAnimations = animations.fromToSVG(elem, rect, {x: 600, y: 50, width: rect.width, height: rect.height}, 250, false);
+          const rect = {x: `${divsX}`, y: `${divsY}`, width: 280, height: 280};
+          const fromToAnimations = animations.fromToSVG(elem, rect, {x: 600, y: 50, width: 150, height: 150}, 250, false);
 console.log('fromToAnimations', fromToAnimations);
 
-          const addressForm = getForm(addressFormJSON);
-          const addressRect = {x: '600', y: '500', width: '400', height: '0'};
+          const addressForm = getForm(addressFormJSON, (formValues) => {
+console.log('onSubmit called with,', formValues);
+             window.updateConfirmPayment(product.uuid, formValues);
+             window.getPaymentIntentWithoutSplits(500, 'USD')
+              .then((intent) => {
+console.log('should have intent', intent);
+                document.getElementById("payment-form").setAttribute("style", "display: visible;");
+              })
+              .catch(console.warn);
+          });
+          const addressRect = {x: '400', y: '170', width: '800', height: '0'};
+          const addressToRect = JSON.parse(JSON.stringify(addressRect));
+          addressToRect.height = '600';
           addressForm.setAttribute('x', addressRect.x);
-          addressForm.setAtrribute('y', addressRect.y);
+          addressForm.setAttribute('y', addressRect.y);
           addressForm.setAttribute('width', addressRect.width);
           addressForm.setAttribute('height', addressRect.height);
 
-          const formFromToAnimations = animations.fromToSVG(addressForm, 
+          const formFromToAnimations = animations.fromToSVG(addressForm, addressRect, addressToRect, 300, false);
+          formFromToAnimations.forEach($ => {
+            addressForm.appendChild($);
+            $.beginElement();
+          });
 
           container.appendChild(addressForm);
 
@@ -121,13 +139,12 @@ console.log('fromToAnimations', fromToAnimations);
         }
       });
     });
-    div.setAttribute('x', `${x}`);
-    div.setAttribute('y', `${y}`);
-    y += 420;
+    div.setAttribute('x', `${divsX}`);
+    div.setAttribute('y', `${divsY}`);
     container.appendChild(div);
   });
 
-  container.setAttribute('viewBox', `0 0 1600 ${y + 20}`);
+//  container.setAttribute('viewBox', `0 0 1600 ${y + 20}`);
 };
 
 export default teleportEmIn;

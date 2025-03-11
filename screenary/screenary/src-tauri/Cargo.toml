@@ -27,6 +27,9 @@ reqwest = { version = "0.12.4", default-features = false, features = ["blocking"
 sessionless = "0.1.1"
 tauri-plugin-shell = "2"
 
+[dependencies.addie-rs]
+path = "../../../../addie/src/client/rust/addie-rs"
+
 [dependencies.fount-rs]
 path = "../../../../fount/src/client/rust/fount-rs"
 

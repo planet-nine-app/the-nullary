@@ -400,3 +400,55 @@ body, html {
     pointer-events: auto;
     z-index: 3;
 }
+
+/* Stripe payment styling */
+.payment-form {
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            z-index: 5;
+        }
+        
+        #payment-element {
+            margin-bottom: 24px;
+        }
+        
+        #submit-button {
+            background: #5469d4;
+            color: #ffffff;
+            border-radius: 4px;
+            border: 0;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        
+        #submit-button:hover {
+            filter: brightness(90%);
+        }
+        
+        #submit-button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+        
+        .error-message {
+            color: #df1b41;
+            padding: 12px;
+            margin: 4px 0;
+            background: #ffefef;
+            border-radius: 4px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 12px 0;
+        }
+
