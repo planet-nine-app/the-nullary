@@ -36,13 +36,13 @@ window.alertt('should have added the bizness');
 
 console.log('imports worked');
 
-/*baseCommand.getBases()
+baseCommand.getBases()
   .then(baseCommand.getFeed)
   .then(feed => {
     console.log('got a feed with ' + feed.allPosts.length + ' posts');
   })
   .catch(console.warn);
-*/
+
 
 if(window.location.search) {
 console.log('got a location.search');

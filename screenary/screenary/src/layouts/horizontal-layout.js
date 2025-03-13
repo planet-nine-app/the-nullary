@@ -1,3 +1,4 @@
+import baseCommand from './base-command.js';
 import gridPoints from './constants/grid-points.js';
 import appendViewary from '../viewary.js';
 import appendPhotary from '../photary.js';
@@ -48,8 +49,9 @@ const photary = () => {
   viewState = 2;
 };
 
-const lexary = () => {
-  appendLexary();
+const lexary = async () => {
+  const feed = await baseCommand.getFeed();
+  appendLexary(feed);
 
   moveToBottom();
 

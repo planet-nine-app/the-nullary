@@ -1,9 +1,13 @@
 const { invoke } = window.__TAURI__.core;
 const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__TAURI__.fs;
 
+const LAST_FEED_THRESHOLD = 600000;
+
 let bases;
 let bdoUser;
 let doloresUser;
+let _feed;
+let lastFeedRefresh;
 
 const devBase = {
   name: 'DEV',
@@ -146,7 +150,11 @@ console.log('and base', base.users, service, user);
   return base;
 };
 
-async function getFeed() {
+async function getFeed(refresh) {
+  const now = new Date().getTime();
+  if(_feed && now - lastFeedRefresh < LAST_FEED_THRESHOLD) {
+    return _feed;
+  }
   let bases;
   try {
   const basesString = await readTextFile('bases/bases.json', {
@@ -196,6 +204,9 @@ console.log('continuing');
     } catch(err) { console.log(err); }
 
   }
+
+  _feed = feed;
+  lastFeedRefresh = now;
 
   return feed;
 };

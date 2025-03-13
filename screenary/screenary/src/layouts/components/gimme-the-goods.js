@@ -19,21 +19,21 @@ const theGoodsSVG =  document.createElementNS("http://www.w3.org/2000/svg", "svg
           fill="#e0e0e0" stroke="#333" stroke-width="2" id="the-goods-background"/>
     
     <g id="lexary">
-      <circle id="circle1" cx="160" cy="160" r="30" fill="#ff9999">
-        <text x="160" y="165" text-anchor="middle" fill="#333">SVG 1</text>
+      <circle id="circle1" cx="160" cy="160" r="30" fill="orange">
       </circle>
+      <text id="text1" x="160" y="165" text-anchor="middle" fill="#333">lex</text>
     </g>
     
     <g id="photary">
-      <circle id="circle2" cx="240" cy="160" r="30" fill="#99ff99">
-        <text x="240" y="165" text-anchor="middle" fill="#333">SVG 2</text>
+      <circle id="circle2" cx="240" cy="160" r="30" fill="cyan">
       </circle>
+      <text id="text2" x="240" y="165" text-anchor="middle" fill="#333">pics</text>
     </g>
     
     <g id="viewary">
-      <circle id="circle3" cx="200" cy="220" r="30" fill="#9999ff">
-        <text x="200" y="225" text-anchor="middle" fill="#333">SVG 3</text>
+      <circle id="circle3" cx="200" cy="220" r="30" fill="pink">
       </circle>
+      <text id="text3" x="200" y="225" text-anchor="middle" fill="#333">videos</text>
     </g>
   </g>
 `;
@@ -49,13 +49,24 @@ const smallCircle = {width: 60, height: 60};
 const bigCircle = {width: 120, height: 120};
 
 const circle1position1 = {x: 130, y: 130, ...smallCircle};
-const circle1position2 = {x: 130, y: 230, ...bigCircle};
+const circle1position2 = {x: 90, y: 230, ...bigCircle};
 
 const circle2position1 = {x: 210, y: 130, ...smallCircle};
 const circle2position2 = {x: 210, y: 230, ...bigCircle};
 
 const circle3position1 = {x: 130, y: 210, ...smallCircle};
 const circle3position2 = {x: 290, y: 230, ...bigCircle};
+
+const text1position1 = {x: 130, y: 130, ...smallCircle};
+const text1position2 = {x: 90, y: 245, ...bigCircle};
+
+const text2position1 = {x: 210, y: 130, ...smallCircle};
+const text2position2 = {x: 210, y: 245, ...bigCircle};
+
+const text3position1 = {x: 130, y: 210, ...smallCircle};
+const text3position2 = {x: 290, y: 245, ...bigCircle};
+
+
 
 function triggerAnimation() {
 //  const mainGroup = document.getElementById('main-group');
@@ -72,6 +83,10 @@ console.log('circle1', circle1);
   const circle2 = document.getElementById('circle2');
   const circle3 = document.getElementById('circle3');
 
+  const text1 = document.getElementById('text1');
+  const text2 = document.getElementById('text2');
+  const text3 = document.getElementById('text3');
+
   const from1 = expanded ? circle1position1 : circle1position2;
   const to1 = expanded ? circle1position2 : circle1position1;
   const from2 = expanded ? circle2position1 : circle2position2;
@@ -79,11 +94,23 @@ console.log('circle1', circle1);
   const from3 = expanded ? circle3position1 : circle3position2;
   const to3 = expanded ? circle3position2 : circle3position1;
 
+  const from4 = expanded ? text1position1 : text1position2;
+  const to4 = expanded ? text1position2 : text1position1;
+  const from5 = expanded ? text2position1 : text2position2;
+  const to5 = expanded ? text2position2 : text2position1;
+  const from6 = expanded ? text3position1 : text3position2;
+  const to6 = expanded ? text3position2 : text3position1;
+
   let move1, move2, move3;
 
   move1 = animations.fromToSVG(circle1, from1, to1, 200, true);
   move2 = animations.fromToSVG(circle2, from2, to2, 200, true);
   move3 = animations.fromToSVG(circle3, from3, to3, 200, true);
+
+  move4 = animations.fromToSVG(text1, from4, to4, 200, true);
+  move5 = animations.fromToSVG(text2, from5, to5, 200, true);
+  move6 = animations.fromToSVG(text3, from6, to6, 200, true);
+
 console.log('move1', move1);
 
   move1.map(animation => {
@@ -96,6 +123,19 @@ console.log('move1', move1);
   });
   move3.map(animation => {
     circle3.appendChild(animation);
+    animation.beginElement();
+  });
+
+  move4.map(animation => {
+    text1.appendChild(animation);
+    animation.beginElement();
+  });
+  move5.map(animation => {
+    text2.appendChild(animation);
+    animation.beginElement();
+  });
+  move6.map(animation => {
+    text3.appendChild(animation);
     animation.beginElement();
   });
 

@@ -9,14 +9,14 @@ const bigSize = {width: big, height: big};
 const fiveX = Math.floor(window.innerWidth * 0.05);
 const fiveY = Math.floor(window.innerHeight * 0.05);
 
-const eightyFiveX = Math.floor(window.innerWidth * 0.85);
-const eightyFiveY = Math.floor(window.innerHeight * 0.85);
+const eightyFiveX = Math.floor(window.innerWidth * 0.70);
+const eightyFiveY = Math.floor(window.innerHeight * 0.70);
 
 const fortyFiveX = Math.floor(window.innerWidth * 0.45);
 const fortyFiveY = Math.floor(window.innerHeight * 0.45);
 
-const ninetyX = Math.floor(window.innerWidth * 0.90);
-const ninetyY = Math.floor(window.innerHeight * 0.90);
+const ninetyX = Math.floor(window.innerWidth * 0.80);
+const ninetyY = Math.floor(window.innerHeight * 0.80);
 
 const gridPoints = {
   topLeft: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fiveX}`, y: `${fiveY}`, ...bigSize} : {x: `${fiveX}`, y: `${fiveY}`, ...smallSize},

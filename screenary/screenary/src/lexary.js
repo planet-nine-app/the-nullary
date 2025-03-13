@@ -32,7 +32,12 @@ const mockPosts = [
     }
 ];
 
-function createPostElement(mediaURL, uuid, postData) {
+function createPostElement(post) {
+  const mediaURL = post.url;
+  const description = post.description;
+  const images = post.images;
+  const uuid = post.uuid; 
+
   const div = document.createElement('div');
   div.classList.add('post-cell');
   div.classList.add('vertical-post');
@@ -47,14 +52,14 @@ function createPostElement(mediaURL, uuid, postData) {
 
   postContainer.appendChild(textContainer);
 
-  if(mediaURL) {
+  if(mediaURL || images) {
     const mediaContainer = document.createElement('div');
     mediaContainer.classList.add('media-container');
 
-    if(postData.mediaType === 'video') {
+    if(!images) {
       video(mediaContainer, mediaURL);
-    } else if(postData.mediaType === 'image') {
-      imageSelector(mediaContainer, mediaURL);
+    } else {
+      imageSelector(mediaContainer, images);
     }
 
     postContainer.appendChild(mediaContainer);
@@ -64,10 +69,13 @@ function createPostElement(mediaURL, uuid, postData) {
 
   return div; */
 
-  const lexaryRow = getLexaryRow(postData.description, postData.images);
-console.log(postContainer);
-  postContainer.appendChild(lexaryRow);
-
+  if(mediaURL) {
+    //TODO: handle video posts
+  } else {
+    const lexaryRow = getLexaryRow(description, images);
+  console.log(postContainer);
+    postContainer.appendChild(lexaryRow);
+  }
 //  return postContainer;
   div.appendChild(postContainer);
   return div;
@@ -81,10 +89,14 @@ function appendLexary() {
     }
   });
   container.classList.add('lexary-container');
-  mockPosts.forEach((post) => {
+  posts.forEach(post => {
     const div = createPostElement(post.url, post.uuid, post);
     container.appendChild(div);
   });
+/*  mockPosts.forEach((post) => {
+    const div = createPostElement(post.url, post.uuid, post);
+    container.appendChild(div);
+  });*/
 };
 
 export default appendLexary;
