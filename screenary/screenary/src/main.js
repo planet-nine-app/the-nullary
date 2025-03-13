@@ -3,6 +3,37 @@ import gestures from './input/gestures.js';
 import horizontalLayout from './layouts/horizontal-layout.js';
 import verticalLayout from './layouts/vertical-layout.js';
 
+window.alertt = (a) => {
+  let alertter = document.getElementById('alertter'); 
+  if(!alertter) {
+    alertter = document.createElement('div');
+    document.body.appendChild(alertter);
+  }
+  alertter.innerHTML = '';
+  alertter.innerHTML = a;
+  alertter.style.zIndex = 999;
+  alertter.style.backgroundColor = 'blue';
+  alertter.style.color = 'gray'; 
+};
+
+
+try {
+const { scan, textRecord, write } = window.__TAURI__.nfc;
+
+setTimeout(() => {
+document.addEventListener('click', async () => {
+console.log('document clicked!');
+  const scanResult = await scan({ type: 'tag', keepSessionAlive: true });
+  window.alertt("Scan Result", scanResult);
+  const writeResult = await write([textRecord('Tauri is awesome!')]);
+  window.alertt("Write Result", JSON.stringify(writeResult));
+});
+window.alertt('should have added the bizness');
+}, 1000);
+} catch(err) {
+ window.alertt(err);
+}
+
 console.log('imports worked');
 
 /*baseCommand.getBases()
