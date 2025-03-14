@@ -2,8 +2,10 @@ const { invoke } = window.__TAURI__.core;
 const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__TAURI__.fs;
 
 const LAST_FEED_THRESHOLD = 600000;
+const LAST_BASE_THRESHOLD = 600000;
 
 let bases;
+let lastBaseRefresh;
 let bdoUser;
 let doloresUser;
 let _feed;
@@ -120,6 +122,10 @@ console.error('here\'s the prob bob', err);
 };
 
 async function getBases() {
+  const now = new Date().getTime();
+  if(bases && now - lastBaseRefresh < LAST_BASE_THRESHOLD) {
+    return bases;
+  }
   const bases = await fetchAndSaveBases();
 
   return bases;

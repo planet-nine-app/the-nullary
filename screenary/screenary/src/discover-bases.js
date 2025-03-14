@@ -108,11 +108,11 @@ function createBaseElement(base) {
 //  return div;
 };
 
-function appendDiscoverBases() {
+function appendDiscoverBases(bases) {
   const container = document.getElementById('main');
   container.classList.add('discover-bases-container');
   container.classList.remove('container');
-  mockBases.forEach((base) => {
+  bases.forEach((base) => {
     const div = createBaseElement(base);
     container.appendChild(div);
   });

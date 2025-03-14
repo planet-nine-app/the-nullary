@@ -33,7 +33,8 @@ const view0 = () => {
 };
 
 const viewary = () => {
-  appendViewary();
+  const feed = await baseCommand.getFeed();
+  appendViewary(feed.videoPosts);
 console.log('should have appended viewary');
 
   moveToBottom();
@@ -42,7 +43,8 @@ console.log('should have appended viewary');
 };
 
 const photary = () => {
-  appendPhotary();
+  const feed = await baseCommand.getFeed();
+  appendPhotary(feed.picPosts);
 
   moveToBottom();
 
@@ -59,7 +61,7 @@ const lexary = async () => {
 };
 
 const discovery = () => {
-  appendDiscoverBases();
+  appendDiscoverBases(bases);
 
   moveToBottom();
 

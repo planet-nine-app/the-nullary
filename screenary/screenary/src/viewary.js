@@ -25,7 +25,11 @@ const mockVideos = [
     }
 ];
 
-function createVideoElement(videoURL, uuid, videoData) {
+function createVideoElement(post) {
+    const videoURL = post.mediaURL;
+    const uuid = post.uuid;
+    const description = post.description;
+
     const div = document.createElement('div');
     div.classList.add('video-cell');
     
@@ -88,7 +92,6 @@ function createVideoElement(videoURL, uuid, videoData) {
     const videoInfo = document.createElement('div');
     videoInfo.classList.add('video-info');
     videoInfo.innerHTML = `
-        <h3>${videoData.title}</h3>
         <p>${videoData.description}</p>
     `;
     
@@ -206,10 +209,10 @@ function createVideoElement(videoURL, uuid, videoData) {
     return div;
 }
 
-const appendViewary = () => {
+const appendViewary = (posts) => {
   const container = document.getElementById('main');
-  mockVideos.forEach(video => {
-      const div = createVideoElement(video.url, video.uuid, video);
+  posts.forEach(post => {
+      const div = createVideoElement(post);
       container.appendChild(div);
   });
 

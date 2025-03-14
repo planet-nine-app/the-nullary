@@ -26,7 +26,10 @@ const mockPhotos = [
     }
 ];
 
-function createImageElement(imageURL, uuid, imageData) {
+function createImageElement(post) {
+  const description = post.description;
+  const images = post.images;
+
   const div = document.createElement('div');
   div.classList.add('image-cell');
 
@@ -37,7 +40,7 @@ function createImageElement(imageURL, uuid, imageData) {
   textContainer.classList.add('text-container');
   textContainer.innerHTML = `<p>${imageData.text}</p>`;
 
-  const image = getImageSelector(imageData.images);
+  const image = getImageSelector(images);
 /*  image.classList.add('image');
   image.src = imageURL;
 
@@ -72,8 +75,8 @@ function appendPhotary() {
   const container = document.getElementById('main');
   container.classList.add('photary-container');
   container.classList.remove('container');
-  mockPhotos.forEach((photo) => {
-    const div = createImageElement(photo.url, photo.uuid, photo);
+  mockPhotos.forEach(post => {
+    const div = createImageElement(post);
     container.appendChild(div);
   });
 };
