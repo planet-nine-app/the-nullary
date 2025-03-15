@@ -101,7 +101,7 @@ console.log('circle1', circle1);
   const from6 = expanded ? text3position1 : text3position2;
   const to6 = expanded ? text3position2 : text3position1;
 
-  let move1, move2, move3;
+  let move1, move2, move3, move4, move5, move6;
 
   move1 = animations.fromToSVG(circle1, from1, to1, 200, true);
   move2 = animations.fromToSVG(circle2, from2, to2, 200, true);

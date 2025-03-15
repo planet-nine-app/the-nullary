@@ -4,12 +4,12 @@ const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__T
 const LAST_FEED_THRESHOLD = 600000;
 const LAST_BASE_THRESHOLD = 600000;
 
-let bases;
-let lastBaseRefresh;
+let bases = [];
+let lastBaseRefresh = 0;
 let bdoUser;
 let doloresUser;
-let _feed;
-let lastFeedRefresh;
+let _feed = [];
+let lastFeedRefresh = 0;
 
 const devBase = {
   name: 'DEV',

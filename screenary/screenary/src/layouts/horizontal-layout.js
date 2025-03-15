@@ -1,4 +1,4 @@
-import baseCommand from './base-command.js';
+import baseCommand from '../base-command.js';
 import gridPoints from './constants/grid-points.js';
 import appendViewary from '../viewary.js';
 import appendPhotary from '../photary.js';
@@ -32,7 +32,7 @@ const view0 = () => {
   viewState = 0;
 };
 
-const viewary = () => {
+const viewary = async () => {
   const feed = await baseCommand.getFeed();
   appendViewary(feed.videoPosts);
 console.log('should have appended viewary');
@@ -42,7 +42,7 @@ console.log('should have appended viewary');
   viewState = 1;
 };
 
-const photary = () => {
+const photary = async () => {
   const feed = await baseCommand.getFeed();
   appendPhotary(feed.picPosts);
 
@@ -60,7 +60,8 @@ const lexary = async () => {
   viewState = 3;
 };
 
-const discovery = () => {
+const discovery = async () => {
+  const bases = await baseCommand.getBases();
   appendDiscoverBases(bases);
 
   moveToBottom();
