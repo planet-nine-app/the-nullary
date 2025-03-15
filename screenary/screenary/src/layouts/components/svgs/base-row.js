@@ -67,6 +67,10 @@ function getBaseRow(title, description, soma, actionCallback) {
     <!-- Divider Line showing separation -->
     <line x1="10" y1="80" x2="490" y2="80" stroke="#555555" stroke-width="1" stroke-dasharray="5,3"/>`;
 
+  const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  container.setAttribute('width', '80%');
+  container.setAttribute('height', '40%');
+
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   newElement.setAttribute('viewBox', '0 0 600 300');
   newElement.innerHTML = svg;
@@ -94,7 +98,9 @@ function getBaseRow(title, description, soma, actionCallback) {
     console.log('handle joining here');
   });
 
-  return newElement;
+  container.appendChild(newElement);
+
+  return container;
 };
 
 export default getBaseRow;

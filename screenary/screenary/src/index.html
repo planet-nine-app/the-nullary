@@ -22,9 +22,11 @@
     </form>
     <main id="m">
       <div id="app" style="position: fixed; width: 100vw; height: 100vh; display: flex;">
-        <div id="main">
-        </div>
-        <svg id="full-screen-svg" class="container" width="100%" height="100%" fill="#00000000">
+       <svg id="full-screen-svg" class="container" width="100%" height="100%" fill="#00000000">
+          <foreignObject x="25%" y="0" width="50%" height="100%">
+            <div id="main">
+            </div>
+          </foreignObject>
           <svg id="container" class="container" width="100%" height="100%" viewBox="0 0 1600 800"  preserveAspectRatio="xMidYMid slice" style="position:fixed;top:0;left:0;width:100%;height:100%;background-color:green;">
               <rect x="0" y="0" width="100%" height="100%" fill="#00000000" opacity="0"></rect>
             <!--all of this gets added in the js-->

@@ -41,6 +41,9 @@ const animations = {
       ];
 
     const animations = animateAttrs.map(({attr, from, to}) => {
+      if(!from || !to) {
+        return;
+      }
       const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
       animate.setAttribute("attributeName", attr);
       animate.setAttribute("from", from);
@@ -49,7 +52,7 @@ const animations = {
       animate.setAttribute("begin", "1ms");
       animate.setAttribute("fill", "freeze");
       return animate;
-    });
+    }).filter($ => !!$);
 
     if (onEnd) {
       animations[animations.length - 1].addEventListener('endEvent', onEnd);

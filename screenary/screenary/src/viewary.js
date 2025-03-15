@@ -1,4 +1,5 @@
 import gestures from './input/gestures.js';
+import getEmptyState from './layouts/components/svgs/empty-state.js';
 
 // Global state
 let isGloballyMuted = true; // Start muted by default
@@ -92,7 +93,7 @@ function createVideoElement(post) {
     const videoInfo = document.createElement('div');
     videoInfo.classList.add('video-info');
     videoInfo.innerHTML = `
-        <p>${videoData.description}</p>
+        <p>${description}</p>
     `;
     
     // Create loading indicator
@@ -211,6 +212,27 @@ function createVideoElement(post) {
 
 const appendViewary = (posts) => {
   const container = document.getElementById('main');
+  Array.from(container.classList).forEach($ => {
+    if($.indexOf('ontainer') !== -1) {
+      container.classList.remove($);
+    }
+  });
+  container.classList.add('feed-container');
+
+  if(posts.length === 0) {
+    const div = document.createElement('div');
+    div.classList.add('post-cell');
+    div.classList.add('vertical-post');
+
+    const emptyState = getEmptyState(() => {
+console.log('here is where you will refresh');
+    });
+
+    div.appendChild(emptyState);
+
+    container.appendChild(div);
+  }
+
   posts.forEach(post => {
       const div = createVideoElement(post);
       container.appendChild(div);

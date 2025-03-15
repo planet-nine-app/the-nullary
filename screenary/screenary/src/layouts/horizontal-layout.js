@@ -53,7 +53,8 @@ const photary = async () => {
 
 const lexary = async () => {
   const feed = await baseCommand.getFeed();
-  appendLexary(feed);
+console.log('feed in lexary looks like: ', feed);
+  appendLexary(feed.allPosts);
 
   moveToBottom();
 
@@ -61,7 +62,10 @@ const lexary = async () => {
 };
 
 const discovery = async () => {
-  const bases = await baseCommand.getBases();
+console.log('discovery clicked!');
+  const basesObj = await baseCommand.getBases();
+  const bases = Object.values(basesObj);
+console.log('should display these bases', bases);
   appendDiscoverBases(bases);
 
   moveToBottom();

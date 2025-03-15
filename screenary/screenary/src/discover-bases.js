@@ -77,11 +77,15 @@ const mockBases = [
 ];
 
 function createBaseElement(base) {
-//  const div = document.createElement('div');
-//  div.classList.add('base-cell');
+  const name = base.name;
+  const description = base.description;
+  const soma = base.soma;
+  const div = document.createElement('div');
+  div.classList.add('post-cell');
+  div.classList.add('horizontal-cell');
 
   const baseContainer = document.createElement('div');
-  baseContainer.classList.add('base-container');
+  baseContainer.classList.add('post-container');
 
 /*  const textContainer = document.createElement('div');
   textContainer.classList.add('base-text-container');
@@ -98,22 +102,27 @@ function createBaseElement(base) {
   baseContainer.appendChild(textContainer);
   baseContainer.appendChild(joinContainer); */
 
-  const baseRow = getBaseRow(base.name, base.description, base.soma, () => {});
+  const baseRow = getBaseRow(name, description, soma, () => {});
   baseContainer.appendChild(baseRow);
-  
-  return baseContainer;
 
-//  div.appendChild(baseContainer);
+  div.appendChild(baseContainer);
 
-//  return div;
+  return div;
 };
 
 function appendDiscoverBases(bases) {
   const container = document.getElementById('main');
-  container.classList.add('discover-bases-container');
-  container.classList.remove('container');
+  Array.from(container.classList).forEach($ => {
+    if($.indexOf('ontainer') !== -1) {
+      container.classList.remove($);
+    }
+  });   
+  container.classList.add('feed-container');
+
   bases.forEach((base) => {
+console.log(base);
     const div = createBaseElement(base);
+console.log('base dive looks like', div);
     container.appendChild(div);
   });
 };

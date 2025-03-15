@@ -17,7 +17,7 @@ window.alertt = (a) => {
 };
 
 
-try {
+/*try {
 const { scan, textRecord, write } = window.__TAURI__.nfc;
 
 setTimeout(() => {
@@ -32,7 +32,7 @@ window.alertt('should have added the bizness');
 }, 1000);
 } catch(err) {
  window.alertt(err);
-}
+}*/
 
 console.log('imports worked');
 

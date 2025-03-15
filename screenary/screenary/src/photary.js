@@ -1,6 +1,7 @@
 import gestures from './input/gestures.js';
 import getImageSelector from './layouts/components/image-selector.js';
 import loadingIndicator from './layouts/components/loading-indicator.js';
+import getEmptyState from './layouts/components/svgs/empty-state.js';
 
 
 // https://cdn.bsky.app/img/feed_thumbnail/plain/[POST AUTHOR DID]/[CID of $link]@[format]
@@ -38,7 +39,7 @@ function createImageElement(post) {
 
   const textContainer = document.createElement('div');
   textContainer.classList.add('text-container');
-  textContainer.innerHTML = `<p>${imageData.text}</p>`;
+  textContainer.innerHTML = `<p>${description}</p>`;
 
   const image = getImageSelector(images);
 /*  image.classList.add('image');
@@ -71,11 +72,30 @@ function createImageElement(post) {
   return div;
 };
 
-function appendPhotary() {
+function appendPhotary(posts) {
   const container = document.getElementById('main');
-  container.classList.add('photary-container');
-  container.classList.remove('container');
-  mockPhotos.forEach(post => {
+  Array.from(container.classList).forEach($ => {
+    if($.indexOf('ontainer') !== -1) {
+      container.classList.remove($);
+    }
+  });
+  container.classList.add('feed-container');
+
+  if(posts.length === 0) {
+    const div = document.createElement('div');
+    div.classList.add('post-cell');
+    div.classList.add('vertical-post');
+
+    const emptyState = getEmptyState(() => {
+console.log('here is where you will refresh');
+    });
+
+    div.appendChild(emptyState);
+
+    container.appendChild(div);
+  }
+
+  posts.forEach(post => {
     const div = createImageElement(post);
     container.appendChild(div);
   });

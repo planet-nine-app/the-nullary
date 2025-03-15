@@ -4,7 +4,7 @@ const { create, mkdir, readTextFile, writeTextFile, BaseDirectory } = window.__T
 const LAST_FEED_THRESHOLD = 600000;
 const LAST_BASE_THRESHOLD = 600000;
 
-let bases = [];
+let bases;
 let lastBaseRefresh = 0;
 let bdoUser;
 let doloresUser;
@@ -116,17 +116,18 @@ console.log('homeBase is', homeBase);
     return allBases;
   } catch(err) {
 console.error('here\'s the prob bob', err);
-//    await connectToHomeBase();
-//    return fetchAndSaveBases();
+    await connectToHomeBase();
+    return fetchAndSaveBases();
   }
 };
 
 async function getBases() {
   const now = new Date().getTime();
-  if(bases && now - lastBaseRefresh < LAST_BASE_THRESHOLD) {
+console.log('now', now, 'bases', bases, 'lastBaseRefresh', lastBaseRefresh, 'LAST_BASE_THRESHOLD', LAST_BASE_THRESHOLD);
+  if(bases || (now - lastBaseRefresh < LAST_BASE_THRESHOLD)) {
     return bases;
   }
-  const bases = await fetchAndSaveBases();
+  bases = await fetchAndSaveBases();
 
   return bases;
 };

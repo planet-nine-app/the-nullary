@@ -57,14 +57,14 @@ const circle2position2 = {x: 210, y: 230, ...bigCircle};
 const circle3position1 = {x: 130, y: 210, ...smallCircle};
 const circle3position2 = {x: 290, y: 230, ...bigCircle};
 
-const text1position1 = {x: 130, y: 130, ...smallCircle};
-const text1position2 = {x: 90, y: 245, ...bigCircle};
+const text1position1 = {x: 130, y: 130};
+const text1position2 = {x: 90, y: 245};
 
-const text2position1 = {x: 210, y: 130, ...smallCircle};
-const text2position2 = {x: 210, y: 245, ...bigCircle};
+const text2position1 = {x: 210, y: 130};
+const text2position2 = {x: 210, y: 245};
 
-const text3position1 = {x: 130, y: 210, ...smallCircle};
-const text3position2 = {x: 290, y: 245, ...bigCircle};
+const text3position1 = {x: 130, y: 210};
+const text3position2 = {x: 290, y: 245};
 
 
 
@@ -107,9 +107,9 @@ console.log('circle1', circle1);
   move2 = animations.fromToSVG(circle2, from2, to2, 200, true);
   move3 = animations.fromToSVG(circle3, from3, to3, 200, true);
 
-  move4 = animations.fromToSVG(text1, from4, to4, 200, true);
-  move5 = animations.fromToSVG(text2, from5, to5, 200, true);
-  move6 = animations.fromToSVG(text3, from6, to6, 200, true);
+  move4 = animations.fromToSVG(text1, from4, to4, 200, false);
+  move5 = animations.fromToSVG(text2, from5, to5, 200, false);
+  move6 = animations.fromToSVG(text3, from6, to6, 200, false);
 
 console.log('move1', move1);
 
@@ -125,6 +125,8 @@ console.log('move1', move1);
     circle3.appendChild(animation);
     animation.beginElement();
   });
+
+console.log(move4);
 
   move4.map(animation => {
     text1.appendChild(animation);

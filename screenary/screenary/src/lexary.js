@@ -3,6 +3,7 @@ import loadingIndicator from './layouts/components/loading-indicator.js';
 import imageSelector from './layouts/components/image-selector.js';
 import video from './layouts/components/video.js';
 import getLexaryRow from './layouts/components/svgs/lexary-row.js';
+import getEmptyState from './layouts/components/svgs/empty-state.js';
 
 const mockPosts = [
   {
@@ -41,7 +42,7 @@ function createPostElement(post) {
   const div = document.createElement('div');
   div.classList.add('post-cell');
   div.classList.add('vertical-post');
-  div.classList.add('horizontal-post');
+//  div.classList.add('horizontal-post');
 
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
@@ -81,16 +82,32 @@ function createPostElement(post) {
   return div;
 };
 
-function appendLexary() {
+function appendLexary(posts) {
   const container = document.getElementById('main');
   Array.from(container.classList).forEach($ => {
     if($.indexOf('ontainer') !== -1) {
       container.classList.remove($);
     }
   });
-  container.classList.add('lexary-container');
+  container.classList.add('feed-container');
+
+  if(posts.length === 0) {
+    const div = document.createElement('div');
+    div.classList.add('post-cell');
+    div.classList.add('vertical-post');
+
+    const emptyState = getEmptyState(() => {
+console.log('here is where you will refresh');
+    });
+
+    div.appendChild(emptyState);
+
+    container.appendChild(div);
+  }
+
   posts.forEach(post => {
-    const div = createPostElement(post.url, post.uuid, post);
+console.log(post);
+    const div = createPostElement(post);
     container.appendChild(div);
   });
 /*  mockPosts.forEach((post) => {
