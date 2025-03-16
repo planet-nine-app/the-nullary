@@ -84,6 +84,7 @@ function createPostElement(post) {
 
 function appendLexary(posts) {
   const container = document.getElementById('main');
+  container.innerHTML = '';
   Array.from(container.classList).forEach($ => {
     if($.indexOf('ontainer') !== -1) {
       container.classList.remove($);

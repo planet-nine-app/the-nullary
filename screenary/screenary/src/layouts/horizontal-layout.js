@@ -53,7 +53,7 @@ const photary = async () => {
 
 const lexary = async () => {
   const feed = await baseCommand.getFeed();
-console.log('feed in lexary looks like: ', feed);
+console.log('feed in lexary looks like: ', feed.allPosts);
   appendLexary(feed.allPosts);
 
   moveToBottom();
