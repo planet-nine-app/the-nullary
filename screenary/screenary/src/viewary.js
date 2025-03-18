@@ -27,7 +27,7 @@ const mockVideos = [
 ];
 
 function createVideoElement(post) {
-    const videoURL = post.mediaURL;
+    const videoURL = post.url;
     const uuid = post.uuid;
     const description = post.description;
 
@@ -210,7 +210,8 @@ function createVideoElement(post) {
     return div;
 }
 
-const appendViewary = (posts) => {
+const appendViewary = (_posts) => {
+  const posts = _posts.filter($ => $.url);
   const container = document.getElementById('main');
   container.innerHTML = '';
   Array.from(container.classList).forEach($ => {

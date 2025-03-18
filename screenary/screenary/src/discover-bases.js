@@ -80,29 +80,16 @@ function createBaseElement(base) {
   const name = base.name;
   const description = base.description;
   const soma = base.soma;
+  const joined = base.joined;
+
   const div = document.createElement('div');
   div.classList.add('post-cell');
-  div.classList.add('horizontal-cell');
+  div.classList.add('base-cell');
 
   const baseContainer = document.createElement('div');
   baseContainer.classList.add('post-container');
 
-/*  const textContainer = document.createElement('div');
-  textContainer.classList.add('base-text-container');
-  textContainer.innerHTML = `<p>${base.description}</p>`;
-
-  const joinContainer = document.createElement('div');
-  joinContainer.classList.add('join-container');
-  joinContainer.innerHTML = `<p>${base.joined ? 'JOIN' : 'LEAVE'}</p>`;
-
-  joinContainer.addEventListener('click', (e) => {
-    console.log('here is where you join');
-  });
-
-  baseContainer.appendChild(textContainer);
-  baseContainer.appendChild(joinContainer); */
-
-  const baseRow = getBaseRow(name, description, soma, () => {});
+  const baseRow = getBaseRow(name, description, soma, joined, () => {});
   baseContainer.appendChild(baseRow);
 
   div.appendChild(baseContainer);

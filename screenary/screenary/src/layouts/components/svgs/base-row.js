@@ -1,4 +1,4 @@
-function getBaseRow(title, description, soma, actionCallback) {
+function getBaseRow(title, description, soma, joined, actionCallback) {
 
   const line1 = `lexary: ${soma.lexary ? 'tags: ' + soma.lexary.join(', ') : 'N/A'}`;
   const line2 = `photary: ${soma.photary ? 'tags: ' + soma.photary.join(', ') : 'N/A'}`;
@@ -28,7 +28,7 @@ function getBaseRow(title, description, soma, actionCallback) {
       <text x="30" y="55" font-family="Arial, sans-serif" font-size="14" fill="#bbbbbb">${description}</text>
       
       <!-- Expand Icon -->
-      <path d="M30,80 L40,90 L50,80" stroke="#777777" stroke-width="2" fill="none" opacity="0"/>
+      <!--path d="M30,80 L40,90 L50,80" stroke="#777777" stroke-width="2" fill="none" opacity="0"/-->
       
       <!-- JOIN Button with Gradient -->
       <linearGradient id="buttonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -36,7 +36,7 @@ function getBaseRow(title, description, soma, actionCallback) {
 	<stop offset="100%" stop-color="#9c42f5"/>
       </linearGradient>
       <rect id="actionButton" x="380" y="25" width="80" height="30" rx="15" fill="url(#buttonGradient)"/>
-      <text x="420" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">JOIN</text>
+      <text x="420" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">${joined ? 'LEAVE' : 'JOIN'}</text>
     </g>
     
     <!-- Expanded State -->
@@ -61,23 +61,21 @@ function getBaseRow(title, description, soma, actionCallback) {
       <path d="M30,80 L40,70 L50,80" stroke="#777777" stroke-width="2" fill="none"/>
     </g>
     
-    <!-- Animation Indicator (Not functional in static SVG) -->
-    <text x="250" y="275" font-family="Arial, sans-serif" font-size="12" fill="#bbbbbb" text-anchor="middle">* Tap to expand/collapse (animation shown in static form)</text>
-    
     <!-- Divider Line showing separation -->
     <line x1="10" y1="80" x2="490" y2="80" stroke="#555555" stroke-width="1" stroke-dasharray="5,3"/>`;
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  container.setAttribute('width', '80%');
-  container.setAttribute('height', '40%');
+  container.setAttribute('style', 'background-color: orange;');
+  container.setAttribute('width', '100%');
+  container.setAttribute('height', '100%');
 
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  newElement.setAttribute('viewBox', '0 0 600 300');
+  newElement.setAttribute('viewBox', '0 0 500 300');
   newElement.innerHTML = svg;
 
   let isExpanded = false;
 
-  newElement.addEventListener('click', () => {
+/*  newElement.addEventListener('click', () => {
     isExpanded = !isExpanded;
 
     const animation = document.createElementNS("http://www.w3.org/2000/svg", "animate");
@@ -92,7 +90,7 @@ function getBaseRow(title, description, soma, actionCallback) {
     const expandedPart = newElement.getElementById('expandedPart');
     expandedPart.appendChild(animation);
     animation.beginElement();
-  });
+  });*/
 
   newElement.getElementById('actionButton').addEventListener('click', () => {
     console.log('handle joining here');

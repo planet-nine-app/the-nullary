@@ -1,10 +1,10 @@
-function getLexaryRow(text, images) {
+function getPhotaryRow(text, images) {
   // TODO handle links and MAGIC here
-  const IMAGE_HEIGHT = 250;
+  const IMAGE_DIMENSION = 552;
   const MORE_THAN_ONE_IMAGE = images && images.length > 1;
 
-  const textHeight = Math.floor((text.length / 32) * 27);
-  const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_HEIGHT : 0) + (16 * (images && images.length > 0 ? 3 : 2));
+  const textHeight = text ? Math.floor((text.length  / 32) * 27) : 0;
+  const totalHeight = IMAGE_DIMENSION + textHeight + (16 * (images && images.length > 0 ? 3 : 2));
 
   const svg = `<!-- Dark Background -->
     <linearGradient id="frameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -12,18 +12,10 @@ function getLexaryRow(text, images) {
         <stop offset="100%" stop-color="green"/>
       </linearGradient>
     <!--rect width="600" height="${totalHeight}" fill="#1c1c20"/-->
-    
-    <!-- Title Text Area -->
-    <rect x="16" y="0" width="568" height="${textHeight + 16}" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"></rect>
-    <foreignObject x="24" y="8" width="552" height="${textHeight}">
-      <div style="margin: 16px; font-family: Georgia, serif; font-size: 24px;"><p>${text}</p></div>
-    </foreignObject>
-
-    <!--text x="300" y="65" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">${text}</text-->
-    
+   
     ${images && images.length > 0 ? `
     <!-- Image Display Area -->
-    <rect x="16" y="${textHeight + 32}" width="568" height="300" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"/>
+    <rect x="16" y="16" width="${IMAGE_DIMENSION}" height="${IMAGE_DIMENSION}" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"/>
     
     <!-- Placeholder for "Current" Image (Image 2 of 4) -->
     <g>
@@ -75,7 +67,17 @@ function getLexaryRow(text, images) {
 	<animate attributeName="opacity" values="0.4;0.1;0.4" dur="3s" repeatCount="indefinite"/>
       </path>
       <path d="M350,265 L360,270 L350,275" stroke="#ffffff" stroke-width="2" fill="none"/>
-    </g>` : ''}` : ''}`;
+    </g>` : ''}` : ''}
+
+    <!-- Title Text Area -->
+    <rect x="16" y="${IMAGE_DIMENSION + 16}" width="568" height="${textHeight + 16}" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"></rect>
+    <foreignObject x="24" y="${IMAGE_DIMENSION + 24}" width="552" height="${textHeight}">
+      <div style="margin: 16px; font-family: Georgia, serif; font-size: 24px;"><p>${text}</p></div>
+    </foreignObject>
+
+    <!--text x="300" y="65" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">${text}</text-->
+ 
+`;
 
   function showPreviousImage() {
     console.log('previous image');
@@ -123,4 +125,4 @@ console.log('dom content is loaded');
   return container;
 };
 
-export default getLexaryRow;
+export default getPhotaryRow;

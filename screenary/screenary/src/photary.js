@@ -2,6 +2,7 @@ import gestures from './input/gestures.js';
 import getImageSelector from './layouts/components/image-selector.js';
 import loadingIndicator from './layouts/components/loading-indicator.js';
 import getEmptyState from './layouts/components/svgs/empty-state.js';
+import getPhotaryRow from './layouts/components/svgs/photary-row.js';
 
 
 // https://cdn.bsky.app/img/feed_thumbnail/plain/[POST AUTHOR DID]/[CID of $link]@[format]
@@ -30,49 +31,25 @@ const mockPhotos = [
 function createImageElement(post) {
   const description = post.description;
   const images = post.images;
+console.log('it should render these images', images);
 
   const div = document.createElement('div');
   div.classList.add('image-cell');
 
-  const imageContainer = document.createElement('div');
-  imageContainer.classList.add('image-container');
+  const postContainer = document.createElement('div');
+  postContainer.classList.add('post-container');
 
-  const textContainer = document.createElement('div');
-  textContainer.classList.add('text-container');
-  textContainer.innerHTML = `<p>${description}</p>`;
-
-  const image = getImageSelector(images);
-/*  image.classList.add('image');
-  image.src = imageURL;
-
-  console.log('image src is: ', image.src);
-
-  const indicator = loadingIndicator(); 
-
-  const errorMessage = document.createElement('div');
-  errorMessage.classList.add('error-message');
-
-  image.addEventListener('error', (e) => {
-    loadingIndicator.style.display = 'none';
-    errorMessage.style.display = 'block';
-    errorMessage.textContent = `Error loading video: ${e.target.error?.message || 'Unknown error'}`;
-    console.error(`image ${uuid} error:`, e.target.error);
-  });
-
-  image.addEventListener('onLoad', (e) => {
-    indicator.removeFromParent();
-  });*/
-
-  imageContainer.appendChild(image);
-  //imageContainer.appendChild(indicator);
+  const photaryRow = getPhotaryRow(description, images);
   
-  div.appendChild(textContainer);
-  div.appendChild(imageContainer);;
+  postContainer.appendChild(photaryRow);
+
+  div.appendChild(postContainer);;
 
   return div;
 };
 
 function appendPhotary(posts) {
+  const filteredPosts = posts.filter($ => $.images);
   const container = document.getElementById('main');
   container.innerHTML = '';
   Array.from(container.classList).forEach($ => {
@@ -82,7 +59,7 @@ function appendPhotary(posts) {
   });
   container.classList.add('feed-container');
 
-  if(posts.length === 0) {
+  if(filteredPosts.length === 0) {
     const div = document.createElement('div');
     div.classList.add('post-cell');
     div.classList.add('vertical-post');
@@ -96,7 +73,7 @@ console.log('here is where you will refresh');
     container.appendChild(div);
   }
 
-  posts.forEach(post => {
+  filteredPosts.forEach(post => {
     const div = createImageElement(post);
     container.appendChild(div);
   });

@@ -41,8 +41,11 @@ function createPostElement(post) {
 
   const div = document.createElement('div');
   div.classList.add('post-cell');
-  div.classList.add('vertical-post');
-//  div.classList.add('horizontal-post');
+  if(post.images && post.images.length > 0) {
+    div.classList.add('vertical-post');
+  } else {
+    div.classList.add('horizontal-post');
+  }
 
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
@@ -108,6 +111,9 @@ console.log('here is where you will refresh');
 
   posts.forEach(post => {
 console.log(post);
+    if(post.url) {
+      return;
+    }
     const div = createPostElement(post);
     container.appendChild(div);
   });
