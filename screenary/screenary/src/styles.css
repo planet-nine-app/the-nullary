@@ -39,7 +39,7 @@ body, html {
     scroll-snap-type: y mandatory;
     overflow-y: scroll;
     position: relative;
-    background-color: #000;
+    background-color: pink;
 }
 
 .feed-container {

@@ -1,13 +1,11 @@
 import animations from './animations.js';
 
 console.log('importing gimme the goods');
+const SMALL_FONT = 14;
+const BIG_FONT = 24;
 
 const theGoodsSVG =  document.createElementNS("http://www.w3.org/2000/svg", "svg");
   theGoodsSVG.setAttribute('viewBox', '0 0 400 400');
-  theGoodsSVG.setAttribute('x', '5%');
-  theGoodsSVG.setAttribute('y', '45%');
-  theGoodsSVG.setAttribute('width', '20%');
-  theGoodsSVG.setAttribute('height', '20%');
   theGoodsSVG.setAttribute('style', 'background-color: green;');
 
   theGoodsSVG.innerHTML = 
@@ -21,19 +19,19 @@ const theGoodsSVG =  document.createElementNS("http://www.w3.org/2000/svg", "svg
     <g id="lexary">
       <circle id="circle1" cx="160" cy="160" r="30" fill="orange">
       </circle>
-      <text id="text1" x="160" y="165" text-anchor="middle" fill="#333">lex</text>
+      <text id="text1" x="160" y="165" text-anchor="middle" font-size="${SMALL_FONT}" fill="purple">lex</text>
     </g>
     
     <g id="photary">
       <circle id="circle2" cx="240" cy="160" r="30" fill="cyan">
       </circle>
-      <text id="text2" x="240" y="165" text-anchor="middle" fill="#333">pics</text>
+      <text id="text2" x="240" y="165" text-anchor="middle" font-size="${SMALL_FONT}" fill="#333">pics</text>
     </g>
     
     <g id="viewary">
       <circle id="circle3" cx="200" cy="220" r="30" fill="pink">
       </circle>
-      <text id="text3" x="200" y="225" text-anchor="middle" fill="#333">videos</text>
+      <text id="text3" x="200" y="225" text-anchor="middle" font-size="${SMALL_FONT}" fill="#333">videos</text>
     </g>
   </g>
 `;
@@ -49,24 +47,22 @@ const smallCircle = {width: 60, height: 60};
 const bigCircle = {width: 120, height: 120};
 
 const circle1position1 = {x: 130, y: 130, ...smallCircle};
-const circle1position2 = {x: 90, y: 230, ...bigCircle};
+const circle1position2 = {x: 40, y: 230, ...bigCircle};
 
 const circle2position1 = {x: 210, y: 130, ...smallCircle};
-const circle2position2 = {x: 210, y: 230, ...bigCircle};
+const circle2position2 = {x: 160, y: 230, ...bigCircle};
 
-const circle3position1 = {x: 130, y: 210, ...smallCircle};
-const circle3position2 = {x: 290, y: 230, ...bigCircle};
+const circle3position1 = {x: 170, y: 190, ...smallCircle};
+const circle3position2 = {x: 260, y: 230, ...bigCircle};
 
-const text1position1 = {x: 130, y: 130};
-const text1position2 = {x: 90, y: 245};
+const text1position1 = {x: 160, y: 165};
+const text1position2 = {x: 100, y: 290};
 
-const text2position1 = {x: 210, y: 130};
-const text2position2 = {x: 210, y: 245};
+const text2position1 = {x: 240, y: 165};
+const text2position2 = {x: 220, y: 290};
 
-const text3position1 = {x: 130, y: 210};
-const text3position2 = {x: 290, y: 245};
-
-
+const text3position1 = {x: 200, y: 225};
+const text3position2 = {x: 320, y: 290};
 
 function triggerAnimation() {
 //  const mainGroup = document.getElementById('main-group');
@@ -110,6 +106,10 @@ console.log('circle1', circle1);
   move4 = animations.fromToSVG(text1, from4, to4, 200, false);
   move5 = animations.fromToSVG(text2, from5, to5, 200, false);
   move6 = animations.fromToSVG(text3, from6, to6, 200, false);
+
+  move4.push(animations.fontSize(!expanded ? BIG_FONT : SMALL_FONT, !expanded ? SMALL_FONT : BIG_FONT, 200));
+  move5.push(animations.fontSize(!expanded ? BIG_FONT : SMALL_FONT, !expanded ? SMALL_FONT : BIG_FONT, 200));
+  move6.push(animations.fontSize(!expanded ? BIG_FONT : SMALL_FONT, !expanded ? SMALL_FONT : BIG_FONT, 200));
 
 console.log('move1', move1);
 
@@ -172,7 +172,6 @@ gimmeTheGoods.attach = (container, startingRect) => {
 
   theGoods.rect = startingRect;
 
-console.log('appending');
   container.appendChild(theGoods.svg);
 console.log('should have attached');
 

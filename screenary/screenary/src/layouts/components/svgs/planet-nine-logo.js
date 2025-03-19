@@ -34,6 +34,17 @@ console.log('slideSet', slideSet);
 
   stars.appendChild(starFadeOut);
   starFadeOut.beginElement();
+
+  const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+  animate.setAttribute("attributeName", "y");
+  animate.setAttribute("from", "0");
+  animate.setAttribute("to", "50%");
+  animate.setAttribute("dur", `200ms`);
+  animate.setAttribute("begin", "1ms");
+  animate.setAttribute("fill", "freeze");
+
+  document.getElementById('fo').appendChild(animate);
+  animate.beginElement();
 };
 
 function unexpand(planetNine, spaceship, container, stars) {
@@ -67,6 +78,17 @@ console.log('slideSet', slideSet);
 
   stars.appendChild(starFadeOut);
   starFadeOut.beginElement();
+
+  const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+  animate.setAttribute("attributeName", "y");
+  animate.setAttribute("from", "50%");
+  animate.setAttribute("to", "0");
+  animate.setAttribute("dur", `200ms`);
+  animate.setAttribute("begin", "1ms");
+  animate.setAttribute("fill", "freeze");
+
+  document.getElementById('fo').appendChild(animate);
+  animate.beginElement();
 };
 
 function getPlanetNineLogo(teleport, pref) {
@@ -128,6 +150,7 @@ function getPlanetNineLogo(teleport, pref) {
 </text>`;
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  container.setAttribute('style', 'z-index: 15;');
   container.setAttribute('x', '85%');
   container.setAttribute('y', '5%');
   container.setAttribute('width', '300');

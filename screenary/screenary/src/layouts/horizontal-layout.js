@@ -16,13 +16,13 @@ const LAYOUT_DIRECTION = 'horizontal';
 let viewState = 0;
 
 const moveToBottom = () => {
-  gimmeTheGoods(gridPoints.bottomLeft(LAYOUT_DIRECTION));
-  gimmeTheBases(gridPoints.bottomRight(LAYOUT_DIRECTION));
+  gimmeTheGoods(gridPoints.bottomLeft);
+  gimmeTheBases(gridPoints.bottomRight);
 };
 
 const moveToMiddle = () => {
-  gimmeTheGoods(gridPoints.middleLeft(LAYOUT_DIRECTION));
-  gimmeTheBases(gridPoints.middleRight(LAYOUT_DIRECTION));
+  gimmeTheGoods(gridPoints.middleLeft);
+  gimmeTheBases(gridPoints.middleRight);
 };
 
 const view0 = () => {
@@ -33,8 +33,9 @@ const view0 = () => {
 };
 
 const viewary = async () => {
-  const feed = await baseCommand.getFeed();
-  appendViewary(feed.videoPosts);
+  const feed = await baseCommand.getFeed((_feed) => {
+    appendViewary(_feed.videoPosts);
+  });
 console.log('should have appended viewary');
 
   moveToBottom();
@@ -43,8 +44,9 @@ console.log('should have appended viewary');
 };
 
 const photary = async () => {
-  const feed = await baseCommand.getFeed();
-  appendPhotary(feed.picPosts);
+  const feed = await baseCommand.getFeed((_feed) => {
+    appendPhotary(_feed.picPosts);
+  });
 
   moveToBottom();
 
@@ -52,9 +54,9 @@ const photary = async () => {
 };
 
 const lexary = async () => {
-  const feed = await baseCommand.getFeed();
-console.log('feed in lexary looks like: ', feed.allPosts);
-  appendLexary(feed.allPosts);
+  const feed = await baseCommand.getFeed((_feed) => {
+    appendLexary(_feed.allPosts);
+  });
 
   moveToBottom();
 
@@ -93,15 +95,21 @@ console.log('should layout the layout');
 console.log('window dimensions', window.innerWidth, window.innerHeight);
   fullScreenSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
 
+//  const container = document.getElementById('container');
+//console.log('container is', container);
+
 //  const logo = findPlaneNinegid();
   findPlanetNine.addSelections(teleport, pref);
-  findPlanetNine.attach(fullScreenSVG, gridPoints.topRight(LAYOUT_DIRECTION));
+//  findPlanetNine.attach(container, gridPoints.topRight);
+  findPlanetNine.attach(fullScreenSVG, gridPoints.topRight);
   
   gimmeTheGoods.addSelections(viewary, photary, lexary);
-  gimmeTheGoods.attach(fullScreenSVG, gridPoints.middleLeft(LAYOUT_DIRECTION));
+//  gimmeTheGoods.attach(container, gridPoints.middleLeft);
+  gimmeTheGoods.attach(fullScreenSVG, gridPoints.middleLeft);
 
   gimmeTheBases.addSelections(discovery);
-  gimmeTheBases.attach(fullScreenSVG, gridPoints.middleRight(LAYOUT_DIRECTION));
+//  gimmeTheBases.attach(container, gridPoints.middleRight);
+  gimmeTheBases.attach(fullScreenSVG, gridPoints.middleRight);
 
 console.log('should have attached');
 

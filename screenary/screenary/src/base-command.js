@@ -157,10 +157,10 @@ console.log('and base', base.users, service, user);
   return base;
 };
 
-async function getFeed(refresh) {
+async function getFeed(refreshFeed) {
   const now = new Date().getTime();
   if(_feed && now - lastFeedRefresh < LAST_FEED_THRESHOLD) {
-    return _feed;
+    refreshFeed(_feed);
   }
   let bases;
   try {
@@ -180,6 +180,9 @@ console.log('bases in getFeed look like: ', bases);
     genericPosts: [],
     allPosts: []
   };
+
+  let postPromises = [];
+
   for(let baseUUID in bases) {
     const base = bases[baseUUID];
 console.log(base);
@@ -197,8 +200,8 @@ console.log('continuing');
     }
 
     try {
-      const posts = await invoke('get_feed', {uuid, doloresUrl: doloresURL, tags: '[]'});
-
+//      const posts = await invoke('get_feed', {uuid, doloresUrl: doloresURL, tags: '[]'});
+      postPromises.push(invoke('get_feed', {uuid, doloresUrl: doloresURL, tags: '[]'}));
 //    const posts = await invoke('get_feed', {uuid, doloresUrl: bases[uuid].dns && bases[uuid].dns.dolores, tags: '[]'}); 
 
       console.log('posts looks like: ', posts);
@@ -210,6 +213,16 @@ console.log('continuing');
     
     } catch(err) { console.log(err); }
 
+    Promise.all(postPromises).then(results => {
+      results.forEach(posts => {
+        feed.videoPosts = [...feed.videoPosts, ...posts.videoPosts];
+	feed.picPosts = [...feed.picPosts, ...posts.picPosts];
+	feed.genericPosts = [...feed.genericPosts, ...posts.genericPosts];
+	feed.allPosts = [...feed.allPosts, ...posts.allPosts];
+
+        refreshFeed(feed);
+      });
+    });
   }
 
   _feed = feed;

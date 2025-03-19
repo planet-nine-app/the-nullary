@@ -1,34 +1,39 @@
 console.log('importing grid points');
 
-const small = Math.min(window.innerWidth * 0.08, window.innerHeight * 0.08);
-const big = Math.min(window.innerWidth * 0.25, window.innerHeight * 0.25);
+let gridPoints = {};
 
-const smallSize = {width: small, height: small};
-const bigSize = {width: big, height: big};
+gridPoints.recalculate = () => {
+  const small = Math.floor(window.innerWidth * 0.075);
+  const big = Math.floor(window.innerWidth * 0.12);
+  const padding = Math.floor(window.innerWidth * 0.05);
 
-const fiveX = Math.floor(window.innerWidth * 0.05);
-const fiveY = Math.floor(window.innerHeight * 0.05);
+  const smallSize = {width: small, height: small};
+  const bigSize = {width: big, height: big};
 
-const eightyFiveX = Math.floor(window.innerWidth * 0.70);
-const eightyFiveY = Math.floor(window.innerHeight * 0.70);
+  const layoutDirection = window.innerWidth > window.innerHeight ? 'horizontal' : 'vertical';
 
-const fortyFiveX = Math.floor(window.innerWidth * 0.45);
-const fortyFiveY = Math.floor(window.innerHeight * 0.45);
+  const left = padding;
+  const right = window.innerWidth - big - padding;
+  const center = window.innerWidth / 2 - (big / 2);
+  const top = padding;
+  const middle = window.innerHeight / 2 - (big / 2);
+  const bottom = window.innerHeight - big - padding;
 
-const ninetyX = Math.floor(window.innerWidth * 0.80);
-const ninetyY = Math.floor(window.innerHeight * 0.80);
-
-const gridPoints = {
-  topLeft: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fiveX}`, y: `${fiveY}`, ...bigSize} : {x: `${fiveX}`, y: `${fiveY}`, ...smallSize},
-  middleLeft: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fiveX}`, y: `${fortyFiveY}`, ...bigSize} : {x: `${fiveX}`, y: `${fortyFiveY}`, ...bigSize},
-  bottomLeft: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fiveX}`, y: `${eightyFiveY}`, ...bigSize} : {x: `${fiveX}`, y: `${eightyFiveY}`, ...smallSize},
-  bottomCenter: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fortyFiveX}`, y: `${eightyFiveY}`, ...bigSize} : {x: `${fortyFiveX}`, y: `${eightyFiveY}`, ...bigSize},
-  bottomRight: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${eightyFiveX}`, y: `${eightyFiveY}`, ...bigSize} : {x: `${ninetyX}`, y: `${ninetyY}`, ...smallSize},
-  middleRight: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${eightyFiveX}`, y: `${fortyFiveY}`, ...bigSize} : {x: `${ninetyX}`, y: `${ninetyY}`, ...smallSize},
-  topRight: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${eightyFiveX}`, y: `${fiveY}`, ...bigSize} : {x: `${ninetyX}`, y: `${fiveY}`, ...smallSize},
-  topCenter: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fortyFiveX}`, y: `${fiveY}`, ...smallSize} : {x: `${fortyFiveX}`, y: `${fiveY}`, ...smallSize},
-  middleCenter: (layoutDirection) => layoutDirection === 'horizontal' ? {x: `${fortyFiveX}`, y: `${fortyFiveY}`, ...bigSize} : {x: `${fortyFiveX}`, y: `${fortyFiveY}`, ...bigSize},
+  gridPoints = {
+    topLeft: {x: left, y: top, ...bigSize},
+    middleLeft: {x: left, y: middle, ...bigSize},
+    bottomLeft: {x: left, y: bottom, ...bigSize},
+    bottomCenter: {x: center, y: bottom, ...bigSize},
+    bottomRight: {x: right, y: bottom, ...bigSize},
+    middleRight: {x: right, y: middle, ...bigSize},
+    topRight: {x: right, y: top, ...bigSize},
+    topCenter: {x: center, y: top, ...bigSize},
+    middleCenter: {x: center, y: middle, ...bigSize},
+    ...gridPoints
+  };
 };
+
+gridPoints.recalculate();
 
 console.log('exporting grid points');
 

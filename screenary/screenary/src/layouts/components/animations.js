@@ -75,6 +75,23 @@ const animations = {
     }
 
     return animation;
+  },
+
+  fontSize: (fromSize, toSize, duration, onEnd) => {
+    const animation = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+    animation.setAttribute("attributeName", "transform");
+    animation.setAttribute("type", "scale");
+    animation.setAttribute("from", `${fromSize}`);
+    animation.setAttribute("to", `${toSize}`);
+    animation.setAttribute("dur", `${duration}ms`);
+    animation.setAttribute("begin", "1ms");
+    animation.setAttribute("fill", "freeze");
+
+    if(onEnd) {
+      animation.addEventListener('endEvent', onEnd);
+    }
+
+    return animation;
   }
 };
 

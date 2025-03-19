@@ -7,6 +7,7 @@ window.alertt = (a) => {
   let alertter = document.getElementById('alertter'); 
   if(!alertter) {
     alertter = document.createElement('div');
+    alertter.setAttribute('id', 'alertter');
     document.body.appendChild(alertter);
   }
   alertter.innerHTML = '';
@@ -36,10 +37,14 @@ window.alertt('should have added the bizness');
 
 console.log('imports worked');
 
+window.alertt('This message is a placeholder for bootstrapping that I haven\'t quite figured out yet. Feeds aren\'t ready until this goes away');
+
 baseCommand.getBases()
-  .then(baseCommand.getFeed)
-  .then(feed => {
-    console.log('got a feed with ' + feed.allPosts.length + ' posts');
+  .then(() => { 
+    baseCommand.getFeed((_feed) => {
+      document.getElementById('alertter').remove();
+      // TODO: What should happen here?  
+    });
   })
   .catch(console.warn);
 
@@ -54,13 +59,15 @@ console.log('got a location.search');
   console.log('query', query);
 }
 
-if(window.innerWidth >= window.innerHeight) {
+/*if(window.innerWidth >= window.innerHeight) {
 console.log('horizontal');
   horizontalLayout();
 } else {
 console.log('vertical');
   verticalLayout();
-}
+}*/
+
+horizontalLayout();
 
 
 

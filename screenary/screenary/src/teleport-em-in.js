@@ -83,12 +83,17 @@ function createProductElement(product, onClick) {
 };
 
 function teleportEmIn() {
-  const container = document.getElementById('container');
-  container.classList.add('lexary-container');
-  container.classList.remove('container');
-  const positions = [{x: 200, y: 20}, {x: 500, y: 20}, {x: 800, y: 20}, {x: 1100, y: 20}];
-  let x = 600;
-  let y = 20;
+  window.alertt('Products are implemented, but I broke their layout and need to rebuild it.');
+  return;
+  const container = document.getElementById('main');
+  container.innerHTML = '';
+  Array.from(container.classList).forEach($ => {
+    if($.indexOf('ontainer') !== -1) {
+      container.classList.remove($);
+    }
+  });
+  container.classList.add('feed-container');
+
   mockProducts.forEach((product, index) => {
     const divsX = positions[index].x;
     const divsY = positions[index].y;

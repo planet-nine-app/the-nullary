@@ -29,4 +29,8 @@ findPlanetNine.attach = (container, startingRect) => {
   container.appendChild(planetNine.svg);
 };
 
+findPlanetNine.detach = (container) => {
+  container.removeChild(planetNine.svg);
+};
+
 export default findPlanetNine;

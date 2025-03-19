@@ -3,7 +3,7 @@ function getLexaryRow(text, images) {
   const IMAGE_HEIGHT = 250;
   const MORE_THAN_ONE_IMAGE = images && images.length > 1;
 
-  const textHeight = Math.floor((text.length / 32) * 27);
+  const textHeight = text ? Math.floor((text.length / 32) * 27) : 0;
   const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_HEIGHT : 0) + (16 * (images && images.length > 0 ? 3 : 2));
 
   const svg = `<!-- Dark Background -->
