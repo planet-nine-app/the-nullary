@@ -172,7 +172,7 @@ function createVideoElement(post) {
     });
     
     // Set video source
-    video.src = videoURL;
+    video.setAttribute('data-src', videoURL);
     
     // Add progress update listener
     video.addEventListener('timeupdate', () => {
@@ -240,40 +240,77 @@ console.log('here is where you will refresh');
       container.appendChild(div);
   });
 
+  const startVideo = (entry) => {
+    const vid = entry.target;
+    const playButton = vid.parentElement.querySelector('.play-button');
+    const progressBar = vid.parentElement.parentElement.querySelector('.progress-bar');
+    const elems = document.querySelectorAll('.error-message');
+
+    if (entry.isIntersecting) {
+	if (vid.paused) {
+	    vid.muted = isGloballyMuted;
+	    vid.play()
+		.catch(error => {
+		    console.log('Auto-play failed:', error);
+		    elems.forEach($ => $.textContent = 'Auto-play failed: ' + error);
+		    if (playButton) playButton.style.display = 'block';
+		});
+	}
+	// Reset progress bar when video comes into view
+	if (progressBar) {
+	    progressBar.style.width = '0%';
+	}
+    } else {
+	vid.pause();
+	if (playButton) playButton.style.display = 'block';
+	// Reset progress bar when video goes out of view
+	if (progressBar) {
+	    progressBar.style.width = '0%';
+	}
+    }
+  };
+
   const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-          const vid = entry.target;
-          const playButton = vid.parentElement.querySelector('.play-button');
-          const progressBar = vid.parentElement.parentElement.querySelector('.progress-bar');
-          const elems = document.querySelectorAll('.error-message');
-
-          if (entry.isIntersecting) {
-              if (vid.paused) {
-                  vid.muted = isGloballyMuted;
-                  vid.play()
-                      .catch(error => {
-                          console.log('Auto-play failed:', error);
-                          elems.forEach($ => $.textContent = 'Auto-play failed: ' + error);
-                          if (playButton) playButton.style.display = 'block';
-                      });
-              }
-              // Reset progress bar when video comes into view
-              if (progressBar) {
-                  progressBar.style.width = '0%';
-              }
-          } else {
-              vid.pause();
-              if (playButton) playButton.style.display = 'block';
-              // Reset progress bar when video goes out of view
-              if (progressBar) {
-                  progressBar.style.width = '0%';
-              }
-          }
+          startVideo(entry);      
       });
   }, { threshold: 0.5 });
 
-  document.querySelectorAll('video').forEach(video => {
-      observer.observe(video);
+  const loadObserver = new IntersectionObserver(
+      function(entries, observer) {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            // Load the video when it's close to the viewport
+            const video = entry.target;
+            video.src = video.dataset.src;
+            
+            // Stop observing once we've loaded the video
+            observer.unobserve(video);
+          }
+        });
+      }, 
+      {
+        // 2000px margin around the viewport
+        rootMargin: '2000px 0px 2000px 0px'
+      }
+    );
+
+  document.querySelectorAll('video').forEach((video, index) => {
+      if(index === 0) {
+console.log('this 0th video is', video);
+        video.onloadeddata = () => {
+console.log('loadeddata', video.paused);
+        }
+        video.src = video.dataset.src;
+        observer.observe(video);
+
+      } else if(index === 1) {
+        video.src = video.dataset.src;
+        observer.observe(video);
+      } else {
+        observer.observe(video);
+        loadObserver.observe(video);
+      }
       
       video.addEventListener('ended', () => {
           const nextVideo = video.parentElement.parentElement.nextElementSibling;

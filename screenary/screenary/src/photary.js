@@ -49,7 +49,9 @@ console.log('it should render these images', images);
 };
 
 function appendPhotary(posts) {
+console.log('photary posts', posts);
   const filteredPosts = posts.filter($ => $.images);
+console.log('filteredPosts', filteredPosts);
   const container = document.getElementById('main');
   container.innerHTML = '';
   Array.from(container.classList).forEach($ => {
@@ -74,6 +76,7 @@ console.log('here is where you will refresh');
   }
 
   filteredPosts.forEach(post => {
+console.log('creating an image app with', post);
     const div = createImageElement(post);
     container.appendChild(div);
   });

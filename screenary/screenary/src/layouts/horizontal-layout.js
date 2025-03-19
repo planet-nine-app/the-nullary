@@ -18,11 +18,13 @@ let viewState = 0;
 const moveToBottom = () => {
   gimmeTheGoods(gridPoints.bottomLeft);
   gimmeTheBases(gridPoints.bottomRight);
+  findPlanetNine(gridPoints.topRight);
 };
 
 const moveToMiddle = () => {
   gimmeTheGoods(gridPoints.middleLeft);
   gimmeTheBases(gridPoints.middleRight);
+  findPlanetNine(gridPoints.topRight);
 };
 
 const view0 = () => {
@@ -45,7 +47,11 @@ console.log('should have appended viewary');
 
 const photary = async () => {
   const feed = await baseCommand.getFeed((_feed) => {
+try {
     appendPhotary(_feed.picPosts);
+} catch(e) {
+console.warn(e);
+}
   });
 
   moveToBottom();
@@ -76,7 +82,6 @@ console.log('should display these bases', bases);
 };
 
 const teleport = () => {
-console.log('the layout\'s teleport gets called');
   teleportEmIn();
 console.log('should have telepoted em in');
 
@@ -90,6 +95,7 @@ const pref = () => {
 };
 
 const layout = () => {
+window.alertt('layout');
 console.log('should layout the layout');
   const fullScreenSVG = document.getElementById('full-screen-svg');
 console.log('window dimensions', window.innerWidth, window.innerHeight);

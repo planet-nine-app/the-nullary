@@ -161,6 +161,7 @@ async function getFeed(refreshFeed) {
   const now = new Date().getTime();
   if(_feed && now - lastFeedRefresh < LAST_FEED_THRESHOLD) {
     refreshFeed(_feed);
+    return;
   }
   let bases;
   try {
@@ -204,13 +205,6 @@ console.log('continuing');
       postPromises.push(invoke('get_feed', {uuid, doloresUrl: doloresURL, tags: '[]'}));
 //    const posts = await invoke('get_feed', {uuid, doloresUrl: bases[uuid].dns && bases[uuid].dns.dolores, tags: '[]'}); 
 
-      console.log('posts looks like: ', posts);
-
-      feed.videoPosts = [...feed.videoPosts, ...posts.videoPosts];
-      feed.picPosts = [...feed.picPosts, ...posts.picPosts];
-      feed.genericPosts = [...feed.genericPosts, ...posts.genericPosts];
-      feed.allPosts = [...feed.allPosts, ...posts.allPosts];
-    
     } catch(err) { console.log(err); }
 
     Promise.all(postPromises).then(results => {
@@ -222,11 +216,15 @@ console.log('continuing');
 
         refreshFeed(feed);
       });
+
+      feed.videoPosts = feed.videoPosts.sort($ => Math.round(Math.random() * 2 - 2));
+      feed.picPosts = feed.videoPosts.sort($ => Math.round(Math.random() * 2 - 2));
+      feed.allPosts = feed.allPosts.sort($ => Math.round(Math.random() * 2 - 2));
+
+      _feed = feed;
+      lastFeedRefresh = now;
     });
   }
-
-  _feed = feed;
-  lastFeedRefresh = now;
 
   return feed;
 };

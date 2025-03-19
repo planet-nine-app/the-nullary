@@ -150,11 +150,11 @@ function getPlanetNineLogo(teleport, pref) {
 </text>`;
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  container.setAttribute('style', 'z-index: 15;');
-  container.setAttribute('x', '85%');
-  container.setAttribute('y', '5%');
-  container.setAttribute('width', '300');
-  container.setAttribute('height', '200');
+//  container.setAttribute('style', 'z-index: 15;');
+//  container.setAttribute('x', '85%');
+//  container.setAttribute('y', '5%');
+//  container.setAttribute('width', '300');
+//  container.setAttribute('height', '200');
 
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   newElement.setAttribute('viewBox', '0 0 600 300');

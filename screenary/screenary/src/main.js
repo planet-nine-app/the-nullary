@@ -10,7 +10,7 @@ window.alertt = (a) => {
     alertter.setAttribute('id', 'alertter');
     document.body.appendChild(alertter);
   }
-  alertter.innerHTML = '';
+//  alertter.innerHTML = '';
   alertter.innerHTML = a;
   alertter.style.zIndex = 999;
   alertter.style.backgroundColor = 'blue';
@@ -42,7 +42,10 @@ window.alertt('This message is a placeholder for bootstrapping that I haven\'t q
 baseCommand.getBases()
   .then(() => { 
     baseCommand.getFeed((_feed) => {
-      document.getElementById('alertter').remove();
+      const alertter = document.getElementById('alertter');
+      if(alertter) {
+        alertter.remove();
+      }
       // TODO: What should happen here?  
     });
   })
@@ -66,6 +69,12 @@ console.log('horizontal');
 console.log('vertical');
   verticalLayout();
 }*/
+
+if(window.innerWidth <= window.innerHeight) {
+  const fo = document.getElementById('fo')
+  fo.setAttribute('width', '100%');
+  fo.setAttribute('x', '0');
+}
 
 horizontalLayout();
 

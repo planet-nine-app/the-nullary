@@ -25,7 +25,7 @@ body, html {
 }
 
 #main {
-    z-index: 1;
+    z-index: -1;
 }
 
 #full-screen-svg {
@@ -50,7 +50,7 @@ body, html {
     overflow-y: scroll;
     position: fixed;
     background-color: purple;
-    z-index: 1;
+    z-index: -1;
 }
 
 .discover-bases-container {
