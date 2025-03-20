@@ -40,9 +40,10 @@ const devBase = {
 
 async function getHomeBase() {
   try {
-    const homeBase = await readTextFile('bases/home.json', {baseDir: BaseDirectory.AppLocalData});
+    const homeBase = await readTextFile('bases/home.json', {baseDir: BaseDirectory.AppCache});
     return homeBase;
   } catch(err) { 
+window.alertt(err);
     return devBase;
   }
 };
@@ -62,16 +63,19 @@ console.log('after connecting homeBase is: ', homeBase);
     bases[Math.random() * 100000 + ''] = homeBase; // TODO: what are base ids?
 
     try {
-      await mkdir('', {baseDir: BaseDirectory.AppLocalData});
-    } catch(err) { console.log(err) }
+      await mkdir('', {baseDir: BaseDirectory.AppCache});
+    } catch(err) { 
+window.alertt('second ' + JSON.stringify(err));
+console.log(err) }
+
 
     try {
-      await mkdir('bases', {baseDir: BaseDirectory.AppLocalData});
+      await mkdir('bases', {baseDir: BaseDirectory.AppCache});
     } catch(err) { console.log(err) }
 
     try {
       await writeTextFile('bases/bases.json', JSON.stringify(bases), {
-        baseDir: BaseDirectory.AppLocalData,
+        baseDir: BaseDirectory.AppCache,
       });
     } catch(err) { console.log(err) }
 
@@ -102,14 +106,14 @@ console.log('homeBase is', homeBase);
     }
 
     const basesString = await readTextFile('bases/bases.json', {
-      baseDir: BaseDirectory.AppLocalData,
+      baseDir: BaseDirectory.AppCache,
     });
 
     const allBases = {...JSON.parse(basesString), ...updatedBases};
 
     try {
       await writeTextFile('bases/bases.json', JSON.stringify(allBases), {
-        baseDir: BaseDirectory.AppLocalData,
+        baseDir: BaseDirectory.AppCache,
       });
     } catch(err) { console.error('This is a big problem', err) }
 
@@ -166,7 +170,7 @@ async function getFeed(refreshFeed) {
   let bases;
   try {
   const basesString = await readTextFile('bases/bases.json', {
-    baseDir: BaseDirectory.AppLocalData,
+    baseDir: BaseDirectory.AppCache,
   });
   bases = JSON.parse(basesString);
   } catch(err) {
@@ -218,7 +222,7 @@ console.log('continuing');
       });
 
       feed.videoPosts = feed.videoPosts.sort($ => Math.round(Math.random() * 2 - 2));
-      feed.picPosts = feed.videoPosts.sort($ => Math.round(Math.random() * 2 - 2));
+      feed.picPosts = feed.picPosts.sort($ => Math.round(Math.random() * 2 - 2));
       feed.allPosts = feed.allPosts.sort($ => Math.round(Math.random() * 2 - 2));
 
       _feed = feed;

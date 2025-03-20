@@ -95,7 +95,6 @@ const pref = () => {
 };
 
 const layout = () => {
-window.alertt('layout');
 console.log('should layout the layout');
   const fullScreenSVG = document.getElementById('full-screen-svg');
 console.log('window dimensions', window.innerWidth, window.innerHeight);

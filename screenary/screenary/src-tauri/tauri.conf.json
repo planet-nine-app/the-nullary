@@ -29,6 +29,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "category": "Game",
     "iOS": {
       "minimumSystemVersion": "14.0"
     }
