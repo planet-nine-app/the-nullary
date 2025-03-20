@@ -3,9 +3,11 @@ console.log('importing grid points');
 let gridPoints = {};
 
 gridPoints.recalculate = () => {
-  const small = Math.floor(window.innerWidth * 0.12);
-  const big = Math.floor(window.innerWidth * 0.24);
-  const padding = Math.floor(window.innerWidth * 0.05);
+  const dimension = window.innerWidth >= window.innerHeight ? window.innerHeight : window.innerWidth;
+
+  const small = Math.floor(dimension * 0.12);
+  const big = Math.floor(dimension * 0.24);
+  const padding = Math.floor(dimension * 0.05);
 
   const smallSize = {width: small, height: small};
   const bigSize = {width: big, height: big};

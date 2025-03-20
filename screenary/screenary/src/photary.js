@@ -41,6 +41,9 @@ console.log('it should render these images', images);
 
   const photaryRow = getPhotaryRow(description, images);
   
+  postContainer.style.width = '100%';
+  postContainer.style.aspectRatio = photaryRow.aspectRatio;
+  
   postContainer.appendChild(photaryRow);
 
   div.appendChild(postContainer);;

@@ -171,10 +171,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .setup(move |app| {
-            #[cfg(mobile)]
-            {
-                app.handle().plugin(tauri_plugin_nfc::init())?;
-            }
+//            #[cfg(mobile)]
+//            {
+//                app.handle().plugin(tauri_plugin_nfc::init())?;
+//            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

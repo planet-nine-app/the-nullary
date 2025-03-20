@@ -41,11 +41,13 @@ function createPostElement(post) {
 
   const div = document.createElement('div');
   div.classList.add('post-cell');
-  if(post.images && post.images.length > 0) {
+/*  if(post.images && post.images.length > 0) {
     div.classList.add('vertical-post');
   } else {
     div.classList.add('horizontal-post');
-  }
+  }*/
+
+  
 
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
@@ -78,11 +80,35 @@ function createPostElement(post) {
   } else {
     const lexaryRow = getLexaryRow(description, images);
   console.log(postContainer);
+    postContainer.style.width = '100%';
+    postContainer.style.aspectRatio = lexaryRow.aspectRatio;
     postContainer.appendChild(lexaryRow);
   }
 //  return postContainer;
   div.appendChild(postContainer);
   return div;
+};
+
+//TODO come back to this, as this didn't work as expected. 
+function attachObserver() {
+  const lazyImages = document.querySelectorAll('image');
+  
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      const image = entry.target;
+
+      image.href = image.foo;
+  
+      observer.unobserve(image);
+    });
+  }, {
+    rootMargin: '2000px 0px',
+    threshold: 0.01
+  });
+
+  lazyImages.forEach(img => {
+    imageObserver.observe(img);
+  });
 };
 
 function appendLexary(posts) {
@@ -115,6 +141,8 @@ console.log(post);
       return;
     }
     const div = createPostElement(post);
+    div.classList.add('post-cell');
+//    div.classList.add(post.images ? 'vertical-post' : 'horizontal-post');
     container.appendChild(div);
   });
 /*  mockPosts.forEach((post) => {

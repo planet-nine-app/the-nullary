@@ -1,10 +1,10 @@
 function getLexaryRow(text, images) {
   // TODO handle links and MAGIC here
-  const IMAGE_HEIGHT = 250;
+  const IMAGE_DIMENSION = 552;
   const MORE_THAN_ONE_IMAGE = images && images.length > 1;
 
   const textHeight = text ? Math.floor((text.length / 32) * 27) : 0;
-  const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_HEIGHT : 0) + (16 * (images && images.length > 0 ? 3 : 2));
+  const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_DIMENSION : 0) + (16 * (images && images.length > 0 ? 3 : 2));
 
   const svg = `<!-- Dark Background -->
     <linearGradient id="frameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -23,11 +23,11 @@ function getLexaryRow(text, images) {
     
     ${images && images.length > 0 ? `
     <!-- Image Display Area -->
-    <rect x="16" y="${textHeight + 32}" width="568" height="300" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"/>
+    <rect x="16" y="${textHeight + 32}" width="568" height="${IMAGE_DIMENSION + 32}" rx="8" fill="#252529" stroke="url(#frameGradient)" stroke-width="2"/>
     
     <!-- Placeholder for "Current" Image (Image 2 of 4) -->
     <g>
-      ${images ? `<image x="24" y="145" width="552" height="${IMAGE_HEIGHT}" rx="8" stroke="url(#frameGradient)" stroke-width="2" href="${images[0].fullsize}"></image>` : ''}
+      ${images ? `<image x="24" y="${textHeight + 40}" width="${IMAGE_DIMENSION}" height="${IMAGE_DIMENSION}" rx="8" stroke="url(#frameGradient)" stroke-width="2" href="${images[0].fullsize}"></image>` : ''}
     </g>
    
  
@@ -119,6 +119,7 @@ console.log('dom content is loaded');
   });
 
   container.appendChild(newElement);
+  container.aspectRatio = 600 / totalHeight;
 
   return container;
 };

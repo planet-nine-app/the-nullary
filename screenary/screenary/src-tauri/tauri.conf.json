@@ -31,7 +31,10 @@
     ],
     "category": "Game",
     "iOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "17.0"
+    },
+    "android": {
+      "versionCode": 100
     }
   }
 }

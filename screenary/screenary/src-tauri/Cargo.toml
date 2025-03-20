@@ -38,8 +38,8 @@ path = "../../../../bdo/src/client/rust/bdo-rs"
 [dependencies.dolores-rs]
 path = "../../../../dolores/src/client/rust/dolores-rs"
 
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies.tauri-plugin-nfc]
-path = "../../../../third-party/plugins-workspace/plugins/nfc"
+# [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies.tauri-plugin-nfc]
+# path = "../../../../third-party/plugins-workspace/plugins/nfc"
 
 [package.metadata.tauri.bundle.ios]
 frameworks = ["CoreNFC"]

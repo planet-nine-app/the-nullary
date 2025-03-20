@@ -121,6 +121,7 @@ console.log('dom content is loaded');
   });
 
   container.appendChild(newElement);
+  container.aspectRatio = 600 / totalHeight;
 
   return container;
 };

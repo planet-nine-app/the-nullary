@@ -9,5 +9,9 @@
 	<key>NSAllowsArbitraryLoads</key>
 	<true/>
     </dict>
+    <dict>
+      <key>ITSAppUsesNonExemptEncryption</key>
+      <false/> 
+    </dict>
   </dict>
 </plist>
