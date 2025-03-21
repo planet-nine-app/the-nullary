@@ -27,7 +27,7 @@ function getLexaryRow(text, images) {
     
     <!-- Placeholder for "Current" Image (Image 2 of 4) -->
     <g>
-      ${images ? `<image x="24" y="${textHeight + 40}" width="${IMAGE_DIMENSION}" height="${IMAGE_DIMENSION}" rx="8" stroke="url(#frameGradient)" stroke-width="2" href="${images[0].fullsize}"></image>` : ''}
+      ${images ? `<image id="image" x="24" y="${textHeight + 40}" width="${IMAGE_DIMENSION}" height="${IMAGE_DIMENSION}" rx="8" stroke="url(#frameGradient)" stroke-width="2" href="${images[0].fullsize}"></image>` : ''}
     </g>
    
  

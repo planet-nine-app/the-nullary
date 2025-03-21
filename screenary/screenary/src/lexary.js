@@ -39,8 +39,6 @@ function createPostElement(post) {
   const images = post.images;
   const uuid = post.uuid; 
 
-  const div = document.createElement('div');
-  div.classList.add('post-cell');
 /*  if(post.images && post.images.length > 0) {
     div.classList.add('vertical-post');
   } else {
@@ -84,9 +82,9 @@ function createPostElement(post) {
     postContainer.style.aspectRatio = lexaryRow.aspectRatio;
     postContainer.appendChild(lexaryRow);
   }
-//  return postContainer;
-  div.appendChild(postContainer);
-  return div;
+  return postContainer;
+//  div.appendChild(postContainer);
+//  return div;
 };
 
 //TODO come back to this, as this didn't work as expected. 
@@ -110,6 +108,22 @@ function attachObserver() {
     imageObserver.observe(img);
   });
 };
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) {
+      entry.target.style.display = 'visible';
+      if(entry.target.post) {
+        const postContainer = createPostElement(entry.target.post);
+        entry.target.appendChild(postContainer);
+      }
+    }
+  });
+}, {
+  root: null,
+  rootMargin: '1000px',
+  threshold: 0.1
+});
 
 function appendLexary(posts) {
   const container = document.getElementById('main');
@@ -135,20 +149,27 @@ console.log('here is where you will refresh');
     container.appendChild(div);
   }
 
-  posts.forEach(post => {
-console.log(post);
+  posts.forEach((post, index) => {
     if(post.url) {
       return;
     }
-    const div = createPostElement(post);
+console.log(index);
+    const div = document.createElement('div');
     div.classList.add('post-cell');
-//    div.classList.add(post.images ? 'vertical-post' : 'horizontal-post');
+    div.style.display = 'none';
+
+    if(index < 6) {
+      const postContainer = createPostElement(post);
+      div.appendChild(postContainer);
+      div.style.display = 'visible';
+    } 
+
+    div.post = post;
+
     container.appendChild(div);
+
+    observer.observe(div);
   });
-/*  mockPosts.forEach((post) => {
-    const div = createPostElement(post.url, post.uuid, post);
-    container.appendChild(div);
-  });*/
 };
 
 export default appendLexary;

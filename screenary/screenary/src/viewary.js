@@ -33,6 +33,7 @@ function createVideoElement(post) {
 
     const div = document.createElement('div');
     div.classList.add('video-cell');
+    div.style.backgroundColor = 'blue';
     
     // Create progress bar
     const progressContainer = document.createElement('div');
