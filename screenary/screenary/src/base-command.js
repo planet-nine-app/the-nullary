@@ -221,9 +221,9 @@ console.log('continuing');
         refreshFeed(feed);
       });
 
-      feed.videoPosts = feed.videoPosts.sort($ => Math.round(Math.random() * 2 - 2));
-      feed.picPosts = feed.picPosts.sort($ => Math.round(Math.random() * 2 - 2));
-      feed.allPosts = feed.allPosts.sort($ => Math.round(Math.random() * 2 - 2));
+      feed.videoPosts = feed.videoPosts.slice(0, Math.min(feed.videoPosts.length, 50)).sort($ => Math.round(Math.random() * 2 - 2));
+      feed.picPosts = feed.picPosts.slice(0, Math.min(feed.picPosts.length, 50)).sort($ => Math.round(Math.random() * 2 - 2));
+      feed.allPosts = feed.allPosts.slice(0, Math.min(feed.allPosts.length, 50)).sort($ => Math.round(Math.random() * 2 - 2));
 
       _feed = feed;
       lastFeedRefresh = now;
