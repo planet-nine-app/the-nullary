@@ -77,9 +77,10 @@ function createPostElement(post) {
     //TODO: handle video posts
   } else {
     const lexaryRow = getLexaryRow(description, images);
-  console.log(postContainer);
+  console.log('total height', lexaryRow.totalHeight);
     postContainer.style.width = '100%';
     postContainer.style.aspectRatio = lexaryRow.aspectRatio;
+    postContainer.style.height = lexaryRow.totalHeight + 'px';
     postContainer.appendChild(lexaryRow);
   }
   return postContainer;
@@ -87,7 +88,6 @@ function createPostElement(post) {
 //  return div;
 };
 
-//TODO come back to this, as this didn't work as expected. 
 function attachObserver() {
   const lazyImages = document.querySelectorAll('image');
   
@@ -112,10 +112,12 @@ function attachObserver() {
 const observer = new IntersectionObserver(entries => {
   entries.forEach(entry => {
     if(entry.isIntersecting) {
-      entry.target.style.display = 'visible';
-      if(entry.target.post) {
+      entry.target.style.display = 'inline';
+      if(!entry.target.posted && entry.target.post) {
+console.log('it adds the post here');
         const postContainer = createPostElement(entry.target.post);
         entry.target.appendChild(postContainer);
+        entry.target.posted = true;
       }
     }
   });
@@ -149,19 +151,31 @@ console.log('here is where you will refresh');
     container.appendChild(div);
   }
 
-  posts.forEach((post, index) => {
-    if(post.url) {
+  const postMap = {};
+
+  const filteredPosts = posts.filter($ => !$.url);
+
+  filteredPosts.forEach((post, index) => {
+console.log('looking at post with post uuid', post.uuid);
+    if(postMap[post.uuid]) {
+console.log('is this always returning or something?');
       return;
     }
+
+    postMap[post.uuid] = true;
+//console.log(postMap);
+
 console.log(index);
     const div = document.createElement('div');
     div.classList.add('post-cell');
-    div.style.display = 'none';
+//    div.style.display = 'none';
 
     if(index < 6) {
+console.log('index is less than six so it should be inline');
       const postContainer = createPostElement(post);
       div.appendChild(postContainer);
-      div.style.display = 'visible';
+      div.style.display = 'inline';
+      div.posted = true;
     } 
 
     div.post = post;

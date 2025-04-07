@@ -225,6 +225,35 @@ console.log('continuing');
       feed.picPosts = feed.picPosts.slice(0, Math.min(feed.picPosts.length, 50)).sort($ => Math.round(Math.random() * 2 - 2));
       feed.allPosts = feed.allPosts.slice(0, Math.min(feed.allPosts.length, 50)).sort($ => Math.round(Math.random() * 2 - 2));
 
+      const uuidMap = {};
+
+      feed.videoPosts = feed.videoPosts.filter($ => {
+        if(!uuidMap[$.uuid]) {
+          uuidMap[$.uuid] = true;
+          return $;
+        }
+        return null;
+      });
+      feed.picPosts = feed.picPosts.filter($ => {
+        if(!uuidMap[$.uuid]) {
+          uuidMap[$.uuid] = true;
+          return $;
+        }
+        return null;
+      });
+
+console.log('BEFORE', feed.allPosts.length);
+      const allMap = {};
+      feed.allPosts = feed.allPosts.filter($ => {
+console.log('the uuid for this guy is: ', $.uuid, $, allMap);
+        if(!allMap[$.uuid]) {
+          allMap[$.uuid] = true;
+          return true;
+        }
+        return false;
+      });
+console.log('AFTER', feed.allPosts.length);
+
       _feed = feed;
       lastFeedRefresh = now;
     });

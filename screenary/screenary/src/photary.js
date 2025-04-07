@@ -33,9 +33,6 @@ function createImageElement(post) {
   const images = post.images;
 console.log('it should render these images', images);
 
-  const div = document.createElement('div');
-  div.classList.add('image-cell');
-
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
 
@@ -46,10 +43,25 @@ console.log('it should render these images', images);
   
   postContainer.appendChild(photaryRow);
 
-  div.appendChild(postContainer);;
-
-  return div;
+  return postContainer;
 };
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) {
+      entry.target.style.display = 'inline';
+      if(entry.target.post) {
+console.log('it adds the post here', entry.target.post);
+        const postContainer = createImageElement(entry.target.post);
+        entry.target.appendChild(postContainer);
+      }
+    }
+  });
+}, {
+  root: null,
+  rootMargin: '1000px',
+  threshold: 0.1
+});
 
 function appendPhotary(posts) {
 console.log('photary posts', posts);
@@ -78,10 +90,23 @@ console.log('here is where you will refresh');
     container.appendChild(div);
   }
 
-  filteredPosts.forEach(post => {
+  filteredPosts.forEach((post, index) => {
 console.log('creating an image app with', post);
-    const div = createImageElement(post);
+    const div = document.createElement('div');
+    div.classList.add('image-cell');
+    div.style.display = 'none';
+ 
+    if(index < 6) {
+      const imageContainer = createImageElement(post);
+      div.appendChild(imageContainer); 
+      div.style.display = 'inline';
+    }
+
+    div.post = post;
+  
     container.appendChild(div);
+
+    observer.observe(div);
   });
 };
 

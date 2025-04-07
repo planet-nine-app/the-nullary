@@ -1,6 +1,6 @@
 function getLexaryRow(text, images) {
   // TODO handle links and MAGIC here
-  const IMAGE_DIMENSION = 552;
+  const IMAGE_DIMENSION = images && images.length > 0 ? 552 : 0;
   const MORE_THAN_ONE_IMAGE = images && images.length > 1;
 
   const textHeight = text ? Math.floor((text.length / 32) * 27) : 0;
@@ -120,6 +120,7 @@ console.log('dom content is loaded');
 
   container.appendChild(newElement);
   container.aspectRatio = 600 / totalHeight;
+  container.totalHeight = totalHeight;
 
   return container;
 };
