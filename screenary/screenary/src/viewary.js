@@ -301,6 +301,7 @@ console.log('here is where you will refresh');
 console.log('this 0th video is', video);
         video.onloadeddata = () => {
 console.log('loadeddata', video.paused);
+          startVideo({target: video, isIntersecting: true});
         }
         video.src = video.dataset.src;
         observer.observe(video);

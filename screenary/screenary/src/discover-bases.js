@@ -89,7 +89,14 @@ function createBaseElement(base) {
   const baseContainer = document.createElement('div');
   baseContainer.classList.add('post-container');
 
-  const baseRow = getBaseRow(name, description, soma, joined, () => {});
+  const baseRow = getBaseRow(name, description, soma, joined, () => {
+    base.joined = !base.joined;
+    if(base.joined) {
+      baseCommand.leaveBase(base);
+    } else {
+      baseCommand.joinBase(base);
+    }
+  });
   baseContainer.appendChild(baseRow);
 
   div.appendChild(baseContainer);
@@ -108,7 +115,7 @@ function appendDiscoverBases(bases) {
   container.classList.add('feed-container');
 
   bases.forEach((base) => {
-console.log(base);
+console.log('HEre is what a base looks like yo', base);
     const div = createBaseElement(base);
 console.log('base dive looks like', div);
     container.appendChild(div);

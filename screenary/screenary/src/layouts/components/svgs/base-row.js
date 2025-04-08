@@ -1,8 +1,10 @@
-function getBaseRow(title, description, soma, joined, actionCallback) {
+function getBaseRow(title, description, soma, _joined, actionCallback) {
 
   const line1 = `lexary: ${soma.lexary ? 'tags: ' + soma.lexary.join(', ') : 'N/A'}`;
   const line2 = `photary: ${soma.photary ? 'tags: ' + soma.photary.join(', ') : 'N/A'}`;
   const line3 = `viewary: ${soma.viewary ? 'tags: ' + soma.viewary.join(', ') : 'N/A'}`;
+
+  let joined = _joined;
 
   const svg = `<!-- Dark Background for the entire SVG -->
     <rect width="500" height="300" fill="#1c1c20"/>
@@ -36,7 +38,7 @@ function getBaseRow(title, description, soma, joined, actionCallback) {
 	<stop offset="100%" stop-color="#9c42f5"/>
       </linearGradient>
       <rect id="actionButton" x="380" y="25" width="80" height="30" rx="15" fill="url(#buttonGradient)"/>
-      <text x="420" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">${joined ? 'LEAVE' : 'JOIN'}</text>
+      <text id="actionButtonText" x="420" y="45" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle" style="pointer-events: none;">${joined ? 'LEAVE' : 'JOIN'}</text>
     </g>
     
     <!-- Expanded State -->
@@ -94,6 +96,9 @@ function getBaseRow(title, description, soma, joined, actionCallback) {
 
   newElement.getElementById('actionButton').addEventListener('click', () => {
     console.log('handle joining here');
+    joined = !joined
+    newElement.getElementById('actionButtonText').innerHTML = joined ? 'LEAVE' : 'JOIN';
+    actionCallback();
   });
 
   container.appendChild(newElement);

@@ -35,7 +35,7 @@ const devBase = {
     bdo: 'https://dev.bdo.allyabase.com/',
     dolores: 'https://dev.dolores.allyabase.com/'
   },
-  joined: false
+  joined: true
 };
 
 async function getHomeBase() {
@@ -60,7 +60,9 @@ console.log('after connecting homeBase is: ', homeBase);
       bases = {};
     }
 
-    bases[Math.random() * 100000 + ''] = homeBase; // TODO: what are base ids?
+    const localId = Math.random() * 100000 + '';
+    homeBase.localId = localId;
+    bases[localId] = homeBase; // TODO: what are base ids?
 
     try {
       await mkdir('', {baseDir: BaseDirectory.AppCache});
@@ -103,6 +105,7 @@ console.log('homeBase is', homeBase);
 
     for(var baseId in updatedBases) {
       updatedBases[baseId] = await connectToBase(updatedBases[baseId]);
+      updatedBases[baseId].uuid = baseId;
     }
 
     const basesString = await readTextFile('bases/bases.json', {
@@ -133,6 +136,8 @@ console.log('now', now, 'bases', bases, 'lastBaseRefresh', lastBaseRefresh, 'LAS
   }
   bases = await fetchAndSaveBases();
 
+console.log('Here are all the bases', bases);
+
   return bases;
 };
 
@@ -158,7 +163,36 @@ console.log('and base', base.users, service, user);
     } catch(err) { console.log(err) }
   }
 
+  base.joined = true;
+
   return base;
+};
+
+async function joinBase(_base) {
+  let base = JSON.parse(JSON.stringify(_base));
+  base.joined = true;
+  base = connectToBase(base);
+
+  bases[base.uuid] = base;
+
+  try {
+    await writeTextFile('bases/bases.json', JSON.stringify(bases), {
+      baseDir: BaseDirectory.AppCache,
+    });
+  } catch(err) { console.log(err) }
+};
+
+async function leaveBase(_base) {
+  let base = JSON.parse(JSON.stringify(_base));
+  base.joined = false;
+
+  bases[base.uuid] = base;
+  
+  try {
+    await writeTextFile('bases/bases.json', JSON.stringify(bases), {
+      baseDir: BaseDirectory.AppCache,
+    });
+  } catch(err) { console.log(err) } 
 };
 
 async function getFeed(refreshFeed) {
@@ -264,7 +298,9 @@ console.log('AFTER', feed.allPosts.length);
 
 const baseCommand = {
   getBases,
-  getFeed
+  getFeed,
+  leaveBase,
+  joinBase
 };
 
 export default baseCommand;

@@ -50,10 +50,11 @@ const observer = new IntersectionObserver(entries => {
   entries.forEach(entry => {
     if(entry.isIntersecting) {
       entry.target.style.display = 'inline';
-      if(entry.target.post) {
+      if(!entry.target.posted && entry.target.post) {
 console.log('it adds the post here', entry.target.post);
         const postContainer = createImageElement(entry.target.post);
         entry.target.appendChild(postContainer);
+        entry.target.posted = true;
       }
     }
   });
@@ -94,12 +95,13 @@ console.log('here is where you will refresh');
 console.log('creating an image app with', post);
     const div = document.createElement('div');
     div.classList.add('image-cell');
-    div.style.display = 'none';
+//    div.style.display = 'none';
  
     if(index < 6) {
       const imageContainer = createImageElement(post);
       div.appendChild(imageContainer); 
       div.style.display = 'inline';
+      div.posted = true;
     }
 
     div.post = post;
