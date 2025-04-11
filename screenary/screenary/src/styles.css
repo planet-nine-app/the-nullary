@@ -50,6 +50,7 @@ body, html {
     overflow-y: scroll;
     position: fixed;
     background-color: purple;
+    -webkit-overflow-scrolling: touch;
     z-index: -1;
 }
 

@@ -83,8 +83,8 @@ function createProductElement(product, onClick) {
 };
 
 function teleportEmIn() {
-  window.alertt('Products are implemented, but I broke their layout and need to rebuild it.');
-  return;
+//  window.alertt('Products are implemented, but I broke their layout and need to rebuild it.');
+//  return;
   const container = document.getElementById('main');
   container.innerHTML = '';
   Array.from(container.classList).forEach($ => {
@@ -95,8 +95,8 @@ function teleportEmIn() {
   container.classList.add('feed-container');
 
   mockProducts.forEach((product, index) => {
-    const divsX = positions[index].x;
-    const divsY = positions[index].y;
+    const divsX = window.innerWidth / 2 - 140;
+    const divsY = window.innerHeight / 2 - 140;
     const div = createProductElement(product, (evt) => {
 console.log('product clicked', product);
       Array.from(container.children).forEach(elem => {
@@ -149,7 +149,6 @@ console.log('should have intent', intent);
     container.appendChild(div);
   });
 
-//  container.setAttribute('viewBox', `0 0 1600 ${y + 20}`);
 };
 
 export default teleportEmIn;

@@ -43,8 +43,8 @@ console.log('slideSet', slideSet);
   animate.setAttribute("begin", "1ms");
   animate.setAttribute("fill", "freeze");
 
-  document.getElementById('fo').appendChild(animate);
-  animate.beginElement();
+//  document.getElementById('fo').appendChild(animate);
+//  animate.beginElement();
 };
 
 function unexpand(planetNine, spaceship, container, stars) {
