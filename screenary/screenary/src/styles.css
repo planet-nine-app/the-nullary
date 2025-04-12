@@ -51,6 +51,9 @@ body, html {
     position: fixed;
     background-color: purple;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: auto;
+    touch-action: pan-y;
     z-index: -1;
 }
 
