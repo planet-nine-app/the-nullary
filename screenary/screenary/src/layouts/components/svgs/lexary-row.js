@@ -4,7 +4,7 @@ function getLexaryRow(text, images) {
   const MORE_THAN_ONE_IMAGE = images && images.length > 1;
 
   const textHeight = text ? Math.floor((text.length / 32) * 27) : 0;
-  const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_DIMENSION : 0) + (16 * (images && images.length > 0 ? 3 : 2));
+  const totalHeight = textHeight + (images && images.length > 0 ? IMAGE_DIMENSION : 0) + (16 * (images && images.length > 0 ? 3 : 2)) + 10;
 
   const svg = `<!-- Dark Background -->
     <linearGradient id="frameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -119,8 +119,10 @@ console.log('dom content is loaded');
   });
 
   container.appendChild(newElement);
+ 
+  const windowWidth = Math.min(window.innerWidth, 600);
   container.aspectRatio = 600 / totalHeight;
-  container.totalHeight = totalHeight;
+  container.totalHeight = totalHeight * (windowWidth / 600);
 
   return container;
 };

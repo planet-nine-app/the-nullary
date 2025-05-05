@@ -50,29 +50,6 @@ function createPostElement(post) {
   const postContainer = document.createElement('div');
   postContainer.classList.add('post-container');
 
-/*  const textContainer = document.createElement('div');
-  textContainer.classList.add('post-text-container');
-  textContainer.innerHTML = `<p>${postData.description}</p>`;
-
-  postContainer.appendChild(textContainer);
-
-  if(mediaURL || images) {
-    const mediaContainer = document.createElement('div');
-    mediaContainer.classList.add('media-container');
-
-    if(!images) {
-      video(mediaContainer, mediaURL);
-    } else {
-      imageSelector(mediaContainer, images);
-    }
-
-    postContainer.appendChild(mediaContainer);
-  }
-
-  div.appendChild(postContainer);
-
-  return div; */
-
   if(mediaURL) {
     //TODO: handle video posts
   } else {
@@ -81,6 +58,7 @@ function createPostElement(post) {
     postContainer.style.width = '100%';
     postContainer.style.aspectRatio = lexaryRow.aspectRatio;
     postContainer.style.height = lexaryRow.totalHeight + 'px';
+    postContainer.style.backgroundColor = 'blue';
     postContainer.appendChild(lexaryRow);
   }
   return postContainer;
@@ -116,7 +94,16 @@ const observer = new IntersectionObserver(entries => {
       if(!entry.target.posted && entry.target.post) {
 console.log('it adds the post here');
         const postContainer = createPostElement(entry.target.post);
+ 
+        const dividingLine = document.createElement('div');
+        dividingLine.innerHTML = `
+          <svg width="100%" height="10" xmlns="http://www.w3.org/2000/svg">
+	    <line x1="0" y1="5" x2="100%" y2="5" stroke="#333" stroke-width="2" />
+	  </svg>
+        `;
+
         entry.target.appendChild(postContainer);
+        entry.target.appendChild(dividingLine);
         entry.target.posted = true;
       }
     }

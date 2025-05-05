@@ -67,7 +67,7 @@ function getBaseRow(title, description, soma, _joined, actionCallback) {
     <line x1="10" y1="80" x2="490" y2="80" stroke="#555555" stroke-width="1" stroke-dasharray="5,3"/>`;
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  container.setAttribute('style', 'background-color: orange;');
+//  container.setAttribute('style', 'background-color: orange;');
   container.setAttribute('width', '100%');
   container.setAttribute('height', '100%');
 

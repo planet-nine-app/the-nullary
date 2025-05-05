@@ -50,7 +50,7 @@ body, html {
     width: 100%;
     position: relative;
     overflow-y: scroll;
-    background-color: orange;
+    /*background-color: orange;*/
     -webkit-overflow-scrolling: touch;
     z-index: 1;
 }
@@ -109,7 +109,7 @@ body, html {
 }
 
 .base-cell {
-    height: 45vh;
+    height: 272px;
     width: 100%;
 }
 

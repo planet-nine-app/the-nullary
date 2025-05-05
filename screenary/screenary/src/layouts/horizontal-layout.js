@@ -48,7 +48,8 @@ console.log('should have appended viewary');
 const photary = async () => {
   const feed = await baseCommand.getFeed((_feed) => {
 try {
-    appendPhotary(_feed.picPosts);
+    //appendPhotary(_feed.picPosts);
+    appendLexary(_feed.picPosts);
 } catch(e) {
 console.warn(e);
 }
