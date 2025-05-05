@@ -9,6 +9,7 @@ const discoverBasesSVG = document.createElementNS("http://www.w3.org/2000/svg", 
   discoverBasesSVG.setAttribute('width', '20%');
   discoverBasesSVG.setAttribute('height', '20%');
   discoverBasesSVG.setAttribute('style', 'background-color: green;');
+  discoverBasesSVG.style.pointerEvents = 'auto';
 
 discoverBasesSVG.innerHTML = `
   <rect width="100%" height="100%" fill="orange" id="discover-bases-container"/>

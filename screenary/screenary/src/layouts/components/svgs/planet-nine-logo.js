@@ -150,6 +150,7 @@ function getPlanetNineLogo(teleport, pref) {
 </text>`;
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+//  container.style.pointerEvents = 'auto';
 //  container.setAttribute('style', 'z-index: 15;');
 //  container.setAttribute('x', '85%');
 //  container.setAttribute('y', '5%');
@@ -158,6 +159,7 @@ function getPlanetNineLogo(teleport, pref) {
 
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   newElement.setAttribute('viewBox', '0 0 600 300');
+  newElement.style.pointerEvents = 'auto';
   newElement.innerHTML = svg;
  
   newElement.addEventListener('click', () => {

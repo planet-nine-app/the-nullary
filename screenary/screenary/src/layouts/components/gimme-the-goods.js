@@ -7,6 +7,7 @@ const BIG_FONT = 24;
 const theGoodsSVG =  document.createElementNS("http://www.w3.org/2000/svg", "svg");
   theGoodsSVG.setAttribute('viewBox', '0 0 400 400');
   theGoodsSVG.setAttribute('style', 'background-color: green;');
+  theGoodsSVG.style.pointerEvents = 'auto';
 
   theGoodsSVG.innerHTML = 
   `<defs>

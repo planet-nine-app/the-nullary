@@ -170,7 +170,7 @@ console.log(index);
     div.classList.add('post-cell');
 //    div.style.display = 'none';
 
-    if(index < 6) {
+    if(index < 16) {
 console.log('index is less than six so it should be inline');
       const postContainer = createPostElement(post);
       div.appendChild(postContainer);
@@ -182,7 +182,7 @@ console.log('index is less than six so it should be inline');
 
     container.appendChild(div);
 
-    observer.observe(div);
+//    observer.observe(div);
   });
 };
 

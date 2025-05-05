@@ -24,19 +24,20 @@ body, html {
     background-color: #000;
 }
 
-#main {
-    z-index: -1;
-}
 
 #full-screen-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
     z-index: 10;
     background-color: transparent;
+    pointer-events: none;
 }
 
 .container {
     height: 100vh;
     width: 100vw;
-    scroll-snap-type: y mandatory;
+    scroll-snap-type: y mandatory; 
     overflow-y: scroll;
     position: relative;
     background-color: pink;
@@ -47,14 +48,11 @@ body, html {
     top: 0;
     height: 100%;
     width: 100%;
+    position: relative;
     overflow-y: scroll;
-    position: fixed;
-    background-color: purple;
+    background-color: orange;
     -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
-    overscroll-behavior: auto;
-    touch-action: pan-y;
-    z-index: -1;
+    z-index: 1;
 }
 
 .discover-bases-container {

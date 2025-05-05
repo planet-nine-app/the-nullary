@@ -24,6 +24,7 @@ findPlanetNine.addSelections = (_teleport, _pref) => {
 
 findPlanetNine.attach = (container, startingRect) => {
   planetNine.svg = getPlanetNineLogo(teleport, pref);
+//  planetNine.svg.style.pointerEvents = 'auto';
   planetNine.rect = startingRect;
 
   container.appendChild(planetNine.svg);

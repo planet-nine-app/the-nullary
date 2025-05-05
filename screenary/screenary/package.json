@@ -8,10 +8,10 @@
     "build-ios": "npm run tauri ios build -- --export-method app-store-connect"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2.5.0"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.2.0",
+    "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-fs": "^2.2.0",
     "@tauri-apps/plugin-nfc": "^2.2.0"
   }

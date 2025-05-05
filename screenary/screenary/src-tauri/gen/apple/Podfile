@@ -1,7 +1,7 @@
 # Uncomment the next line to define a global platform for your project
 
 target 'screenary_iOS' do
-platform :ios, '13.0'
+platform :ios, '18.0'
   # Pods for screenary_iOS
 end
 
