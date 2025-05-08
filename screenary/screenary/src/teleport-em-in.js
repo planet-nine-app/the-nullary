@@ -15,23 +15,26 @@ const addressFormJSON = {
 const mockProducts = [
   {
     uuid: '1',
+    title: 'I Go To Eleven Toddler Tee',
     images: ['./assets/igotoeleven.png'],
-    price: 500
+    price: 1999
   },
   {
     uuid: '2',
+    title: 'A Brief History of Time',
     images: ['./assets/ABHoT_front_cover.png'],
-    price: 600
+    price: 400
   },
   {
     uuid: '3',
+    title: 'MAGICal Research and Development',
     images: ['./assets/wizach.png'],
-    price: 700
+    price: 1000
   }
 ];
 
 function constructTeleported(product) {
-  const svg = `<image x="0" y="0" width="100%" href=${product.images[0]}></image>`;
+  const svg = `<image x="25%" y="25%" width="50%" height="50%" href=${product.images[0]}></image>`;
 
   return svg;
 };
@@ -50,7 +53,7 @@ function createProductElement(product, onClick) {
   productContainer.classList.add('post-container');
 
   const teleported = constructTeleported(product);
-  const teleportal = getTeleportal(teleported, onClick);
+  const teleportal = getTeleportal(product, teleported, onClick);
 
   productContainer.appendChild(teleportal);
   
@@ -85,7 +88,7 @@ console.log('fromToAnimations', fromToAnimations);
           const addressForm = getForm(addressFormJSON, (formValues) => {
 console.log('onSubmit called with,', formValues);
              window.updateConfirmPayment(product.uuid, formValues);
-             window.getPaymentIntentWithoutSplits(500, 'USD')
+             window.getPaymentIntentWithoutSplits(product.price, 'USD')
               .then((intent) => {
 console.log('should have intent', intent);
                 document.getElementById("payment-form").setAttribute("style", "display: visible;");
@@ -106,6 +109,7 @@ console.log('should have intent', intent);
             $.beginElement();
           });
 
+          container.innerHTML = '';
           container.appendChild(addressForm);
 
           fromToAnimations.forEach($ => {

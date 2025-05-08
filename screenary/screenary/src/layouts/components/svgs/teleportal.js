@@ -1,6 +1,9 @@
 import animations from '../animations.js';
 
-function getTeleportal(teleported, onClick) {
+function getTeleportal(product, teleported, onClick) {
+
+  const formattedPrice = `$${(product.price / 100).toFixed(2)}`;
+
   const svg = `
     <!-- Definitions for gradients and filters -->
     <defs>
@@ -36,6 +39,9 @@ function getTeleportal(teleported, onClick) {
     
     <!-- Background -->
     <rect width="400" height="400" fill="#121212" />
+
+    <text x="50%" y="32" width="400" height="24" fill="#eeeeee" text-anchor="middle">${product.title}</text>
+    <text x="50%" y="56" width="400" height="24" fill="#eeeeee" text-anchor="middle">${formattedPrice}</text>
     
     <!-- Portal outer glow -->
     <circle cx="200" cy="200" r="150" fill="url(#portalGradient)" filter="url(#glow)" opacity="0.7" />
