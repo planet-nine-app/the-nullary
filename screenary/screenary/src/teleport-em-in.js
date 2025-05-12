@@ -91,6 +91,7 @@ console.log('onSubmit called with,', formValues);
              window.getPaymentIntentWithoutSplits(product.price, 'USD')
               .then((intent) => {
 console.log('should have intent', intent);
+                document.getElementById("payment-div").classList.add('feed-container');
                 document.getElementById("payment-form").setAttribute("style", "display: visible;");
               })
               .catch(console.warn);

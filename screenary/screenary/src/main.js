@@ -51,6 +51,7 @@ baseCommand.getBases()
   })
   .catch(console.warn);
 
+let query = {};
 
 if(window.location.search) {
 console.log('got a location.search');

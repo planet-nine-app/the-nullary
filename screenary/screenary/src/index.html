@@ -12,14 +12,16 @@
   </head>
 
   <body>
-    <form id="payment-form" class="payment-form" style="display: none;">
-        <div id="payment-element">
-            <!-- Stripe Elements will be inserted here -->
-        </div>
-        <button id="submit-button">Pay now</button>
-        <div id="error-message" class="error-message" style="display: none;"></div>
-        <div id="loading" class="loading">Processing payment...</div>
-    </form>
+    <div id="payment-div">
+      <form id="payment-form" class="payment-form" style="display: none;">
+	  <div id="payment-element">
+	      <!-- Stripe Elements will be inserted here -->
+	  </div>
+	  <button id="submit-button">Pay now</button>
+	  <div id="error-message" class="error-message" style="display: none;"></div>
+	  <div id="loading" class="loading">Processing payment...</div>
+      </form>
+    </div>
     <main id="m">
       <div id="app" style="position: fixed; width: 100vw; height: 100vh; display: flex;">
       <div id="main"></div>
