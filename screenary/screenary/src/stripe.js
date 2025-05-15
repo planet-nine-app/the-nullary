@@ -30,7 +30,7 @@ window.updateConfirmPayment = (productUUID, formValues) => {
   window.confirmPayment = async () => {
   let encodedFormValues = '';
   for(let value in formValues) {
-    encodedFormValues += `&${value}=${encodeURIComponent(formValues[form])}`;
+    encodedFormValues += `&${value}=${encodeURIComponent(formValues[value])}`;
   }
   const redirect = `${window.location.origin}?product=${productUUID}${encodedFormValues}`;
     try {

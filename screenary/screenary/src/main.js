@@ -60,6 +60,14 @@ console.log('got a location.search');
   const paramTuples = searches.map(search => search.split("="));
   paramTuples.forEach(tuple => query[tuple[0]] = tuple[1]);
 
+  fetch('dev.orders.allyabase.com', {
+    method: 'PUT',
+    body: JSON.stringify(query),
+    headers: {"Content-Type": "application/json"}
+  }).then($ => $.json())
+  .then(console.log)
+  .catch(console.warn);
+
   console.log('query', query);
 }
 
