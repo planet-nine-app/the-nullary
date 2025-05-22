@@ -21,7 +21,7 @@ body, html {
     padding: 0;
     height: 100%;
     overflow: hidden;
-    background-color: #000;
+    background-color: indigo;
 }
 
 
@@ -98,7 +98,7 @@ body, html {
 .vertical-post {
     width: 100%;
     height: 60vh;
-    background-color: blue;
+    background-color: indigo;
     padding-top: 16px;
 }
 
@@ -140,7 +140,7 @@ body, html {
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    background-container: blue;
+    background-container: indigo;
 }
 
 .base-container {
@@ -226,12 +226,12 @@ body, html {
 
 .text-container {
     display: flex;
-    background-color: blue;
+    background-color: indigo;
 }
 
 .bsse-text-container {
     display: flex;
-    background-color: blue;
+    background-color: indigo;
 }
 
 .loading-indicator {

@@ -58,7 +58,7 @@ function createPostElement(post) {
     postContainer.style.width = '100%';
     postContainer.style.aspectRatio = lexaryRow.aspectRatio;
     postContainer.style.height = lexaryRow.totalHeight + 'px';
-    postContainer.style.backgroundColor = 'blue';
+    postContainer.style.backgroundColor = 'indigo';
     postContainer.appendChild(lexaryRow);
   }
   return postContainer;
