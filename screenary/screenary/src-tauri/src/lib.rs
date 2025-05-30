@@ -1,4 +1,4 @@
-use addie_rs::structs::PaymentIntent;
+use addie_rs::structs::{PaymentIntent, Payee};
 use addie_rs::Addie;
 use bdo_rs::structs::BDOUser;
 use bdo_rs::{Bases, Spellbook, BDO};
@@ -6,6 +6,8 @@ use dolores_rs::structs::Feed;
 use dolores_rs::{Dolores, DoloresUser};
 use fount_rs::structs::Gateway;
 use fount_rs::{Fount, FountUser};
+use sanora_rs::structs::{Order, SanoraUser};
+use sanora_rs::{Orders, Sanora};
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
@@ -92,6 +94,46 @@ async fn get_bases(uuid: &str, bdo_url: &str) -> Result<Value, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
+async fn get_payment_intent_with_splits(
+    amount: u32,
+    currency: &str,
+    payees: Vec<Payee>
+) -> Result<PaymentIntent, String> {
+    let s = get_sessionless().await;
+    let stripe = "stripe";
+
+    match s {
+        Ok(sessionless) => {
+            let addie = Addie::new(
+                Some("https://livetest.addie.allyabase.com/".to_string()),
+                Some(sessionless),
+            );
+            let addie_user = match addie.create_user().await {
+                Ok(user) => user,
+                Err(_) => {
+                    dbg!("The problem is getting the user");
+                    return Ok(PaymentIntent::new());
+                }
+            };
+
+            match addie
+                .get_payment_intent(&addie_user.uuid, &stripe, &amount, &currency, &payees)
+                .await
+            {
+                Ok(intent) => Ok(intent),
+                Err(err) => {
+                    dbg!("the intent failed for some reason {}", err);
+                    return Ok(PaymentIntent::new());
+                }
+            }
+        }
+        Err(_) => Ok(PaymentIntent::new()),
+    }
+}
+
+
+
+#[tauri::command(rename_all = "snake_case")]
 async fn get_payment_intent_without_splits(
     amount: u32,
     currency: &str,
@@ -102,7 +144,7 @@ async fn get_payment_intent_without_splits(
     match s {
         Ok(sessionless) => {
             let addie = Addie::new(
-                Some("https://dev.addie.allyabase.com/".to_string()),
+                Some("https://livetest.addie.allyabase.com/".to_string()),
                 Some(sessionless),
             );
             let addie_user = match addie.create_user().await {
@@ -165,6 +207,63 @@ async fn get_feed(uuid: &str, dolores_url: &str, tags: &str) -> Result<Feed, Str
     }
 }
 
+#[tauri::command]
+async fn create_sanora_user(sanora_url: &str) -> Result<SanoraUser, String> {
+    let s = get_sessionless().await;
+    match s {
+        Ok(sessionless) => {
+            let sanora = Sanora::new(Some(sanora_url.to_string()), Some(sessionless));
+            let _user = sanora.create_user().await;
+            dbg!(&_user);
+            return match _user {
+                Ok(user) => Ok(user),
+                Err(_) => Err("no user".to_string()),
+            };
+        }
+        Err(_) => Err("no user".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn get_orders_for_product_id(uuid: &str, sanora_url: &str, product_id: &str) -> Result<Orders, String> {
+    let s = get_sessionless().await;
+    match s {
+        Ok(sessionless) => {
+            let sanora = Sanora::new(Some(sanora_url.to_string()), Some(sessionless));
+            let orders_result = sanora.get_orders_for_product_id(&uuid, &product_id).await;
+        
+            match orders_result {
+                Ok(orders) => Ok(orders),
+                Err(e) => {
+                    dbg!(e);
+                    Err("failed to get orders".to_string())
+                }
+            }
+        }
+        Err(_) => Err("no sanora".to_string()),
+    }
+}
+
+#[tauri::command]
+async fn add_order(uuid: &str, sanora_url: &str, order: Order) -> Result<SanoraUser, String> {
+    let s = get_sessionless().await;
+    match s {
+        Ok(sessionless) => {
+            let sanora = Sanora::new(Some(sanora_url.to_string()), Some(sessionless));
+            let order_result = sanora.add_order(&uuid, &order).await;
+
+            match order_result {
+                Ok(user) => Ok(user),
+                Err(e) => {
+                    dbg!(e);
+                    Err("failed to add order".to_string())
+                }
+            }
+        }
+        Err(_) => Err("no sanora".to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[allow(unused_mut)]
@@ -184,7 +283,10 @@ pub fn run() {
             get_bases,
             create_dolores_user,
             get_feed,
-            get_payment_intent_without_splits
+            get_payment_intent_with_splits,
+            get_payment_intent_without_splits,
+            add_order,
+            get_orders_for_product_id
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

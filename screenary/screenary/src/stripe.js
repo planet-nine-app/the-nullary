@@ -20,6 +20,23 @@ console.warn(err);
   }
 };
 
+window.getPaymentIntentWithSplits = async (amount, currency, payees) => {
+  try {
+    response = await invoke("get_payment_intent_with_splits", {amount, currency, payees});
+console.log('response is', response);
+    
+    stripe = Stripe(response.publishableKey);
+    elements = stripe.elements({
+      clientSecret: response.paymentIntent
+    });
+
+    const paymentElement = elements.create('payment');
+    paymentElement.mount('#payment-element');
+  } catch(err) {
+console.warn(err);
+  }
+};
+
 const form = document.getElementById('payment-form');
 const submitButton = document.getElementById('submit-button');
 const errorMessage = document.getElementById('error-message');

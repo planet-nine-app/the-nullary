@@ -17,19 +17,24 @@ const mockProducts = [
     uuid: '1',
     title: 'I Go To Eleven Toddler Tee',
     images: ['./assets/igotoeleven.png'],
-    price: 1999
+    price: 1800,
+    payees: [{
+      pubKey: '03ac11a86a21bb4e9cf8fdbfbaeb2138030dbc4b47d821985bd3717827b1c3fc8d',
+      amount: 150}]
   },
   {
     uuid: '2',
     title: 'A Brief History of Time',
     images: ['./assets/ABHoT_front_cover.png'],
-    price: 400
+    price: 400,
+    payees: []
   },
   {
     uuid: '3',
     title: 'MAGICal Research and Development',
     images: ['./assets/wizach.png'],
-    price: 1000
+    price: 1000,
+    payees: []
   }
 ];
 
@@ -88,7 +93,7 @@ console.log('fromToAnimations', fromToAnimations);
           const addressForm = getForm(addressFormJSON, (formValues) => {
 console.log('onSubmit called with,', formValues);
              window.updateConfirmPayment(product.uuid, formValues);
-             window.getPaymentIntentWithoutSplits(product.price, 'USD')
+             window.getPaymentIntentWithSplits(product.price, 'USD', product.payees)
               .then((intent) => {
 console.log('should have intent', intent);
                 document.getElementById("payment-div").classList.add('feed-container');
