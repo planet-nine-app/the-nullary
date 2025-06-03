@@ -52,6 +52,7 @@ function createProductElement(product, onClick) {
   div.classList.add('post-cell');
   div.style.width = '100%';
   div.classList.add('vertical-post');
+  div.style.backgroundColor = 'transparent';
 
 //  const productContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const productContainer = document.createElement('div');

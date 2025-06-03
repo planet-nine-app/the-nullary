@@ -1,5 +1,5 @@
 function getBackgroundAndGradients() {
-  const svg = `<rect width="500" height="600" fill="#0f0f12"/>
+  const svg = `<rect width="500" height="600" fill="transparent"/>
   
   <!-- Form Container with Metallic Background -->
   <linearGradient id="metallicBackground" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -7,7 +7,7 @@ function getBackgroundAndGradients() {
     <stop offset="50%" stop-color="#323236"/>
     <stop offset="100%" stop-color="#2a2a2e"/>
   </linearGradient>
-  <rect x="50" y="50" width="400" height="500" rx="15" fill="url(#metallicBackground)" 
+  <rect x="50" y="50" width="400" height="600" rx="15" fill="url(#metallicBackground)" 
 	stroke="#444" stroke-width="1"/>
   
   <!-- Subtle Metallic Highlight -->
@@ -46,8 +46,8 @@ function getInput(x, y, text, inputType) {
       <rect id="${borderId}" x="${x}" y="${y}" width="340" height="40" rx="8" fill="#1c1c20" 
             stroke="#444" stroke-width="2" class="input-field"/>
       <!-- Inset shadow effect -->
-      <rect x="${x + 2}" y="${y + 12}" width="336" height="36" rx="6" fill="none" 
-            stroke="#000" stroke-width="1" opacity="0.3"/>
+      <rect x="${x + 2}" y="${y + 8}" width="338" height="36" rx="6" fill="none" 
+            stroke="#000" stroke-width="0" opacity="0.3"/>
       <!-- HTML Input Field -->
       <foreignObject x="${x}" y="${y + 10}" width="340" height="40">
         <input xmlns="http://www.w3.org/1999/xhtml" id="${inputId}" type="text" placeholder="${name}" class="svg-input" data-field="name" spellcheck="false" style="width:90%; height: 95%; background-color: transparent; color: white;"/>
@@ -56,22 +56,23 @@ function getInput(x, y, text, inputType) {
   return svg;
 };
 
-function getSubmitButton() {
-  return `<rect id="submitButton" x="100" y="490" width="300" height="45" rx="22.5" fill="url(#buttonGradient)">
+function getSubmitButton(x, y) {
+  return `<rect id="submitButton" x="${x}" y="${y}" width="300" height="45" rx="22.5" fill="url(#buttonGradient)">
     </rect>
-    <text x="300" y="513" font-family="Arial, sans-serif" font-size="16" font-weight: "bold" fill="white" text-anchor="middle" dominant-baseline="middle">SUBMIT</text>
+    <text x="${x + (300 / 2)}" y="${y + 23}" font-family="Arial, sans-serif" font-size="16" font-weight: "bold" fill="white" text-anchor="middle" dominant-baseline="middle">SUBMIT</text>
 `;
 };
 
 function getForm(formJSON, onSubmit) {
-  const inputs = Object.keys(formJSON).map(($, index) => $ === "form" ? '' : getInput(80, 70 * index + 130, $, formJSON[$]));
+  const keys = Object.keys(formJSON);
+  const inputs = keys.map(($, index) => $ === "form" ? '' : getInput(80, 70 * index + 130, $, formJSON[$]));
   
-  const svg = getBackgroundAndGradients() + inputs.join('') + getSubmitButton();
+  const svg = getBackgroundAndGradients() + inputs.join('') + getSubmitButton(100, 70 * (keys.length) + 130);
 
   const container = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 
   const newElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  newElement.setAttribute('viewBox', '0 0 500 600');
+  newElement.setAttribute('viewBox', `0 0 500 600`);
   newElement.innerHTML = svg;
 
   container.appendChild(newElement);
