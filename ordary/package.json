@@ -1,0 +1,16 @@
+{
+  "name": "ordary",
+  "version": "1.0.0",
+  "description": "For showing orders from sanora",
+  "license": "MIT",
+  "author": "planetnineisaspaceship",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "sessionless-node": "^0.11.0"
+  }
+}
