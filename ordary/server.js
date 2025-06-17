@@ -11,6 +11,7 @@ const keys = {
 const baseURL = 'https://livetest.sanora.allyabase.com/';
 
 const app = express();
+app.use(express.json());
 
 app.get('/ordary', async (req, res) => {
   res.sendFile(path.join(process.cwd(), 'ordary.html'));
