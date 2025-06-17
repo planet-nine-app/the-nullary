@@ -316,18 +316,21 @@ console.log(orders);
             }).join('');
         }
 
-        function shipOrder(orderId) {
-            const order = orders.find(o => o.id === orderId);
-            if (!order) return;
+        async function shipOrder(orderId) {
+console.log('ship order logged');
+            let order = orders.find(o => o.orderId === orderId);
+            if (!order) order = orders[0];
             
             // Update order status
             order.status = 'shipped';
-            
-            // Update inventory (increment sold count)
-            if (inventory[order.size]) {
-                inventory[order.size].sold += 1;
-            }
-            
+
+            await fetch('/shipit', {
+              method: 'post',
+              body: JSON.stringify({order}),
+              headers: {"Content-Type": "application/json"}
+            });
+console.log('shipit called');
+           
             // Re-render both sections
             renderOrders();
             renderInventory();

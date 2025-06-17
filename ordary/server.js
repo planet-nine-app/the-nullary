@@ -36,4 +36,29 @@ console.log(json.orders.forEach(console.log));
   res.send(json.orders);
 });
 
+app.post('/shipit', async (req, res) => {
+  const timestamp = new Date().getTime() + '';
+  const uuid = '0592e019-5eb1-46d8-aa94-0c7fefd20ef9';
+  const message = timestamp + uuid;
+  const signature = await sessionless.sign(message);
+
+console.log('shipit called');
+
+  const payload = {
+    order: req.body.order,
+    timestamp,
+    signature
+  };
+
+  const resp = await fetch(`https://livetest.sanora.allyabase.com/user/${uuid}/orders`, {
+    method: 'put',
+    body: JSON.stringify(payload),
+    headers: {"Content-Type": "application/json"}
+  });
+const json = await resp.json();
+console.log('response from update order', json);
+
+  res.send({success: true});
+});
+
 app.listen(1234);
