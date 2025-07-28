@@ -23,3 +23,5 @@ Cargo.lock
 *.mp4
 
 keystore.properties
+
+node_modules
