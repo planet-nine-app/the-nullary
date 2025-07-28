@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expandable SVG Grid</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 2vh 2vw;
+            gap: 2vh;
+        }
+
+        .main-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .bottom-area {
+            height: 0;
+            display: flex;
+            gap: 2vw;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .container.expanded .main-area {
+            flex: 3; /* 75% height */
+        }
+
+        .container.expanded .bottom-area {
+            height: 25vh;
+            flex: 1;
+        }
+
+        .svg-container {
+            position: relative;
+            background: #2a2a2a;
+            border-radius: 12px;
+            border: 2px solid #444;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        /* Grid state - all 4 equal */
+        .grid-state .svg-container {
+            width: calc(50% - 1vw);
+            height: calc(50% - 1vh);
+        }
+
+        .grid-state .main-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2vw 2vh;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Expanded state */
+        .expanded .main-area .svg-container.active {
+            width: 100%;
+            height: 100%;
+        }
+
+        .expanded .main-area .svg-container:not(.active) {
+            display: none;
+        }
+
+        .expanded .bottom-area .svg-container {
+            flex: 1;
+            height: 100%;
+        }
+
+        .svg-container:hover {
+            border-color: #666;
+            transform: scale(1.02);
+        }
+
+        .svg-container.active {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            border-radius: 10px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+            transform: scale(0.25);
+            transform-origin: top left;
+            overflow: hidden;
+        }
+
+        /* Scale iframe content differently when expanded */
+        .expanded .main-area .active iframe {
+            transform: scale(0.75);
+        }
+
+        .label {
+            display: none; /* Removed labels */
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1vh 1vw;
+                gap: 1vh;
+            }
+
+            .grid-state .main-area {
+                gap: 1vw 1vh;
+            }
+
+            .bottom-area {
+                gap: 1vw;
+            }
+
+            .grid-state .svg-container {
+                width: calc(50% - 0.5vw);
+                height: calc(50% - 0.5vh);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container grid-state" id="container">
+        <div class="main-area" id="mainArea">
+            <div class="svg-container" data-id="1">
+                <svg viewBox="0 0 400 300">
+                    <rect width="100%" height="100%" fill="#2a2a2a" rx="8"/>
+                    <foreignObject x="0" y="0" width="1600" height="1200">
+                        <iframe id="iframe1" 
+                                title="Frame 1" 
+                                allowfullscreen></iframe>
+                    </foreignObject>
+                </svg>
+            </div>
+
+            <div class="svg-container" data-id="2">
+                <svg viewBox="0 0 400 300">
+                    <rect width="100%" height="100%" fill="#2a2a2a" rx="8"/>
+                    <foreignObject x="0" y="0" width="1600" height="1200">
+                        <iframe id="iframe2" 
+                                title="Frame 2" 
+                                allowfullscreen></iframe>
+                    </foreignObject>
+                </svg>
+            </div>
+
+            <div class="svg-container" data-id="3">
+                <svg viewBox="0 0 400 300">
+                    <rect width="100%" height="100%" fill="#2a2a2a" rx="8"/>
+                    <foreignObject x="0" y="0" width="1600" height="1200">
+                        <iframe id="iframe3" 
+                                title="Frame 3" 
+                                allowfullscreen></iframe>
+                    </foreignObject>
+                </svg>
+            </div>
+
+            <div class="svg-container" data-id="4">
+                <svg viewBox="0 0 400 300">
+                    <rect width="100%" height="100%" fill="#2a2a2a" rx="8"/>
+                    <foreignObject x="0" y="0" width="1600" height="1200">
+                        <iframe id="iframe4" 
+                                title="Frame 4" 
+                                allowfullscreen></iframe>
+                    </foreignObject>
+                </svg>
+            </div>
+        </div>
+
+        <div class="bottom-area" id="bottomArea">
+            <!-- Other SVGs will be moved here when one is expanded -->
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const mainArea = document.getElementById('mainArea');
+        const bottomArea = document.getElementById('bottomArea');
+        let currentActive = null;
+
+        // Parse query string parameters
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            const urls = [];
+            
+            // Check for url1, url2, url3, url4 parameters
+            for (let i = 1; i <= 4; i++) {
+                const url = params.get(`url${i}`) || 'http://wiki.planetnineisaspaceship.com';
+                urls.push(url);
+            }
+            
+            return urls;
+        }
+
+        // Initialize iframe sources
+        function initializeIframes() {
+            const urls = getQueryParams();
+            
+            for (let i = 1; i <= 4; i++) {
+                const iframe = document.getElementById(`iframe${i}`);
+                iframe.src = urls[i - 1];
+            }
+        }
+
+        function expandSVG(clickedContainer) {
+            const allContainers = document.querySelectorAll('.svg-container');
+            
+            // If clicking the same active one, collapse back to grid
+            if (currentActive === clickedContainer) {
+                collapseToGrid();
+                return;
+            }
+
+            // Set new active
+            currentActive = clickedContainer;
+            
+            // Add expanded state to container
+            container.classList.remove('grid-state');
+            container.classList.add('expanded');
+            
+            // Mark the clicked one as active
+            allContainers.forEach(c => c.classList.remove('active'));
+            clickedContainer.classList.add('active');
+            
+            // Move other containers to bottom area
+            allContainers.forEach(c => {
+                if (c !== clickedContainer) {
+                    bottomArea.appendChild(c);
+                }
+            });
+        }
+
+        function collapseToGrid() {
+            const allContainers = document.querySelectorAll('.svg-container');
+            
+            // Remove expanded state
+            container.classList.remove('expanded');
+            container.classList.add('grid-state');
+            
+            // Clear active states
+            allContainers.forEach(c => c.classList.remove('active'));
+            
+            // Move all containers back to main area
+            allContainers.forEach(c => {
+                mainArea.appendChild(c);
+            });
+            
+            currentActive = null;
+        }
+
+        // Add click handlers
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize iframe sources from query string
+            initializeIframes();
+            
+            const svgContainers = document.querySelectorAll('.svg-container');
+            
+            svgContainers.forEach(container => {
+                container.addEventListener('click', (e) => {
+                    // Prevent clicks on iframe from bubbling up
+                    if (e.target.tagName === 'IFRAME') return;
+                    
+                    expandSVG(container);
+                });
+            });
+
+            // Double-tap to collapse on mobile
+            let lastTap = 0;
+            container.addEventListener('touchend', (e) => {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                
+                if (tapLength < 500 && tapLength > 0) {
+                    if (container.classList.contains('expanded')) {
+                        collapseToGrid();
+                    }
+                }
+                lastTap = currentTime;
+            });
+        });
+
+        // Handle escape key to collapse
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && container.classList.contains('expanded')) {
+                collapseToGrid();
+            }
+        });
+    </script>
+</body>
+</html>

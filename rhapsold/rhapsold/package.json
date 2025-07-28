@@ -1,0 +1,45 @@
+{
+  "name": "rhapsold",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A minimalist blogging platform built on The Nullary ecosystem",
+  "author": "Planet Nine",
+  "license": "MIT",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "npm run tauri:dev",
+    "build": "npm run tauri:build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js",
+    "format": "prettier --write src/**/*.{js,html,css}"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^1.5.0",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
+    "vite": "^4.4.0"
+  },
+  "keywords": [
+    "blogging",
+    "writing",
+    "tauri",
+    "svg",
+    "allyabase",
+    "nullary",
+    "planet-nine"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/planet-nine-app/planet-nine",
+    "directory": "the-nullary/rhapsold/rhapsold"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

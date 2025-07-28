@@ -1,0 +1,10 @@
+
+> rhapsold@0.1.0 tauri
+> tauri dev
+
+     Running DevCommand (`cargo  run --no-default-features --color always --`)
+        Info Watching /Users/zachbabb/Work/planet-nine/the-nullary/rhapsold/rhapsold/src-tauri for changes...
+[1m[32m   Compiling[0m rhapsold v0.1.0 (/Users/zachbabb/Work/planet-nine/the-nullary/rhapsold/rhapsold/src-tauri)
+[1m[36m    Building[0m [=======================> ] 369/371: rhapsold(build)             [1m[36m    Building[0m [=======================> ] 370/371: rhapsold(bin)               [K[1m[32m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 1.28s
+[1m[32m     Running[0m `target/debug/rhapsold`
+🎭 Rhapsold is starting up...

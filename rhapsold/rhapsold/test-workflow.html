@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhapsold - Form to Post Workflow Test</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .test-section {
+            margin: 40px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        #test-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎭 Rhapsold - Form to Post Workflow Test</h1>
+    
+    <div class="test-section">
+        <h2 class="test-header">Component Loading Test</h2>
+        <p>Testing if all SVG components load correctly...</p>
+        <button onclick="testComponentLoading()">Test Component Loading</button>
+        <div id="component-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-header">Form Creation Test</h2>
+        <p>Testing SVG form creation with foreignObject inputs...</p>
+        <button onclick="testFormCreation()">Create Test Form</button>
+        <div id="form-container"></div>
+        <div id="form-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-header">Form to Post Conversion Test</h2>
+        <p>Testing the complete workflow from form input to post creation...</p>
+        <button onclick="testFormToPost()">Test Conversion</button>
+        <div id="conversion-status"></div>
+        <div id="generated-post"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2 class="test-header">Mock Save Test</h2>
+        <p>Testing post saving (mock allyabase client)...</p>
+        <button onclick="testMockSave()">Test Mock Save</button>
+        <div id="save-status"></div>
+    </div>
+    
+    <div id="test-results">
+        <h3>Test Results</h3>
+        <div id="results-content">No tests run yet.</div>
+    </div>
+
+    <script type="module">
+        // Import the SVG components
+        import { createTextComponent, createMultilineTextComponent } from './src/shared/components/text.js';
+        import { createTextInputForm, createBlogPostForm } from './src/shared/components/forms.js';
+        import { createPostFromForm, POST_TYPES } from './src/shared/utils/post-creator.js';
+        
+        // Make available globally for testing
+        window.testComponents = {
+            createTextComponent,
+            createMultilineTextComponent,
+            createTextInputForm,
+            createBlogPostForm,
+            createPostFromForm,
+            POST_TYPES
+        };
+        
+        // Test results tracker
+        const testResults = [];
+        
+        function addResult(test, status, message) {
+            testResults.push({ test, status, message, timestamp: new Date() });
+            updateResultsDisplay();
+        }
+        
+        function updateResultsDisplay() {
+            const resultsContent = document.getElementById('results-content');
+            resultsContent.innerHTML = testResults.map(result => `
+                <div class="status ${result.status}">
+                    <strong>${result.test}</strong>: ${result.message}
+                    <small style="display: block; margin-top: 5px; opacity: 0.7;">
+                        ${result.timestamp.toLocaleTimeString()}
+                    </small>
+                </div>
+            `).join('');
+        }
+        
+        // Test component loading
+        window.testComponentLoading = function() {
+            const statusDiv = document.getElementById('component-status');
+            
+            try {
+                // Test if components are available
+                if (!window.testComponents.createTextComponent) {
+                    throw new Error('Text component not loaded');
+                }
+                if (!window.testComponents.createBlogPostForm) {
+                    throw new Error('Form component not loaded');
+                }
+                if (!window.testComponents.createPostFromForm) {
+                    throw new Error('Post creator not loaded');
+                }
+                
+                statusDiv.innerHTML = '<div class="status success">✅ All components loaded successfully!</div>';
+                addResult('Component Loading', 'success', 'All SVG components loaded correctly');
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                addResult('Component Loading', 'error', error.message);
+            }
+        };
+        
+        // Test form creation
+        window.testFormCreation = function() {
+            const formContainer = document.getElementById('form-container');
+            const statusDiv = document.getElementById('form-status');
+            
+            try {
+                // Clear previous content
+                formContainer.innerHTML = '';
+                
+                // Create a simple text input form
+                const textForm = window.testComponents.createTextInputForm({
+                    label: 'Test Text Input',
+                    placeholder: 'Enter some test text...',
+                    width: 400,
+                    colors: {
+                        primary: '#3498db',
+                        text: '#2c3e50',
+                        border: '#ecf0f1'
+                    }
+                });
+                
+                formContainer.appendChild(textForm.element);
+                
+                // Store form instance for later tests
+                window.testFormInstance = textForm;
+                
+                statusDiv.innerHTML = '<div class="status success">✅ Form created successfully!</div>';
+                addResult('Form Creation', 'success', 'SVG form with foreignObject input created');
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                addResult('Form Creation', 'error', error.message);
+            }
+        };
+        
+        // Test form to post conversion
+        window.testFormToPost = function() {
+            const statusDiv = document.getElementById('conversion-status');
+            const postContainer = document.getElementById('generated-post');
+            
+            try {
+                if (!window.testFormInstance) {
+                    throw new Error('No form instance available. Run form creation test first.');
+                }
+                
+                // Set some test data
+                window.testFormInstance.setValue('This is a test post created from the SVG form!');
+                
+                // Get form data
+                const formData = window.testFormInstance.getData();
+                
+                // Create post from form data
+                const post = window.testComponents.createPostFromForm(
+                    formData, 
+                    window.testComponents.POST_TYPES.TEXT,
+                    {
+                        colors: { text: '#2c3e50' },
+                        typography: { fontSize: 16, fontFamily: 'Georgia, serif' }
+                    }
+                );
+                
+                if (post.success) {
+                    // Clear and add the generated post
+                    postContainer.innerHTML = '';
+                    postContainer.appendChild(post.element);
+                    
+                    statusDiv.innerHTML = '<div class="status success">✅ Post created from form data!</div>';
+                    addResult('Form to Post Conversion', 'success', 'Successfully converted form data to SVG post');
+                    
+                    // Store post for save test
+                    window.testPostInstance = post;
+                } else {
+                    throw new Error(post.error);
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                addResult('Form to Post Conversion', 'error', error.message);
+            }
+        };
+        
+        // Test mock save
+        window.testMockSave = function() {
+            const statusDiv = document.getElementById('save-status');
+            
+            try {
+                if (!window.testPostInstance) {
+                    throw new Error('No post instance available. Run conversion test first.');
+                }
+                
+                // Create mock allyabase client
+                const mockClient = {
+                    saveBDO: async (data) => {
+                        return new Promise((resolve) => {
+                            setTimeout(() => {
+                                resolve({
+                                    success: true,
+                                    id: 'test-post-' + Date.now(),
+                                    timestamp: new Date().toISOString()
+                                });
+                            }, 500);
+                        });
+                    }
+                };
+                
+                // Test save
+                statusDiv.innerHTML = '<div class="status info">💾 Saving post...</div>';
+                
+                // Simulate save process
+                const postData = {
+                    type: window.testPostInstance.type,
+                    data: window.testPostInstance.data,
+                    config: window.testPostInstance.config,
+                    timestamp: window.testPostInstance.timestamp
+                };
+                
+                mockClient.saveBDO(postData).then(result => {
+                    statusDiv.innerHTML = `<div class="status success">✅ Post saved! ID: ${result.id}</div>`;
+                    addResult('Mock Save', 'success', `Post saved with ID: ${result.id}`);
+                }).catch(error => {
+                    statusDiv.innerHTML = `<div class="status error">❌ Save failed: ${error.message}</div>`;
+                    addResult('Mock Save', 'error', error.message);
+                });
+                
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+                addResult('Mock Save', 'error', error.message);
+            }
+        };
+        
+        console.log('🎭 Rhapsold workflow test loaded!');
+        console.log('Available test functions:', {
+            testComponentLoading: window.testComponentLoading,
+            testFormCreation: window.testFormCreation,
+            testFormToPost: window.testFormToPost,
+            testMockSave: window.testMockSave
+        });
+    </script>
+</body>
+</html>
