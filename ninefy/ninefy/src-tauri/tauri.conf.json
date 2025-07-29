@@ -1,15 +1,15 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Rhapsold",
+  "productName": "Ninefy",
   "version": "0.0.1",
-  "identifier": "com.planetnine.rhapsold",
+  "identifier": "com.planetnine.ninefy",
   "build": {
     "frontendDist": "../src"
   },
   "app": {
     "windows": [
       {
-        "title": "Rhapsold",
+        "title": "Ninefy",
         "width": 1200,
         "height": 800,
         "resizable": true,

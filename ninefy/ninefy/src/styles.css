@@ -1,0 +1,259 @@
+/**
+ * Rhapsold - Global Styles
+ * CSS for the overall application layout and non-SVG elements
+ */
+
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.6;
+  color: #2c3e50;
+  background-color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Application container */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Container sections */
+#header-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40px;
+  padding: 20px 0;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+#content-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+#footer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+  border-top: 1px solid #ecf0f1;
+  margin-top: auto;
+}
+
+/* Loading screen */
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  transition: opacity 0.5s ease;
+}
+
+.loading-content {
+  text-align: center;
+  color: white;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-content h1 {
+  font-size: 3rem;
+  font-weight: 300;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+
+.loading-content p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* SVG component base styles */
+.nullary-component {
+  display: block;
+  margin: 0 auto;
+}
+
+/* Specific component classes */
+.app-header {
+  border-bottom: 2px solid #3498db;
+}
+
+.app-subtitle {
+  opacity: 0.8;
+}
+
+.post-title {
+  margin: 20px 0;
+  border-left: 4px solid #3498db;
+  padding-left: 16px !important;
+}
+
+.post-content {
+  margin: 20px 0;
+  background-color: #fafafa;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.app-footer {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.error-message {
+  margin: 40px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  #app {
+    padding: 10px;
+    max-width: 100%;
+  }
+  
+  #header-container,
+  #content-container,
+  #footer-container {
+    margin-bottom: 20px;
+    gap: 20px;
+  }
+  
+  .loading-content h1 {
+    font-size: 2rem;
+  }
+  
+  .loading-content p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #app {
+    padding: 5px;
+  }
+  
+  .loading-content h1 {
+    font-size: 1.5rem;
+  }
+  
+  .loading-content p {
+    font-size: 0.9rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .loading-screen {
+    display: none;
+  }
+  
+  #app {
+    max-width: none;
+    padding: 0;
+  }
+  
+  #header-container,
+  #footer-container {
+    border: none;
+  }
+  
+  .post-content {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+  }
+  
+  #header-container,
+  #footer-container {
+    border-color: #404040;
+  }
+  
+  .post-content {
+    background-color: #2a2a2a;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  body {
+    background-color: #ffffff;
+    color: #000000;
+  }
+  
+  #header-container,
+  #footer-container {
+    border-color: #000000;
+    border-width: 2px;
+  }
+  
+  .post-title {
+    border-left-color: #000000;
+    border-left-width: 6px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .loading-content {
+    animation: none;
+  }
+  
+  .loading-screen {
+    transition: none;
+  }
+  
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Focus styles for accessibility */
+svg:focus,
+.nullary-component:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background-color: #3498db;
+  color: white;
+}

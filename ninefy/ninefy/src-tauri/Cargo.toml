@@ -1,14 +1,14 @@
 [package]
-name = "rhapsold"
+name = "ninefy"
 version = "0.1.0"
-description = "A minimalist blogging platform built on The Nullary ecosystem"
+description = "A minimalist digital goods marketplace built on The Nullary ecosystem"
 authors = ["Planet Nine"]
 license = "MIT"
 repository = "https://github.com/planet-nine-app/planet-nine"
 edition = "2021"
 
 [lib]
-name = "rhapsold"
+name = "ninefy"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -14,29 +14,34 @@ Rhapsold is a minimalist blogging platform built on The Nullary ecosystem, showc
 - **Cross-Platform**: Built with Tauri for desktop deployment across all platforms
 
 ### Technology Stack
-- **Frontend**: SVG components with embedded CSS, vanilla JavaScript
-- **Backend**: Sanora service integration for blog storage and management
+- **Frontend**: SVG components with embedded CSS, vanilla JavaScript (no ES6 modules)
+- **Backend**: Complete allyabase ecosystem integration (Rust + Tauri)
 - **Authentication**: sessionless protocol with secp256k1 cryptographic keys
-- **Desktop**: Tauri framework (Rust + Web) for cross-platform apps
-- **Storage**: Sanora (lightweight product hosting) + local storage for caching
+- **Desktop**: Tauri v2.6.2 framework (Rust + Web) for cross-platform apps
+- **Storage**: Full allyabase integration (Sanora, BDO, Dolores) + local storage for caching
 
 ## Project Structure
 
 ```
 rhapsold/
 ├── src/
-│   ├── main.js                 # Main application entry point
+│   ├── index.html             # Main HTML entry point
+│   ├── main-no-modules.js     # Application entry point (no ES6 modules)
+│   ├── styles.css             # Global styles and theming
 │   ├── components/
-│   │   └── app.js             # App initialization
+│   │   └── app.js             # App initialization (legacy)
 │   ├── config/
-│   │   └── theme.js           # Theme configuration
+│   │   └── theme.js           # Theme configuration (legacy)
 │   ├── services/
-│   │   └── allyabase.js       # Allyabase service integration
-│   └── shared/                # Symlink to /the-nullary/shared/
-├── src-tauri/                 # Tauri configuration and Rust code
-│   ├── Cargo.toml
-│   ├── tauri.conf.json
-│   └── src/main.rs
+│   │   └── allyabase.js       # Allyabase service integration (legacy)
+│   └── shared/                # Local shared components
+├── src-tauri/                 # Tauri configuration and Rust backend
+│   ├── Cargo.toml             # Rust dependencies and allyabase crates
+│   ├── tauri.conf.json        # Tauri v2 configuration
+│   ├── src/
+│   │   ├── main.rs            # Main Rust entry point
+│   │   └── lib.rs             # Allyabase backend integration
+│   └── target/                # Rust build artifacts
 ├── test-workflow.html         # Development testing interface
 └── CLAUDE.md                  # This documentation
 ```
@@ -143,6 +148,132 @@ rhapsold/
 - **Event Forwarding**: Automatic scroll event forwarding between layers
 - **Z-index Management**: Proper layer stacking and visibility control
 
+## Backend Architecture
+
+### Allyabase Integration
+
+Rhapsold includes a complete Rust backend that integrates with the entire allyabase ecosystem, providing production-ready blog management capabilities.
+
+#### Local Crates Dependencies
+```toml
+[dependencies.addie-rs]
+path = "../../../../addie/src/client/rust/addie-rs"     # Payment processing
+
+[dependencies.fount-rs] 
+path = "../../../../fount/src/client/rust/fount-rs"    # MAGIC transactions
+
+[dependencies.bdo-rs]
+path = "../../../../bdo/src/client/rust/bdo-rs"        # Big Dumb Object storage
+
+[dependencies.dolores-rs]
+path = "../../../../dolores/src/client/rust/dolores-rs" # Media storage
+
+[dependencies.sanora-rs]
+path = "../../../../sanora/src/client/rust/sanora-rs"  # Product hosting
+```
+
+#### Backend Services (`src-tauri/src/lib.rs`)
+
+**User Management Functions**:
+- `create_fount_user()` - Create MAGIC transaction user
+- `create_bdo_user()` - Create BDO storage user  
+- `create_dolores_user(dolores_url)` - Create media storage user
+- `create_sanora_user(sanora_url)` - Create blog product hosting user
+
+**Base Server Management**:
+- `get_bases(uuid, bdo_url)` - Retrieve available allyabase servers for connection
+- Supports multiple base configurations and server switching
+
+**Blog Management (Sanora Integration)**:
+- `add_product(uuid, sanora_url, title, description, price)` - Create new blog post as product
+- `get_sanora_user(uuid, sanora_url)` - Get user info including all blog products
+- `get_orders_for_product_id(uuid, sanora_url, product_id)` - Get blog post orders/readers
+- `add_order(uuid, sanora_url, order)` - Process blog post purchases/subscriptions
+
+**Payment Processing (Addie Integration)**:
+- `get_payment_intent_with_splits(amount, currency, payees)` - Multi-party payments
+- `get_payment_intent_without_splits(amount, currency)` - Single payee payments
+- Supports Stripe integration and MAGIC protocol transactions
+
+**Media Management (Dolores Integration)**:
+- `get_feed(uuid, dolores_url, tags)` - Retrieve media feeds with tagging
+- Support for images, videos, and rich media content
+
+**Development Utilities**:
+- `dbg(log)` - Debug logging for development
+- `get_sessionless()` - Sessionless authentication management
+
+#### Authentication System
+
+**Sessionless Protocol**:
+- Uses secp256k1 cryptographic keys (no passwords/emails required)
+- Default development key provided, overrideable via `PRIVATE_KEY` environment variable
+- All API calls authenticated with cryptographic signatures
+- Portable identity across all allyabase services
+
+```rust
+async fn get_sessionless() -> Result<Sessionless, String> {
+    let private_key = env::var("PRIVATE_KEY").unwrap_or_else(|_| {
+        String::from("b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496")
+    });
+    let sessionless = Sessionless::from_private_key(PrivateKey::from_hex(private_key).expect("private key"));
+    Ok(sessionless)
+}
+```
+
+#### Blog Product Workflow
+
+**1. User Creation**:
+```javascript
+// Frontend calls backend
+const sanoraUser = await invoke('create_sanora_user', { sanoraUrl: 'http://localhost:7243' });
+```
+
+**2. Blog Post Creation**:
+```javascript
+// Create blog as Sanora product
+const product = await invoke('add_product', {
+    uuid: sanoraUser.uuid,
+    sanoraUrl: 'http://localhost:7243',
+    title: 'My Blog Post',
+    description: 'Blog post content...',
+    price: 0  // Free blog post
+});
+```
+
+**3. Blog Management**:
+```javascript
+// Get all user's blog posts
+const user = await invoke('get_sanora_user', {
+    uuid: sanoraUser.uuid,
+    sanoraUrl: 'http://localhost:7243'
+});
+// user.products contains all blog posts
+```
+
+#### Error Handling
+
+All backend functions include comprehensive error handling:
+- Network connectivity issues
+- Authentication failures  
+- Service unavailability
+- Invalid parameters
+- Graceful degradation to offline mode
+
+#### Development vs Production
+
+**Development Mode**:
+- Uses hardcoded development private key
+- Connects to local allyabase services (localhost:7243, etc.)
+- Debug logging enabled
+- Mock data support
+
+**Production Mode**:
+- Environment variable-based private key (`PRIVATE_KEY`)
+- Connects to production allyabase servers
+- Optimized error handling
+- Real payment processing
+
 ## Configuration
 
 ### Theme System
@@ -186,39 +317,63 @@ Integration with Sanora service for blog storage:
 
 ### Running the Application
 
+**Prerequisites**:
+- Node.js 16+ and npm installed
+- Rust toolchain installed  
+- Local allyabase services running (optional, for backend testing)
+
 1. **Tauri Development** (Recommended):
    ```bash
    cd rhapsold/rhapsold
-   npm install
-   npm run tauri dev
+   npm install  # Install Tauri CLI and dependencies
+   npm run tauri dev  # Start development with hot reload
    ```
 
 2. **Build for Production**:
    ```bash
-   npm run tauri build
+   npm run tauri build  # Create production build
    ```
 
-3. **Browser Development** (Testing only):
+3. **Backend Testing**:
    ```bash
-   cd rhapsold/rhapsold/src
-   # Serve files locally for component testing
-   python -m http.server 8000
-   # Open http://localhost:8000/debug-test.html
+   # Start local Sanora service (optional)
+   cd ../../../../sanora
+   node src/server/node/sanora.js
+   
+   # Test backend functions via Tauri dev tools console
+   await invoke('create_sanora_user', { sanoraUrl: 'http://localhost:7243' });
    ```
 
-### JavaScript Module Loading in Tauri
+### JavaScript Architecture (No ES6 Modules)
 
-**Important**: Rhapsold follows the Tauri pattern for loading JavaScript modules locally without requiring HTTP servers. This is different from web applications:
+**Important**: Rhapsold uses vanilla JavaScript without ES6 modules for maximum Tauri compatibility and simplified deployment.
 
-#### Correct Import Patterns:
+#### Current Architecture:
 ```javascript
-// ✅ Correct - Relative imports from shared directory
-import { createTextComponent } from '../../shared/components/text.js';
-import { createBlogUI } from '../../shared/utils/layered-ui.js';
+// ✅ All code in main-no-modules.js - no imports needed
+// Functions are globally available
+function createBlogPost(title, content) { /* ... */ }
+function navigateToScreen(screenId) { /* ... */ }
 
-// ✅ Correct - Local app components  
-import { initializeApp } from './components/app.js';
-import { loadTheme } from './config/theme.js';
+// Backend integration via Tauri invoke
+const user = await invoke('create_sanora_user', { sanoraUrl: 'http://localhost:7243' });
+```
+
+#### Backend Integration Pattern:
+```javascript
+// Call Rust backend functions from JavaScript
+async function createUser() {
+    try {
+        const user = await invoke('create_sanora_user', { 
+            sanoraUrl: 'http://localhost:7243' 
+        });
+        console.log('User created:', user);
+        return user;
+    } catch (error) {
+        console.error('Failed to create user:', error);
+        // Fallback to local storage or offline mode
+    }
+}
 ```
 
 #### HTML Module Loading:
@@ -351,26 +506,44 @@ const layeredUI = createLayeredUI({
 ## Current Status
 
 ### Completed Features ✅
-- ✅ Complete four-screen architecture (Main, New Post, Reading, Base)
-- ✅ SVG-first component system with JSON configuration
-- ✅ Layered UI with transparent scrolling HUD overlays
-- ✅ Comprehensive blog creation and editing workflow
-- ✅ Sanora integration for blog storage and management
-- ✅ Dual content support (hosted + external URLs)
-- ✅ File upload system with validation
-- ✅ Reading progress tracking and immersive reading mode
-- ✅ Search and filtering capabilities
-- ✅ Responsive design and accessibility features
-- ✅ Keyboard shortcuts and navigation
+
+**Frontend (No ES6 Modules)**:
+- ✅ Complete four-screen architecture (Main, New Post, Reading, Base)  
+- ✅ HUD navigation system with fixed header and screen switching
+- ✅ Simplified JavaScript without ES6 modules for Tauri compatibility
+- ✅ Click-to-read functionality with immersive reading mode
+- ✅ Local storage persistence for blog posts
+- ✅ Responsive design with hover effects and transitions
 - ✅ Theme system and configuration management
 - ✅ Error handling and loading states
-- ✅ Mock data support for development
+
+**Backend (Complete Allyabase Integration)**:
+- ✅ Full Rust backend with all allyabase crates (addie, fount, bdo, dolores, sanora)
+- ✅ Sessionless authentication with secp256k1 cryptographic keys
+- ✅ Sanora integration for blog product creation and management
+- ✅ Payment processing with Addie (splits and single payee)
+- ✅ Base server management and discovery via BDO
+- ✅ Media storage integration via Dolores
+- ✅ MAGIC transaction support via Fount
+- ✅ Comprehensive error handling and graceful degradation
+- ✅ Development and production configuration support
+- ✅ Tauri v2.6.2 compatibility with tauri-plugin-shell and tauri-plugin-fs
 
 ### Future Enhancements
+
+**Frontend Integration**:
+- **Backend Integration**: Connect frontend to Rust backend functions  
+- **Real Blog Creation**: Use `add_product()` instead of localStorage
+- **User Management**: Integrate `create_sanora_user()` for real accounts
+- **Base Server UI**: Complete base screen with `get_bases()` integration
+- **Payment UI**: Add payment forms using Addie integration
+- **Media Upload**: File upload integration with Dolores backend
+
+**Advanced Features**:
 - **Comments System**: Integration with julia for peer-to-peer messaging
 - **Payment Integration**: Enhanced pricing with MAGIC transactions
 - **Collaborative Editing**: Real-time collaborative post editing
-- **Analytics**: Reading analytics and engagement metrics
+- **Analytics**: Reading analytics and engagement metrics  
 - **SEO Optimization**: Enhanced meta tags and social sharing
 - **Offline Support**: Offline reading and draft management
 - **Plugin System**: Extensible plugin architecture

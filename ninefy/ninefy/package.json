@@ -1,8 +1,8 @@
 {
-  "name": "rhapsold",
+  "name": "ninefy",
   "private": true,
   "version": "0.1.0",
-  "description": "A minimalist blogging platform built on The Nullary ecosystem",
+  "description": "A minimalist digital goods marketplace built on The Nullary ecosystem",
   "author": "Planet Nine",
   "license": "MIT",
   "scripts": {
@@ -25,8 +25,9 @@
     "vite": "^4.4.0"
   },
   "keywords": [
-    "blogging",
-    "writing",
+    "marketplace",
+    "digital-goods",
+    "ecommerce",
     "tauri",
     "svg",
     "allyabase",
@@ -36,7 +37,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/planet-nine-app/planet-nine",
-    "directory": "the-nullary/rhapsold/rhapsold"
+    "directory": "the-nullary/ninefy/ninefy"
   },
   "engines": {
     "node": ">=16.0.0"
