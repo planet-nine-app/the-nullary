@@ -1,0 +1,34 @@
+[package]
+name = "idothis"
+version = "0.0.1"
+description = "IDothis - A platform for showcasing what you do with profile and product management"
+authors = ["planetnineisaspaceship"]
+license = "MIT"
+repository = "https://github.com/planet-nine-app/the-nullary"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tauri = { version = "2.0", features = ["shell-open"] }
+tauri-plugin-shell = "2.0"
+
+# Planet Nine service clients
+addie-rs = { path = "../../../../addie/src/client/rust/addie-rs" }
+fount-rs = { path = "../../../../fount/src/client/rust/fount-rs" }
+bdo-rs = { path = "../../../../bdo/src/client/rust/bdo-rs" }
+dolores-rs = { path = "../../../../dolores/src/client/rust/dolores-rs" }
+sanora-rs = { path = "../../../../sanora/src/client/rust/sanora-rs" }
+prof-rs = { path = "../../../../prof/src/client/rust/prof-rs" }
+covenant-rs = { path = "../../../../covenant/src/client/rust/covenant-rs" }
+sessionless = { path = "../../../../sessionless/rust/sessionless" }
+
+# Additional dependencies
+tokio = { version = "1.0", features = ["full"] }
+uuid = { version = "1.0", features = ["v4"] }
+base64 = "0.21"

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StackChat - P2P Messaging</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            overflow: hidden;
+        }
+
+        #app {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-size: 18px;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Screen containers */
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation */
+        .nav-bar {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .nav-button.active {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Content area */
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* RPG-style messaging interface */
+        .messaging-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .messages-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .rpg-dialog-box {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 3px solid #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            max-width: 80%;
+            animation: slideInFromTop 0.5s ease-out;
+        }
+
+        .rpg-dialog-box.sent {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            animation: slideInFromBottom 0.5s ease-out;
+        }
+
+        .rpg-dialog-box.received {
+            align-self: flex-start;
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInFromBottom {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .dialog-corner {
+            position: absolute;
+            width: 0;
+            height: 0;
+        }
+
+        .dialog-corner.top-left {
+            top: -10px;
+            left: 20px;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 15px solid #ecf0f1;
+        }
+
+        .dialog-corner.bottom-right {
+            bottom: -10px;
+            right: 20px;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 15px solid #ecf0f1;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #ecf0f1;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .sender-name {
+            font-weight: 600;
+            color: #f39c12;
+        }
+
+        .message-time {
+            font-size: 11px;
+        }
+
+        .message-content {
+            color: white;
+            line-height: 1.6;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Input area */
+        .input-area {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .input-dialog-box {
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            border: 3px solid #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .input-dialog-box::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 15px solid #ecf0f1;
+        }
+
+        .input-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            color: #2c3e50;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .message-input:focus {
+            border-color: #f39c12;
+            box-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        /* Space flight animation */
+        @keyframes spaceFlightSend {
+            0% {
+                transform: translateY(0) rotate(0deg) scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-100px) rotate(180deg) scale(0.8);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-500px) rotate(360deg) scale(0.2);
+                opacity: 0;
+            }
+        }
+
+        .space-flight-message {
+            position: fixed;
+            z-index: 200;
+            pointer-events: none;
+            animation: spaceFlightSend 2s ease-out forwards;
+        }
+
+        .space-flight-message::after {
+            content: '🚀';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            font-size: 24px;
+            animation: rocket-trail 2s ease-out forwards;
+        }
+
+        @keyframes rocket-trail {
+            0% { opacity: 1; transform: rotate(0deg); }
+            100% { opacity: 0; transform: rotate(360deg); }
+        }
+
+        /* Connections list */
+        .connections-list {
+            display: grid;
+            gap: 15px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .connection-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        .connection-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .connection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .partner-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .connection-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .connection-status.active {
+            background: rgba(39, 174, 96, 0.2);
+            color: #27ae60;
+        }
+
+        .connection-status.pending {
+            background: rgba(243, 156, 18, 0.2);
+            color: #f39c12;
+        }
+
+        .connection-info {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .connection-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .action-button.primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .action-button.primary:hover {
+            background: #2980b9;
+        }
+
+        .action-button.success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .action-button.success:hover {
+            background: #219a52;
+        }
+
+        .action-button.danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .action-button.danger:hover {
+            background: #c0392b;
+        }
+
+        /* Empty states */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .empty-state h3 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .empty-state p {
+            margin-bottom: 20px;
+        }
+
+        /* Form styles */
+        .form-button {
+            background: #3498db;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .form-button:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        /* Back button */
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            z-index: 50;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .content {
+                padding: 10px;
+            }
+            
+            .rpg-dialog-box {
+                max-width: 90%;
+                padding: 15px;
+            }
+            
+            .input-area {
+                left: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading StackChat</div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

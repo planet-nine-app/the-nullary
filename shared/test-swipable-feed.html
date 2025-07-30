@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swipable Feed Demo - The Nullary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    
+    <script type="module">
+        import { createSwipeDemo } from './components/swipe-demo.js';
+        
+        // Initialize the demo
+        const demo = createSwipeDemo();
+        document.getElementById('app').appendChild(demo.element);
+        
+        console.log('Swipable Feed Demo loaded!');
+        console.log('Instructions:');
+        console.log('- Swipe right or press → to like a post');
+        console.log('- Swipe left or press ← to pass on a post');
+        console.log('- Click on a card to view details');
+    </script>
+</body>
+</html>
