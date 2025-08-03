@@ -1,42 +1,51 @@
-# Rhapsold - The Nullary Blogging Platform
+# Ninefy - Digital Goods Marketplace
 
-Rhapsold is a minimalist blogging platform built on The Nullary ecosystem, using allyabase for backend services and shared SVG components for the UI.
+Ninefy is a minimalist digital goods marketplace built on The Nullary ecosystem, designed to facilitate the buying and selling of digital products like ebooks, music, software, courses, templates, and event tickets.
 
 ## Overview
 
-Rhapsold focuses on pure writing and reading experiences without distractions. It uses:
-- **SVG Components**: Custom SVG-based UI elements for unique, scalable interface
-- **JSON Configuration**: Simple config objects for customizing appearance and behavior
-- **allyabase Integration**: Anonymous, sessionless backend for posts and preferences
+Ninefy serves as a decentralized alternative to platforms like Gumroad, utilizing Planet Nine's infrastructure for true digital ownership and privacy-focused commerce. It focuses on:
+- **Digital Commerce**: Streamlined buying and selling of digital goods
+- **SVG Components**: Custom SVG-based UI elements for unique, scalable interface  
+- **JSON Configuration**: Simple config objects for customizing marketplace appearance
+- **allyabase Integration**: Decentralized backend using Sanora for products and Addie for payments
 - **Tauri Framework**: Cross-platform desktop and mobile app
 
 ## Features
 
-### Core Functionality
-- ✍️ **Writing**: Distraction-free writing interface
-- 📖 **Reading**: Clean, typography-focused reading experience  
-- 🎨 **Customization**: JSON-configurable themes and layouts
-- 🌐 **Federation**: Connect to other allyabase instances
+### Core Marketplace Functionality
+- 🛍️ **Product Browsing**: Grid-based marketplace with category filtering
+- 💰 **Commerce**: Complete buy/sell workflow with payment processing
+- 🎨 **Product Categories**: Support for 6 digital product types
 - 📱 **Cross-Platform**: Desktop and mobile via Tauri
+- 🌐 **Decentralized**: Built on Planet Nine's distributed infrastructure
+
+### Product Categories
+- 📚 **E-Books**: Digital books and guides
+- 🎵 **Music**: Audio files and soundtracks  
+- 💻 **Software**: Applications and tools
+- 🎓 **Courses**: Educational content and tutorials
+- 🎨 **Templates**: Design templates and starter kits
+- 🎫 **Tickets**: Event tickets and conference access
 
 ### SVG Component System
-- Text rendering with advanced typography
-- Layout containers and positioning
-- Interactive buttons and controls
+- Product cards with pricing and metadata display
+- Interactive marketplace UI elements
+- Category-specific visual icons
 - Responsive design capabilities
-- Theme-based styling
+- Commerce-focused styling and animations
 
-### Blog Features
-- Multiple post formats (text, image, mixed)
-- Tag-based organization
-- Search and filtering
-- Export capabilities
-- Draft management
+### Seller Features
+- Complete product upload interface
+- Pricing and categorization tools
+- Markdown support for rich descriptions
+- File upload system for digital goods
+- Product management dashboard
 
 ## Architecture
 
 ```
-rhapsold/
+ninefy/
 ├── README.md
 ├── package.json
 ├── src-tauri/          # Rust backend
@@ -47,11 +56,25 @@ rhapsold/
     ├── index.html
     ├── main.js
     ├── styles.css
-    ├── components/     # Rhapsold-specific components
+    ├── components/     # Ninefy-specific components
     ├── shared/         # Symlink to ../shared/
     ├── config/         # Configuration files
     └── assets/         # Static assets
 ```
+
+## Screen Architecture
+
+### 1. Main Screen (Shop)
+Product marketplace with browsing, category filtering, and teleported content feed
+
+### 2. Product Details Screen  
+Comprehensive product information with purchase interface and rich descriptions
+
+### 3. Upload Screen
+Form for sellers to list digital products with pricing, categories, and file uploads
+
+### 4. Base Screen
+Universal server management for connecting to allyabase instances
 
 ## Getting Started
 
@@ -72,27 +95,26 @@ rhapsold/
 
 ## Configuration
 
-Rhapsold uses JSON configuration for theming and behavior:
+Ninefy uses JSON configuration for marketplace theming and behavior:
 
 ```javascript
 // config/theme.json
 {
+  "commerce": {
+    "currency": "USD",
+    "priceFormat": "dollars",
+    "categories": ["ebooks", "music", "software", "courses", "templates", "tickets"]
+  },
   "typography": {
-    "fontSize": 18,
-    "fontFamily": "Georgia, serif",
-    "lineHeight": 1.6,
-    "color": "#2c3e50"
+    "fontSize": 16,
+    "fontFamily": "Inter, sans-serif",
+    "priceColor": "#2ecc71",
+    "titleColor": "#2c3e50"
   },
   "layout": {
-    "maxWidth": 800,
-    "padding": 40,
-    "backgroundColor": "#ffffff"
-  },
-  "components": {
-    "buttons": {
-      "style": "minimal",
-      "accentColor": "#3498db"
-    }
+    "gridColumns": 3,
+    "cardSpacing": 20,
+    "backgroundColor": "#f8f9fa"
   }
 }
 ```
@@ -100,51 +122,80 @@ Rhapsold uses JSON configuration for theming and behavior:
 ## SVG Components Usage
 
 ```javascript
-import { createTextComponent } from './shared/components/text.js';
+import { createProductCard } from './components/marketplace.js';
 
-// Create a blog title
-const titleConfig = {
-  text: "My Blog Post",
-  fontSize: 32,
-  fontFamily: "Georgia, serif",
-  color: "#2c3e50",
-  textAlign: "center",
-  width: 600,
-  height: 80
+// Create a product card
+const productConfig = {
+  title: "My Digital Product",
+  price: 2999, // Price in cents
+  category: "ebooks",
+  description: "A great digital product",
+  author: "John Doe",
+  downloads: 150,
+  rating: 4.8
 };
 
-const titleSVG = createTextComponent(titleConfig);
-document.body.appendChild(titleSVG);
+const productCard = createProductCard(productConfig);
+document.getElementById('marketplace').appendChild(productCard);
 ```
 
 ## Integration with allyabase
 
-Rhapsold connects to allyabase services:
-- **dolores**: Store and retrieve blog posts
-- **pref**: Save user preferences and themes
-- **bdo**: Store media and attachments
-- **sessionless**: Anonymous authentication
+Ninefy connects to specialized allyabase services:
+- **Sanora**: Product hosting and metadata storage
+- **Addie**: Payment processing with transaction splitting
+- **BDO**: File storage for digital product assets
+- **Dolores**: Media storage for product images and previews
+- **Fount**: MAGIC transaction processing
+
+## Sample Products
+
+The marketplace includes sample products across all categories:
+- "The Complete JavaScript Handbook" ($49.99) - E-book
+- "Ambient Focus - Productivity Soundtrack" ($19.99) - Music
+- "React Component Library Starter" ($79.99) - Software
+- "Mastering SVG Animations" ($89.99) - Course
+- "Minimalist Landing Page Templates" ($29.99) - Templates
+- "Planet Nine Developer Conference 2025" ($129.99) - Ticket
+
+## Commerce Features
+
+### For Buyers
+- Browse products by category
+- View detailed product information
+- Secure checkout with MAGIC payments
+- Download management and access
+
+### For Sellers
+- Upload digital products
+- Set pricing and categories
+- Rich product descriptions with Markdown
+- Sales analytics and revenue tracking
 
 ## Customization
 
-### Themes
-Create custom themes by modifying JSON configurations:
-- Typography settings
-- Color schemes  
-- Layout parameters
-- Component styling
+### Marketplace Themes
+Customize the marketplace appearance:
+- Product card layouts
+- Category color schemes
+- Pricing display formats
+- Grid and list view options
 
-### Components
-Extend functionality with custom SVG components:
-- Custom post layouts
-- Interactive elements
-- Data visualizations
-- Animations
+### Product Categories
+Add custom product categories:
+- Define new product types
+- Create category-specific icons
+- Configure pricing models
+- Set up file type associations
 
 ## Contributing
 
 1. Follow The Nullary component architecture
-2. Use SVG-based UI elements
+2. Use SVG-based marketplace UI elements
 3. Maintain JSON configuration patterns
-4. Test across desktop and mobile
-5. Ensure allyabase compatibility
+4. Test commerce workflows thoroughly
+5. Ensure allyabase service compatibility
+
+## Comparison with Other Nullary Apps
+
+Ninefy focuses on digital commerce while sharing The Nullary's core architecture with other apps like Rhapsold (blogging) and Screenary (social media). All apps use the same SVG component system and allyabase integration but are optimized for different use cases.

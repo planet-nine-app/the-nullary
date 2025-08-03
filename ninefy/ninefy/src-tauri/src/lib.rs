@@ -58,14 +58,14 @@ async fn create_fount_user() -> Result<FountUser, String> {
 #[tauri::command]
 async fn create_bdo_user() -> Result<BDOUser, String> {
     let s = get_sessionless().await;
-    let rhapsold = "rhapsold";
+    let ninefy = "ninefy";
     match s {
         Ok(sessionless) => {
             let bdo = BDO::new(
                 Some("https://dev.bdo.allyabase.com/".to_string()),
                 Some(sessionless),
             );
-            let _user = bdo.create_user(&rhapsold, &json!({})).await;
+            let _user = bdo.create_user(&ninefy, &json!({})).await;
             dbg!(&_user);
             return match _user {
                 Ok(user) => Ok(user),
@@ -80,11 +80,11 @@ async fn create_bdo_user() -> Result<BDOUser, String> {
 #[tauri::command]
 async fn get_bases(uuid: &str, bdo_url: &str) -> Result<Value, String> {
     let s = get_sessionless().await;
-    let rhapsold = "rhapsold";
+    let ninefy = "ninefy";
     match s {
         Ok(sessionless) => {
             let bdo = BDO::new(Some(bdo_url.to_string()), Some(sessionless));
-            let bases_result = bdo.get_bases(&uuid, &rhapsold).await;
+            let bases_result = bdo.get_bases(&uuid, &ninefy).await;
 
             match bases_result {
                 Ok(bases) => Ok(bases),
@@ -316,6 +316,93 @@ async fn get_sanora_user(uuid: &str, sanora_url: &str) -> Result<SanoraUser, Str
     }
 }
 
+/// Toggle product availability (placeholder - not yet implemented in sanora_rs)
+#[tauri::command]
+async fn toggle_product_availability(
+    _uuid: &str, 
+    _sanora_url: &str, 
+    _product_id: &str, 
+    available: bool
+) -> Result<Value, String> {
+    // NOTE: This function is a placeholder because toggle_product_availability 
+    // doesn't exist in the current sanora_rs crate. In a real implementation,
+    // this would either:
+    // 1. Use HTTP calls to a custom endpoint
+    // 2. Be implemented as product metadata updates
+    // 3. Require extending the sanora_rs crate
+    
+    println!("🔄 Toggle product availability called (placeholder): {}", available);
+    
+    // Return a mock success response for now
+    Ok(json!({
+        "success": true,
+        "available": available,
+        "message": "Product availability toggle is not yet implemented"
+    }))
+}
+
+/// Get all products available on a base (HTTP-based implementation)
+#[tauri::command]
+async fn get_base_products(sanora_url: &str) -> Result<Value, String> {
+    // NOTE: Since get_all_products() doesn't exist in sanora_rs,
+    // we'll use HTTP calls to get products from known users or 
+    // implement a marketplace endpoint discovery approach
+    
+    println!("🔄 Getting base products from: {}", sanora_url);
+    
+    let client = Client::new();
+    
+    // For now, we'll try a few approaches:
+    // 1. Try to hit a hypothetical marketplace endpoint
+    // 2. Get products from a few sample user UUIDs
+    // 3. Return mock data if neither works
+    
+    // Approach 1: Try marketplace endpoint (may not exist)
+    let marketplace_url = format!("{}/marketplace/products", sanora_url.trim_end_matches('/'));
+    match client.get(&marketplace_url).send().await {
+        Ok(response) if response.status().is_success() => {
+            match response.json::<Value>().await {
+                Ok(products) => {
+                    println!("✅ Got products from marketplace endpoint");
+                    return Ok(products);
+                }
+                Err(e) => println!("⚠️ Marketplace endpoint parse error: {}", e)
+            }
+        }
+        Ok(response) => println!("⚠️ Marketplace endpoint returned: {}", response.status()),
+        Err(e) => println!("⚠️ Marketplace endpoint failed: {}", e)
+    }
+    
+    // Approach 2: Try to get products from sample users
+    let sample_uuids = vec![
+        "user-1", "user-2", "user-3", "sample-user", "demo-user"
+    ];
+    
+    let mut all_products = Vec::new();
+    for uuid in sample_uuids {
+        let user_products_url = format!("{}/products/{}", sanora_url.trim_end_matches('/'), uuid);
+        match client.get(&user_products_url).send().await {
+            Ok(response) if response.status().is_success() => {
+                if let Ok(products) = response.json::<Value>().await {
+                    if let Some(products_array) = products.as_array() {
+                        all_products.extend(products_array.clone());
+                    }
+                }
+            }
+            _ => continue
+        }
+    }
+    
+    if !all_products.is_empty() {
+        println!("✅ Got {} products from user endpoints", all_products.len());
+        return Ok(json!(all_products));
+    }
+    
+    // Approach 3: Return empty array (base is available but no products)
+    println!("⚠️ No products found on base, returning empty array");
+    Ok(json!([]))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -334,10 +421,12 @@ pub fn run() {
             get_orders_for_product_id,
             add_order,
             add_product,
-            get_sanora_user
+            get_sanora_user,
+            toggle_product_availability,
+            get_base_products
         ])
         .setup(|_app| {
-            println!("🎭 Rhapsold backend is starting up...");
+            println!("🛒 Ninefy backend is starting up...");
             Ok(())
         })
         .run(tauri::generate_context!())

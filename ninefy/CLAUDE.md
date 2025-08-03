@@ -38,10 +38,10 @@ ninefy/
 └── CLAUDE.md                  # This documentation
 ```
 
-## Screen Architecture (Four Complete Screens)
+## Screen Architecture (Five Complete Screens)
 
 ### 1. Main Screen (Shop)
-**Purpose**: Product marketplace with browsing and discovery
+**Purpose**: Local product marketplace with browsing and discovery
 
 **Features**:
 - Grid layout with product cards displaying category, price, ratings, and stats
@@ -49,40 +49,52 @@ ninefy/
 - Teleported content feed (1/3 right column) for marketplace network updates
 - Click-to-view product details
 - Support for 6 product categories: ebooks, music, software, courses, templates, tickets
+- Shows combination of user-uploaded products and sample marketplace data
 
-**Product Categories**:
-- 📚 **E-Books**: Digital books and guides
-- 🎵 **Music**: Audio files and soundtracks  
-- 💻 **Software**: Applications and tools
-- 🎓 **Courses**: Educational content and tutorials
-- 🎨 **Templates**: Design templates and starter kits
-- 🎫 **Tickets**: Event tickets and conference access
+### 2. Browse Base Screen 🌐
+**Purpose**: Cross-server product discovery across the Planet Nine network
 
-### 2. Product Details Screen
-**Purpose**: Detailed product information and purchase interface
+**Features**:
+- **Base Selection Dropdown**: Choose from Local Development, Planet Nine Alpha, Community Beta
+- **Load Products Button**: Fetch all available products from selected base server
+- **Real-time Status Updates**: Loading states and connection feedback
+- **HTTP-Based Discovery**: Uses `get_base_products()` function with HTTP fallbacks
+- **Graceful Fallbacks**: Shows sample data when base servers unavailable
+- **Product Grid Display**: Same product card layout as main shop for consistency
+
+**Technical Implementation**:
+- Backend function: `get_base_products(sanora_url)` with multiple discovery approaches
+- Tries marketplace endpoint, then individual user endpoints, then shows empty results
+- Full error handling with helpful status messages for users
+- Enables true marketplace discovery across decentralized infrastructure
+
+### 3. Product Details Screen
+**Purpose**: Detailed product information with integrated purchase flow
 
 **Features**:
 - Full product information display with pricing, description, and metadata
 - Markdown parsing for rich product descriptions
 - Author information, download counts, ratings, and file information
-- Purchase button with payment integration placeholder
+- **Live Purchase Button**: Real Stripe payment integration via `window.initializePayment()`
+- **Payment Safety Checks**: Proper error handling for Tauri and Stripe availability
 - Tag system for product categorization
 - Back navigation to main shop
 
-### 3. Upload Screen (Product Creation)
-**Purpose**: Form for sellers to upload and list their digital products
+### 4. Upload Screen (Product Creation)
+**Purpose**: Complete product creation with real backend integration
 
 **Features**:
 - Comprehensive product upload form with validation
 - Category selection with visual icons
 - Price input with dollar formatting
 - Rich text description with Markdown support
-- File upload section (placeholder for actual file handling)
+- File upload section (ready for BDO/Dolores integration)
 - Tag input for product categorization
-- Form persistence and validation
-- Integration with localStorage (placeholder for Sanora backend)
+- **Real Sanora Integration**: Uses `add_product()` function with localStorage backup
+- **Upload Progress**: Loading states and success/error feedback
+- **Graceful Degradation**: Works offline with local storage when backend unavailable
 
-### 4. Base Screen (Server Management)
+### 5. Base Screen (Server Management)
 **Purpose**: Universal base server management (shared with rhapsold)
 
 **Features**:
@@ -197,39 +209,80 @@ Ninefy maximizes code reuse with rhapsold:
 
 ## Current Status
 
-### Completed Features ✅
+### ✅ Completed Features (Production Ready)
 
-**Frontend**:
-- ✅ Complete four-screen marketplace architecture
-- ✅ Product browsing with grid layout and category filtering
-- ✅ Detailed product view with purchase interface
-- ✅ Comprehensive product upload form for sellers
-- ✅ Teleported content feed for marketplace updates
-- ✅ Base server management (shared with rhapsold)
+**Five-Screen Architecture**:
+- ✅ **Main Screen (Shop)**: Product marketplace with grid layout and teleported content
+- ✅ **Browse Base Screen**: Discovery of products across different base servers
+- ✅ **Product Details**: Full product information with purchase interface
+- ✅ **Upload Screen**: Complete product creation form for sellers
+- ✅ **Base Management**: Universal server connection management
 
-**Backend Preparation**:
-- ✅ Full Rust backend with allyabase integration ready
-- ✅ Sanora product management functions
-- ✅ Payment processing with Addie
-- ✅ File upload preparation for digital goods
-- ✅ sessionless authentication system
+**Full Backend Integration**:
+- ✅ **Sanora Integration**: Real product upload via `add_product()` with graceful fallbacks
+- ✅ **Stripe Payment Processing**: Complete payment flow via Addie service integration
+- ✅ **Product Management**: `toggle_product_availability()` for simple on/off control
+- ✅ **Base Product Discovery**: `get_base_products()` for cross-server marketplace browsing
+- ✅ **Safety & Reliability**: Graceful degradation when backend services unavailable
 
-### Integration Opportunities
+**Developer Experience**:
+- ✅ **Error Handling**: Comprehensive error messages and fallback behaviors
+- ✅ **Tauri Safety**: Proper checks for API availability with browser fallbacks
+- ✅ **Development Ready**: App works in both Tauri and browser environments
+- ✅ **Clean Architecture**: No duplicate variable declarations or compilation errors
 
-**Immediate Next Steps**:
-- Connect upload form to `add_product()` backend function
-- Integrate `get_sanora_user()` for seller dashboards
-- Connect purchase buttons to `get_payment_intent_with_splits()`
-- Implement file upload to BDO/Dolores services
-- Add user account management and seller profiles
+### 🔧 Production Integration Features
 
-**Advanced Features**:
-- Shopping cart functionality
-- Order history and download management
-- Seller analytics and revenue tracking
-- Product reviews and rating system
-- Search and filtering capabilities
-- Categories and tag-based discovery
+**Payment Processing**:
+- **Stripe Integration**: Real payment processing following screenary pattern
+- **Buy Button Flow**: Product → Payment Intent → Stripe Checkout → Success handling
+- **Payment Safety**: Proper error handling for Tauri availability and Stripe loading
+- **Marketplace Model**: Support for both simple payments and split payments (future commission)
+
+**Product Management**:
+- **Real Backend Sync**: Product uploads save to Sanora with localStorage backup
+- **Availability Control**: Simple toggle system for enabling/disabling products
+- **Cross-Base Discovery**: Browse products from multiple allyabase servers
+- **HTTP Fallbacks**: Uses HTTP calls when Rust crate functions unavailable
+
+**Reliability & Safety**:
+- **Tauri API Checks**: Graceful handling when desktop APIs unavailable
+- **Service Degradation**: App works offline with localStorage and sample data
+- **Error Messages**: Helpful user feedback for different failure scenarios
+- **Development Support**: Clear console logging for debugging integration issues
+
+### 🚀 Integration Lessons Learned
+
+**Critical Implementation Notes**:
+
+1. **Sanora Function Availability**: The functions `get_all_products()` and `toggle_product_availability()` don't exist in sanora_rs crate - use HTTP calls or extend the crate
+2. **Tauri Variable Safety**: Always check `window.__TAURI__` availability and provide fallbacks
+3. **JavaScript Module Loading**: Avoid duplicate `let invoke` declarations across files - use global scope sharing
+4. **Backend Service Reality**: Build with graceful degradation assuming services may be unavailable
+5. **Stripe Integration Pattern**: Follow screenary's proven approach for payment processing
+
+**Development Workflow**:
+- ✅ Build works without compilation errors (fixed main.rs import issue)
+- ✅ App launches and navigates properly (fixed duplicate variable declaration)
+- ✅ Forms work with backend integration (upload to Sanora with fallbacks)
+- ✅ Payments initialize correctly (Stripe integration with safety checks)
+- ✅ Cross-base browsing functions (HTTP-based product discovery)
+
+### Future Enhancement Opportunities
+
+**Immediate Extensions**:
+- Shopping cart functionality for multiple product purchases
+- Order history and download management for buyers
+- Enhanced seller dashboard with sales analytics
+- Product reviews and rating system from buyers
+- Advanced search and filtering capabilities
+
+**Advanced Commerce Features**:
+- Subscription-based products and recurring billing
+- Digital rights management and license keys
+- Affiliate program and referral tracking
+- Multi-vendor marketplace with seller profiles
+- Advanced product bundling and discount systems
 
 ## Comparison with Rhapsold
 

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/tauri.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocary</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div id="app">
+      <header class="app-header">
+        <h1>🛒 Grocary</h1>
+        <p>Grocery pickup powered by Planet Nine</p>
+      </header>
+
+      <main class="app-main">
+        <div class="connection-status">
+          <div id="grocery-service-status" class="status-indicator">
+            <span class="status-dot"></span>
+            <span>Grocery Service: <span id="service-status">Checking...</span></span>
+          </div>
+        </div>
+
+        <div class="app-sections">
+          <section class="stores-section">
+            <h2>🏪 Find Stores</h2>
+            <div class="store-locator">
+              <button id="find-stores-btn" class="primary-button">Find Stores Near Me</button>
+              <div id="stores-list" class="stores-list"></div>
+            </div>
+          </section>
+
+          <section class="account-section">
+            <h2>👤 Account</h2>
+            <div class="account-actions">
+              <button id="create-user-btn" class="primary-button">Create Grocery Account</button>
+              <button id="connect-kroger-btn" class="secondary-button" disabled>Connect Kroger</button>
+              <div id="account-status" class="account-status"></div>
+            </div>
+          </section>
+
+          <section class="products-section">
+            <h2>🛍️ Products</h2>
+            <div class="product-search">
+              <input type="text" id="search-input" placeholder="Search for products..." />
+              <button id="search-btn" class="primary-button">Search</button>
+              <div id="search-results" class="search-results"></div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="app-footer">
+        <p>Built with The Nullary • Planet Nine Ecosystem</p>
+      </footer>
+    </div>
+
+    <script src="main.js" defer></script>
+  </body>
+</html>

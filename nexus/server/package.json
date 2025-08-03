@@ -1,0 +1,29 @@
+{
+  "name": "nexus-server",
+  "version": "1.0.0",
+  "description": "Planet Nine Nexus Portal Server",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"Testing Nexus server...\" && curl -f http://localhost:3333/api/ping"
+  },
+  "keywords": [
+    "planet-nine",
+    "nexus", 
+    "portal",
+    "ecosystem"
+  ],
+  "author": "Planet Nine",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^6.0.0",
+    "node-fetch": "^3.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

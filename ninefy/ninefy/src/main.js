@@ -1,569 +1,2130 @@
 /**
- * Rhapsold - Main Application Entry Point
- * A minimalist blogging platform using SVG components
+ * Ninefy - Main Application Entry Point (No ES6 Modules)
+ * A minimalist digital goods marketplace using SVG components
  */
 
-// Import shared SVG components
-console.log('here');
-import { createTextComponent, createMultilineTextComponent } from './shared/components/text.js';
-import { createSVGContainer, makeResponsive } from './shared/utils/svg-utils.js';
+// Tauri API for backend communication (with safety check)
+let invoke = null;
+if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
+  invoke = window.__TAURI__.core.invoke;
+  console.log('✅ Tauri API available');
+} else {
+  console.warn('⚠️ Tauri API not available - running in browser mode');
+  // Mock invoke function for browser testing
+  invoke = async (command, args) => {
+    console.log(`🔄 Mock invoke: ${command}`, args);
+    throw new Error(`Tauri function '${command}' not available in browser mode`);
+  };
+}
 
-console.log('here 2');
-// Import form components
-import { createTextInputForm, createTextareaForm, createBlogPostForm } from './shared/components/forms.js';
+// Make invoke available globally for other modules
+window.ninefyInvoke = invoke;
 
-// Import post creation system
-import { 
-  createPostFromForm, 
-  savePostToAllyabase, 
-  createAndSavePost, 
-  POST_TYPES 
-} from './shared/utils/post-creator.js';
+// Product category SVG data URLs (URL-encoded)
+const PRODUCT_IMAGES = {
+  ebook: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%234a90e2'/%3E%3Crect x='80' y='50' width='240' height='150' fill='%23ffffff' rx='8'/%3E%3Cline x1='100' y1='80' x2='280' y2='80' stroke='%234a90e2' stroke-width='2'/%3E%3Cline x1='100' y1='100' x2='280' y2='100' stroke='%234a90e2' stroke-width='2'/%3E%3Cline x1='100' y1='120' x2='250' y2='120' stroke='%234a90e2' stroke-width='2'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3EE-Book%3C/text%3E%3C/svg%3E",
+  
+  music: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%23e74c3c'/%3E%3Ccircle cx='200' cy='125' r='60' fill='%23ffffff'/%3E%3Ccircle cx='200' cy='125' r='15' fill='%23e74c3c'/%3E%3Crect x='190' y='65' width='20' height='60' fill='%23e74c3c'/%3E%3Cpath d='M210 65 Q230 60 230 80 L230 100 Q230 120 210 115 Z' fill='%23e74c3c'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3EMusic%3C/text%3E%3C/svg%3E",
+  
+  software: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%2334495e'/%3E%3Crect x='50' y='60' width='300' height='130' fill='%23ffffff' rx='10'/%3E%3Crect x='60' y='70' width='280' height='20' fill='%2334495e'/%3E%3Ccircle cx='70' cy='80' r='5' fill='%23e74c3c'/%3E%3Ccircle cx='85' cy='80' r='5' fill='%23f39c12'/%3E%3Ccircle cx='100' cy='80' r='5' fill='%2327ae60'/%3E%3Ctext x='60' y='110' fill='%2334495e' font-family='monospace' font-size='12'%3E%3C/html%3E%3C%3C/text%3E%3Ctext x='60' y='125' fill='%2334495e' font-family='monospace' font-size='12'%3E  function() {%3C/text%3E%3Ctext x='60' y='140' fill='%2334495e' font-family='monospace' font-size='12'%3E    return true;%3C/text%3E%3Ctext x='60' y='155' fill='%2334495e' font-family='monospace' font-size='12'%3E  }%3C/text%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ESoftware%3C/text%3E%3C/svg%3E",
+  
+  course: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%23f39c12'/%3E%3Crect x='50' y='70' width='300' height='110' fill='%23ffffff' rx='5'/%3E%3Crect x='60' y='80' width='120' height='90' fill='%23f39c12' rx='3'/%3E%3Ctext x='120' y='130' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='36' font-weight='bold'%3E▶%3C/text%3E%3Cline x1='200' y1='90' x2='330' y2='90' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='110' x2='320' y2='110' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='130' x2='310' y2='130' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='150' x2='300' y2='150' stroke='%23f39c12' stroke-width='2'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ECourse%3C/text%3E%3C/svg%3E",
+  
+  template: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%239b59b6'/%3E%3Crect x='50' y='50' width='120' height='150' fill='%23ffffff' rx='8'/%3E%3Crect x='180' y='50' width='120' height='150' fill='%23ffffff' rx='8'/%3E%3Crect x='310' y='50' width='40' height='150' fill='%23ffffff' rx='8'/%3E%3Crect x='60' y='60' width='100' height='20' fill='%239b59b6'/%3E%3Crect x='60' y='90' width='80' height='8' fill='%23ecf0f1'/%3E%3Crect x='60' y='105' width='90' height='8' fill='%23ecf0f1'/%3E%3Crect x='60' y='120' width='70' height='8' fill='%23ecf0f1'/%3E%3Crect x='190' y='60' width='100' height='20' fill='%239b59b6'/%3E%3Crect x='190' y='90' width='80' height='8' fill='%23ecf0f1'/%3E%3Crect x='190' y='105' width='90' height='8' fill='%23ecf0f1'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ETemplate%3C/text%3E%3C/svg%3E",
+  
+  ticket: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%2327ae60'/%3E%3Crect x='60' y='80' width='280' height='90' fill='%23ffffff' rx='8'/%3E%3Cpath d='M190 80 Q200 90 190 100 Q200 110 190 120 Q200 130 190 140 Q200 150 190 160 Q200 170 190 170 L210 170 Q200 170 210 160 Q200 150 210 140 Q200 130 210 120 Q200 110 210 100 Q200 90 210 80 Z' fill='%2327ae60'/%3E%3Ctext x='125' y='105' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='12' font-weight='bold'%3EEVENT%3C/text%3E%3Ctext x='125' y='125' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='20' font-weight='bold'%3ETICKET%3C/text%3E%3Ctext x='125' y='145' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='10'%3EADMIT ONE%3C/text%3E%3Ctext x='275' y='115' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='10'%3E$50.00%3C/text%3E%3Ctext x='275' y='135' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='8'%3E#001234%3C/text%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ETicket%3C/text%3E%3C/svg%3E"
+};
 
-console.log('here 3');
-// Import layered UI system
-import { createBlogUI } from './shared/utils/layered-ui.js';
+// Teleported content data (marketplace-focused)
+const TELEPORTED_CONTENT = [
+  {
+    id: 'tp-1',
+    type: 'link',
+    title: 'Digital Commerce Trends 2025',
+    description: 'Latest insights on selling digital products in the decentralized web',
+    url: 'https://planet-nine.org/digital-commerce',
+    source: 'planet-nine.org',
+    timestamp: '2025-01-28T08:00:00Z'
+  },
+  {
+    id: 'tp-2', 
+    type: 'image',
+    title: 'Sanora Marketplace Architecture',
+    description: 'How digital products are stored and distributed on allyabase',
+    imageUrl: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%234a90e2'/%3E%3Crect x='50' y='50' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Crect x='160' y='70' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Crect x='270' y='50' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Ctext x='90' y='75' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3ESanora%3C/text%3E%3Ctext x='200' y='95' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3EAddie%3C/text%3E%3Ctext x='310' y='75' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3EBDO%3C/text%3E%3Ctext x='200' y='200' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='16' font-weight='bold'%3EMarketplace%3C/text%3E%3C/svg%3E",
+    source: 'engineering.allyabase.com',
+    timestamp: '2025-01-27T15:30:00Z'
+  },
+  {
+    id: 'tp-3',
+    type: 'video',
+    title: 'Creating Your First Product on Ninefy',
+    description: '10-minute walkthrough of the product creation process',
+    videoUrl: 'https://example.com/ninefy-tutorial.mp4',
+    thumbnail: "data:image/svg+xml,%3Csvg width='400' height='225' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='225' fill='%239b59b6'/%3E%3Ccircle cx='200' cy='112' r='30' fill='%23ffffff' opacity='0.9'/%3E%3Cpolygon points='190,102 190,122 210,112' fill='%239b59b6'/%3E%3Ctext x='200' y='180' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='14' font-weight='bold'%3ETutorial%3C/text%3E%3C/svg%3E",
+    source: 'learn.ninefy.com',
+    duration: '10:34',
+    timestamp: '2025-01-26T12:45:00Z'
+  },
+  {
+    id: 'tp-4',
+    type: 'link',
+    title: 'MAGIC Payment Integration Guide',
+    description: 'How to accept payments for digital goods using MAGIC protocol',
+    url: 'https://magic.planet-nine.org/payments',
+    source: 'magic.planet-nine.org',
+    timestamp: '2025-01-25T14:20:00Z'
+  },
+  {
+    id: 'tp-5',
+    type: 'code',
+    title: 'Product Upload API Example',
+    description: 'JavaScript code for uploading products to Sanora',
+    codePreview: 'const product = await invoke("add_product", {\n  uuid: sanoraUser.uuid,\n  sanoraUrl: "http://localhost:7243",\n  title: "My Digital Product",\n  description: "Product description...",\n  price: 2999  // $29.99\n});',
+    source: 'github.com/planet-nine-app',
+    language: 'javascript',
+    timestamp: '2025-01-24T16:15:00Z'
+  }
+];
 
-// Import application modules
-import { initializeApp } from './components/app.js';
-import { loadTheme } from './config/theme.js';
-import { connectToAllyabase } from './services/allyabase.js';
+// Sample product data
+const SAMPLE_PRODUCTS = [
+  {
+    id: 'prod-1',
+    title: 'The Complete JavaScript Handbook',
+    description: 'A comprehensive guide to modern JavaScript development, covering ES6+, async programming, and best practices.',
+    price: 4999, // $49.99 in cents
+    category: 'ebook',
+    author: 'Sarah Johnson',
+    timestamp: '2025-01-28T10:30:00Z',
+    downloadCount: 1247,
+    rating: 4.8,
+    tags: ['javascript', 'programming', 'web-development'],
+    featuredImage: PRODUCT_IMAGES.ebook,
+    previewContent: `# Chapter 1: Introduction to Modern JavaScript
 
-console.log('here 4');
-/**
- * Application state
- */
+JavaScript has evolved tremendously over the past decade. What started as a simple scripting language for web pages has become a powerful, versatile programming language used for:
+
+- **Frontend Development**: Building interactive user interfaces
+- **Backend Development**: Server-side applications with Node.js  
+- **Mobile Apps**: React Native and other frameworks
+- **Desktop Apps**: Electron and Tauri applications
+
+## Key Features of ES6+
+
+Modern JavaScript includes many powerful features:
+
+\`\`\`javascript
+// Arrow functions
+const sum = (a, b) => a + b;
+
+// Destructuring
+const { name, age } = user;
+
+// Template literals
+const message = \`Hello, \${name}!\`;
+\`\`\`
+
+This handbook will take you through each concept step by step...`,
+    fileSize: '2.4 MB',
+    fileType: 'PDF'
+  },
+  {
+    id: 'prod-2',
+    title: 'Ambient Focus - Productivity Soundtrack',
+    description: 'A carefully curated collection of ambient tracks designed to enhance focus and creativity during work sessions.',
+    price: 1999, // $19.99
+    category: 'music',
+    author: 'Harmony Studios',
+    timestamp: '2025-01-27T14:15:00Z',
+    downloadCount: 892,
+    rating: 4.9,
+    tags: ['ambient', 'focus', 'productivity', 'instrumental'],
+    featuredImage: PRODUCT_IMAGES.music,
+    previewContent: '🎵 **Track Listing:**\n\n1. Morning Flow (6:42)\n2. Deep Concentration (8:15)\n3. Creative Spark (5:28)\n4. Mindful Pause (4:33)\n5. Evening Wind Down (7:12)\n\n**Total Runtime:** 32 minutes\n\n*"These tracks have transformed my work sessions. Perfect background music that doesn\'t distract but somehow makes everything flow better."* - Alex M.\n\nAll tracks are available in high-quality 320kbps MP3 and lossless FLAC formats.',
+    fileSize: '156 MB',
+    fileType: 'ZIP (MP3 + FLAC)'
+  },
+  {
+    id: 'prod-3',
+    title: 'React Component Library Starter',
+    description: 'A professional-grade starter template for building and publishing React component libraries with TypeScript, Storybook, and automated testing.',
+    price: 7999, // $79.99
+    category: 'software',
+    author: 'DevTools Pro',
+    timestamp: '2025-01-26T09:45:00Z',
+    downloadCount: 456,
+    rating: 4.7,
+    tags: ['react', 'typescript', 'components', 'storybook'],
+    featuredImage: PRODUCT_IMAGES.software,
+    previewContent: `# React Component Library Starter
+
+## What's Included
+
+✅ **TypeScript Setup** - Fully configured with strict typing  
+✅ **Storybook Integration** - Interactive component documentation  
+✅ **Jest & Testing Library** - Comprehensive testing setup  
+✅ **Rollup Build System** - Optimized bundling for distribution  
+✅ **ESLint & Prettier** - Code quality and formatting  
+✅ **GitHub Actions** - Automated testing and publishing  
+
+## Quick Start
+
+\`\`\`bash
+npm install
+npm run storybook  # Start component playground
+npm test          # Run test suite
+npm run build     # Build for distribution
+\`\`\`
+
+Perfect for teams looking to build reusable component libraries!`,
+    fileSize: '45 MB',
+    fileType: 'ZIP'
+  },
+  {
+    id: 'prod-4',
+    title: 'Mastering SVG Animations',
+    description: 'Learn to create stunning, performant animations using SVG and CSS. Includes 50+ examples and hands-on projects.',
+    price: 8999, // $89.99
+    category: 'course',
+    author: 'Animation Academy',
+    timestamp: '2025-01-25T11:20:00Z',
+    downloadCount: 234,
+    rating: 4.9,
+    tags: ['svg', 'animation', 'css', 'design'],
+    featuredImage: PRODUCT_IMAGES.course,
+    previewContent: `# Course Overview
+
+**Duration:** 6 hours of video content + exercises  
+**Level:** Intermediate  
+**Prerequisites:** Basic HTML, CSS, and SVG knowledge  
+
+## What You'll Learn
+
+### Module 1: SVG Fundamentals
+- Understanding the SVG coordinate system
+- Path elements and Bezier curves
+- Viewports and responsive SVG
+
+### Module 2: CSS Animation Techniques  
+- Transforms and transitions
+- Keyframe animations
+- Timing functions and easing
+
+### Module 3: Advanced Projects
+- Interactive data visualizations
+- Logo animations
+- Loading spinners and UI elements
+
+**Bonus:** Access to private Discord community and monthly Q&A sessions!`,
+    fileSize: '3.2 GB',
+    fileType: 'Video Course'
+  },
+  {
+    id: 'prod-5',
+    title: 'Minimalist Landing Page Templates',
+    description: 'A collection of 15 clean, conversion-optimized landing page templates built with modern CSS and vanilla JavaScript.',
+    price: 2999, // $29.99
+    category: 'template',
+    author: 'Design Collective',
+    timestamp: '2025-01-24T16:45:00Z',
+    downloadCount: 678,
+    rating: 4.6,
+    tags: ['templates', 'landing-pages', 'css', 'responsive'],
+    featuredImage: PRODUCT_IMAGES.template,
+    previewContent: `# Template Collection
+
+## 15 Professional Templates
+
+**Included Styles:**
+- SaaS Product Launch
+- App Download Page  
+- Course Sales Page
+- Portfolio Showcase
+- Agency Services
+- E-commerce Product
+- Event Registration
+- Newsletter Signup
+- And 7 more...
+
+## Features
+✅ Fully responsive design  
+✅ Cross-browser compatibility  
+✅ SEO optimized structure  
+✅ Fast loading performance  
+✅ Easy customization  
+✅ Comprehensive documentation  
+
+Perfect for marketers, developers, and small businesses!`,
+    fileSize: '28 MB',
+    fileType: 'HTML/CSS/JS'
+  },
+  {
+    id: 'prod-6',
+    title: 'Planet Nine Developer Conference 2025',
+    description: 'Two-day virtual conference featuring talks on decentralized web development, sessionless authentication, and the future of digital ownership.',
+    price: 12999, // $129.99
+    category: 'ticket',
+    author: 'Planet Nine Foundation',
+    timestamp: '2025-01-23T09:00:00Z',
+    downloadCount: 89,
+    rating: 5.0,
+    tags: ['conference', 'blockchain', 'web3', 'development'],
+    featuredImage: PRODUCT_IMAGES.ticket,
+    previewContent: `# Conference Schedule
+
+## Day 1: Foundations
+**10:00 AM** - Keynote: The Future of Decentralized Web  
+**11:30 AM** - sessionless Authentication Deep Dive  
+**1:00 PM** - Building with allyabase Services  
+**2:30 PM** - MAGIC Protocol Workshop  
+**4:00 PM** - Community Roundtable  
+
+## Day 2: Advanced Topics
+**10:00 AM** - Scaling Decentralized Applications  
+**11:30 AM** - Privacy-First Development  
+**1:00 PM** - Economic Models for Web3  
+**2:30 PM** - Case Studies: Real-World Implementations  
+**4:00 PM** - Closing & Networking  
+
+**Includes:** All recordings, slides, and exclusive access to speaker Discord!`,
+    fileSize: 'Digital Event',
+    fileType: 'Conference Ticket'
+  }
+];
+
+// Application state
 const appState = {
-  currentTheme: null,
-  currentPost: null,
-  posts: [],
-  isLoading: true,
-  connected: false,
-  allyabaseClient: null,
-  formInstances: {},
-  layeredUI: null
+  currentScreen: 'main',
+  currentTheme: {
+    colors: {
+      primary: '#2c3e50',
+      secondary: '#7f8c8d', 
+      accent: '#e74c3c',
+      background: '#fafafa',
+      surface: '#ffffff',
+      text: '#2c3e50',
+      border: '#ecf0f1',
+      success: '#27ae60',
+      warning: '#f39c12',
+      info: '#3498db'
+    },
+    typography: {
+      fontFamily: 'Georgia, serif',
+      fontSize: 16,
+      lineHeight: 1.6,
+      headerSize: 32,
+      productTitleSize: 24
+    }
+  },
+  currentProduct: null,
+  products: [],
+  isLoading: true
 };
 
 /**
- * Initialize the application
+ * Create teleported content item (reused from rhapsold)
  */
-async function init() {
-  try {
-    console.log('🎭 Initializing Rhapsold...');
-    
-    // Load theme configuration
-    console.log('📝 Step 1: Loading theme...');
-    appState.currentTheme = await loadTheme();
-    console.log('🎨 Theme loaded:', appState.currentTheme.name);
-    
-    // Connect to allyabase
-    console.log('📝 Step 2: Connecting to allyabase...');
-    try {
-      const connection = await connectToAllyabase();
-      appState.connected = true;
-      appState.allyabaseClient = connection.client;
-      console.log('🌐 Connected to allyabase');
-    } catch (error) {
-      console.warn('⚠️ Could not connect to allyabase:', error.message);
-      console.log('📝 Running in offline mode');
-      // Still set the client for offline mode
-      appState.allyabaseClient = window.allyabase;
-    }
-    
-    // Initialize layered UI
-    console.log('📝 Step 3: Initializing layered UI...');
-    await initializeLayeredUI();
-    
-    // Hide loading screen
-    console.log('📝 Step 4: Hiding loading screen...');
-    hideLoadingScreen();
-    
-    console.log('✅ Rhapsold initialized successfully');
-    
-  } catch (error) {
-    console.error('❌ Failed to initialize Rhapsold:', error);
-    console.error('❌ Error stack:', error.stack);
-    
-    // Create a simple fallback UI
-    try {
-      console.log('🔄 Creating fallback UI...');
-      createFallbackUI(error);
-    } catch (fallbackError) {
-      console.error('❌ Fallback UI also failed:', fallbackError);
-      showError('Failed to initialize application. Please refresh the page.');
-    }
-  }
-}
+function createTeleportedItem(item) {
+  const container = document.createElement('div');
+  container.className = 'teleported-item';
+  container.style.cssText = `
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border-left: 4px solid ${appState.currentTheme.colors.accent};
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  `;
 
-/**
- * Initialize the layered UI system
- */
-async function initializeLayeredUI() {
-  console.log('🏗️ Initializing layered UI...');
-  
-  // Get the main app container
-  console.log('📝 Getting app container...');
-  const appContainer = document.getElementById('app') || document.body;
-  console.log('📝 App container found:', appContainer);
-  
-  // Clear existing content
-  console.log('📝 Clearing existing content...');
-  appContainer.innerHTML = '';
-  
-  // Create layered UI
-  console.log('📝 Creating layered UI...');
-  appState.layeredUI = createBlogUI({
-    title: 'Rhapsold',
-    backgroundColor: appState.currentTheme.colors.background || '#fafafa',
-    feedConfig: {
-      backgroundColor: 'transparent',
-      responsive: true,
-      showTimestamps: true,
-      showActions: true
-    },
-    hudConfig: {
-      background: 'rgba(255, 255, 255, 0.95)'
-    },
-    onCompose: async () => {
-      console.log('✏️ Compose button clicked');
-      await showComposeForm();
+  // Type indicator
+  const typeIcon = {
+    'link': '🔗',
+    'image': '🖼️', 
+    'video': '📹',
+    'code': '💻'
+  };
+
+  // Header with type and source
+  const header = document.createElement('div');
+  header.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+  `;
+  header.innerHTML = `
+    <span>${typeIcon[item.type] || '📄'} ${item.type}</span>
+    <span>${new Date(item.timestamp).toLocaleDateString()}</span>
+  `;
+
+  // Title
+  const title = document.createElement('h4');
+  title.textContent = item.title;
+  title.style.cssText = `
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: bold;
+    color: ${appState.currentTheme.colors.primary};
+    line-height: 1.3;
+  `;
+
+  // Description
+  const description = document.createElement('p');
+  description.textContent = item.description;
+  description.style.cssText = `
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.text};
+    line-height: 1.4;
+  `;
+
+  // Source
+  const source = document.createElement('div');
+  source.textContent = item.source;
+  source.style.cssText = `
+    font-size: 11px;
+    color: ${appState.currentTheme.colors.secondary};
+    font-style: italic;
+  `;
+
+  // Add special content based on type
+  if (item.type === 'image' && item.imageUrl) {
+    const img = document.createElement('img');
+    img.src = item.imageUrl;
+    img.style.cssText = `
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin: 8px 0;
+    `;
+    container.appendChild(img);
+  }
+
+  if (item.type === 'video' && item.thumbnail) {
+    const videoContainer = document.createElement('div');
+    videoContainer.style.cssText = `
+      position: relative;
+      margin: 8px 0;
+    `;
+    
+    const thumbnail = document.createElement('img');
+    thumbnail.src = item.thumbnail;
+    thumbnail.style.cssText = `
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+    `;
+    
+    const playButton = document.createElement('div');
+    playButton.innerHTML = '▶️';
+    playButton.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    `;
+    
+    if (item.duration) {
+      const duration = document.createElement('div');
+      duration.textContent = item.duration;
+      duration.style.cssText = `
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+      `;
+      videoContainer.appendChild(duration);
+    }
+    
+    videoContainer.appendChild(thumbnail);
+    videoContainer.appendChild(playButton);
+    container.appendChild(videoContainer);
+  }
+
+  if (item.type === 'code' && item.codePreview) {
+    const codeBlock = document.createElement('pre');
+    codeBlock.textContent = item.codePreview;
+    codeBlock.style.cssText = `
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 8px;
+      margin: 8px 0;
+      font-size: 10px;
+      font-family: 'Courier New', monospace;
+      overflow-x: auto;
+      white-space: pre;
+    `;
+    container.appendChild(codeBlock);
+  }
+
+  // Hover effects
+  container.addEventListener('mouseenter', () => {
+    container.style.transform = 'translateY(-2px)';
+    container.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+  });
+
+  container.addEventListener('mouseleave', () => {
+    container.style.transform = 'translateY(0)';
+    container.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+  });
+
+  // Click handler
+  container.addEventListener('click', () => {
+    console.log('Teleported item clicked:', item.title);
+    if (item.url) {
+      alert(`Would open: ${item.url}`);
     }
   });
-  
-  // Add to container
-  console.log('📝 Adding layered UI to container...');
-  appContainer.appendChild(appState.layeredUI.element);
-  console.log('📝 Layered UI added successfully');
-  
-  // Load and display existing posts
-  console.log('📝 Loading existing posts...');
-  await loadExistingPosts();
-  
-  // Add demo content if no posts exist
-  if (appState.posts.length === 0) {
-    await createDemoPost();
-  }
-  
-  // Setup event handlers
-  setupEventHandlers();
-  
-  // Update HUD status
-  updateHUDStatus();
-  
-  console.log('✅ Layered UI initialized');
+
+  container.appendChild(header);
+  container.appendChild(title);
+  container.appendChild(description);
+  container.appendChild(source);
+
+  return container;
 }
 
 /**
- * Show compose form in a modal overlay
+ * Format price in cents to dollars
  */
-async function showComposeForm() {
-  console.log('📝 Showing compose form...');
+function formatPrice(priceInCents) {
+  return `$${(priceInCents / 100).toFixed(2)}`;
+}
+
+/**
+ * Get category icon
+ */
+function getCategoryIcon(category) {
+  const icons = {
+    'ebook': '📚',
+    'music': '🎵',
+    'software': '💻',
+    'course': '🎓',
+    'template': '🎨',
+    'ticket': '🎫'
+  };
+  return icons[category] || '📦';
+}
+
+/**
+ * Simple markdown parser (reused from rhapsold)
+ */
+function parseMarkdown(text) {
+  if (!text) return '';
   
-  // Create modal overlay
-  const modalOverlay = document.createElement('div');
-  modalOverlay.className = 'compose-modal-overlay';
-  modalOverlay.style.cssText = `
+  let html = text;
+  
+  // Images: ![alt](url)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;">');
+  
+  // Headers
+  html = html.replace(/^### (.*$)/gm, '<h3 style="color: #2c3e50; margin: 20px 0 10px 0; font-size: 18px;">$1</h3>');
+  html = html.replace(/^## (.*$)/gm, '<h2 style="color: #2c3e50; margin: 24px 0 12px 0; font-size: 20px;">$1</h2>');
+  html = html.replace(/^# (.*$)/gm, '<h1 style="color: #2c3e50; margin: 28px 0 14px 0; font-size: 24px;">$1</h1>');
+  
+  // Bold and italic
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 600;">$1</strong>');
+  html = html.replace(/\*(.*?)\*/g, '<em style="font-style: italic;">$1</em>');
+  
+  // Code blocks
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px; margin: 12px 0; overflow-x: auto; font-family: \'Courier New\', monospace; font-size: 14px; line-height: 1.4;"><code>$2</code></pre>');
+  
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code style="background: #f1f3f4; padding: 2px 6px; border-radius: 3px; font-family: \'Courier New\', monospace; font-size: 0.9em;">$1</code>');
+  
+  // Blockquotes
+  html = html.replace(/^> (.*$)/gm, '<blockquote style="border-left: 4px solid #e74c3c; margin: 12px 0; padding: 8px 16px; background: #f8f9fa; font-style: italic; color: #555;">$1</blockquote>');
+  
+  // Lists
+  html = html.replace(/^- (.*$)/gm, '<li style="margin: 4px 0;">$1</li>');
+  html = html.replace(/(<li.*<\/li>)/s, '<ul style="margin: 12px 0; padding-left: 20px;">$1</ul>');
+  
+  // Checkboxes
+  html = html.replace(/^✅ (.*$)/gm, '<div style="margin: 4px 0;"><span style="color: #27ae60;">✅</span> $1</div>');
+  
+  // Line breaks
+  html = html.replace(/\n\n/g, '</p><p style="margin: 12px 0; line-height: 1.6;">');
+  html = '<p style="margin: 12px 0; line-height: 1.6;">' + html + '</p>';
+  
+  // Clean up empty paragraphs
+  html = html.replace(/<p[^>]*><\/p>/g, '');
+  
+  return html;
+}
+
+/**
+ * Create product card
+ */
+function createProductCard(product) {
+  const cardContainer = document.createElement('div');
+  cardContainer.className = 'product-card';
+  cardContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 0;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+  `;
+  
+  // Featured image
+  if (product.featuredImage) {
+    const imageElement = document.createElement('img');
+    imageElement.src = product.featuredImage;
+    imageElement.style.cssText = `
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    `;
+    cardContainer.appendChild(imageElement);
+  }
+  
+  // Card content
+  const contentContainer = document.createElement('div');
+  contentContainer.style.cssText = `
+    padding: 20px;
+  `;
+  
+  // Product metadata header
+  const metaHeader = document.createElement('div');
+  metaHeader.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+  `;
+  
+  const categoryAuthor = document.createElement('span');
+  categoryAuthor.textContent = `${getCategoryIcon(product.category)} ${product.category} • by ${product.author}`;
+  
+  const priceElement = document.createElement('span');
+  priceElement.textContent = formatPrice(product.price);
+  priceElement.style.cssText = `
+    font-weight: bold;
+    font-size: 16px;
+    color: ${appState.currentTheme.colors.accent};
+  `;
+  
+  metaHeader.appendChild(categoryAuthor);
+  metaHeader.appendChild(priceElement);
+  
+  // Product title
+  const titleElement = document.createElement('h3');
+  titleElement.textContent = product.title;
+  titleElement.style.cssText = `
+    margin: 0 0 12px 0;
+    color: ${appState.currentTheme.colors.primary};
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: ${appState.currentTheme.typography.productTitleSize}px;
+    line-height: 1.3;
+  `;
+  
+  // Product description
+  const descriptionElement = document.createElement('p');
+  descriptionElement.textContent = product.description;
+  descriptionElement.style.cssText = `
+    color: ${appState.currentTheme.colors.text};
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  `;
+  
+  // Product stats
+  const statsContainer = document.createElement('div');
+  statsContainer.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+  `;
+  
+  const leftStats = document.createElement('div');
+  leftStats.innerHTML = `
+    ⭐ ${product.rating} • 💾 ${product.downloadCount.toLocaleString()} downloads
+  `;
+  
+  const rightStats = document.createElement('div');
+  rightStats.innerHTML = `
+    📁 ${product.fileSize} • ${product.fileType}
+  `;
+  
+  statsContainer.appendChild(leftStats);
+  statsContainer.appendChild(rightStats);
+  
+  // Tags
+  if (product.tags && product.tags.length > 0) {
+    const tagsContainer = document.createElement('div');
+    tagsContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    `;
+    
+    product.tags.forEach(tag => {
+      const tagElement = document.createElement('span');
+      tagElement.textContent = `#${tag}`;
+      tagElement.style.cssText = `
+        background: ${appState.currentTheme.colors.background};
+        color: ${appState.currentTheme.colors.accent};
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+      `;
+      tagsContainer.appendChild(tagElement);
+    });
+    
+    contentContainer.appendChild(tagsContainer);
+  }
+  
+  // Add click handler to view product details
+  cardContainer.addEventListener('click', () => {
+    appState.currentProduct = product;
+    navigateToScreen('details');
+  });
+  
+  cardContainer.addEventListener('mouseenter', () => {
+    cardContainer.style.transform = 'translateY(-4px)';
+    cardContainer.style.boxShadow = '0 8px 16px rgba(0,0,0,0.15)';
+  });
+  
+  cardContainer.addEventListener('mouseleave', () => {
+    cardContainer.style.transform = 'translateY(0)';
+    cardContainer.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+  });
+  
+  contentContainer.appendChild(metaHeader);
+  contentContainer.appendChild(titleElement);
+  contentContainer.appendChild(descriptionElement);
+  contentContainer.appendChild(statsContainer);
+  
+  cardContainer.appendChild(contentContainer);
+  
+  return cardContainer;
+}
+
+/**
+ * Create HUD Navigation (adapted from rhapsold)
+ */
+function createHUD() {
+  const hud = document.createElement('div');
+  hud.id = 'hud';
+  hud.style.cssText = `
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
+    right: 0;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid ${appState.currentTheme.colors.border};
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 1000;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+  `;
+  
+  // Left side - Logo
+  const logo = document.createElement('div');
+  logo.style.cssText = `
+    font-size: 24px;
+    font-weight: bold;
+    color: ${appState.currentTheme.colors.primary};
+  `;
+  logo.textContent = '🛒 Ninefy';
+  
+  // Center - Navigation buttons
+  const nav = document.createElement('div');
+  nav.style.cssText = `
+    display: flex;
+    gap: 10px;
+  `;
+  
+  const screens = [
+    { id: 'main', label: '🏪 Shop', title: 'Browse Products' },
+    { id: 'browse', label: '🌐 Browse Base', title: 'Browse Base Products' },
+    { id: 'details', label: '📄 Details', title: 'Product Details' },
+    { id: 'upload', label: '📤 Upload', title: 'Upload Product' },
+    { id: 'base', label: '⚙️ Base', title: 'Server Management' }
+  ];
+  
+  screens.forEach(screen => {
+    const button = document.createElement('button');
+    button.id = `nav-${screen.id}`;
+    button.textContent = screen.label;
+    button.title = screen.title;
+    button.style.cssText = `
+      padding: 8px 16px;
+      border: 1px solid ${appState.currentTheme.colors.border};
+      border-radius: 4px;
+      background: ${appState.currentScreen === screen.id ? appState.currentTheme.colors.accent : 'white'};
+      color: ${appState.currentScreen === screen.id ? 'white' : appState.currentTheme.colors.text};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    `;
+    
+    button.addEventListener('click', () => navigateToScreen(screen.id));
+    nav.appendChild(button);
+  });
+  
+  // Right side - Status
+  const status = document.createElement('div');
+  status.id = 'hud-status';
+  status.style.cssText = `
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+  `;
+  status.textContent = 'Ready';
+  
+  hud.appendChild(logo);
+  hud.appendChild(nav);
+  hud.appendChild(status);
+  
+  return hud;
+}
+
+/**
+ * Navigate to a specific screen
+ */
+function navigateToScreen(screenId) {
+  console.log(`🧭 Navigating to screen: ${screenId}`);
+  appState.currentScreen = screenId;
+  updateHUDButtons();
+  renderCurrentScreen();
+}
+
+/**
+ * Update HUD button states
+ */
+function updateHUDButtons() {
+  const screens = ['main', 'browse', 'details', 'upload', 'base'];
+  
+  screens.forEach(screen => {
+    const button = document.getElementById(`nav-${screen}`);
+    if (button) {
+      const isActive = appState.currentScreen === screen;
+      button.style.background = isActive ? appState.currentTheme.colors.accent : 'white';
+      button.style.color = isActive ? 'white' : appState.currentTheme.colors.text;
+    }
+  });
+}
+
+/**
+ * Create Browse Base Screen (All Products on Base)
+ */
+function createBrowseBaseScreen() {
+  const screen = document.createElement('div');
+  screen.id = 'browse-base-screen';
+  screen.className = 'screen';
+  
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid ${appState.currentTheme.colors.background};
+  `;
+  header.innerHTML = `
+    <h1 style="
+      color: ${appState.currentTheme.colors.primary};
+      margin-bottom: 12px;
+      font-size: 2rem;
+      font-family: ${appState.currentTheme.typography.fontFamily};
+    ">🌐 Browse Base Products</h1>
+    <p style="
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 16px;
+      margin: 0;
+    ">Discover digital products from other creators on this base</p>
+  `;
+  
+  // Base selector
+  const baseSelectorContainer = document.createElement('div');
+  baseSelectorContainer.style.cssText = `
     display: flex;
     justify-content: center;
     align-items: center;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    gap: 15px;
+    margin-bottom: 30px;
   `;
   
-  // Create modal content
-  const modalContent = document.createElement('div');
-  modalContent.className = 'compose-modal-content';
-  modalContent.style.cssText = `
+  const baseLabel = document.createElement('label');
+  baseLabel.textContent = 'Select Base:';
+  baseLabel.style.cssText = `
+    font-weight: bold;
+    color: ${appState.currentTheme.colors.primary};
+  `;
+  
+  const baseSelect = document.createElement('select');
+  baseSelect.id = 'base-selector';
+  baseSelect.style.cssText = `
+    padding: 8px 12px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 14px;
     background: white;
-    border-radius: 12px;
-    padding: 30px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 90%;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    transform: scale(0.9);
-    transition: transform 0.3s ease;
+    min-width: 200px;
   `;
   
-  // Create form header
-  const formHeader = createTextComponent({
-    text: 'Create New Post',
-    fontSize: 24,
-    fontFamily: appState.currentTheme.typography.fontFamily,
-    color: appState.currentTheme.colors.primary || '#2c3e50',
-    textAlign: 'center',
-    width: 540,
-    height: 50,
-    padding: 15,
-    className: 'compose-form-header'
+  // Add base options (placeholder data - in real app would come from connected bases)
+  const baseOptions = [
+    { value: 'http://localhost:7243', label: 'Local Development' },
+    { value: 'https://alpha.allyabase.com', label: 'Planet Nine Alpha' },
+    { value: 'https://beta.community.allyabase.com', label: 'Community Beta' }
+  ];
+  
+  baseOptions.forEach(base => {
+    const option = document.createElement('option');
+    option.value = base.value;
+    option.textContent = base.label;
+    baseSelect.appendChild(option);
   });
   
-  modalContent.appendChild(formHeader);
+  const loadButton = document.createElement('button');
+  loadButton.textContent = 'Load Products';
+  loadButton.style.cssText = `
+    background: ${appState.currentTheme.colors.accent};
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 14px;
+  `;
   
-  // Create blog post form
-  const blogFormConfig = {
-    width: 540,
-    backgroundColor: appState.currentTheme.colors.surface || '#fafafa',
-    borderColor: appState.currentTheme.colors.border || '#ecf0f1',
-    borderRadius: 8,
-    fontFamily: appState.currentTheme.typography.fontFamily,
-    colors: appState.currentTheme.colors,
-    postWidth: 540,
-    titleFontSize: 20,
-    contentFontSize: 16,
-    contentLineHeight: 1.6
-  };
+  baseSelectorContainer.appendChild(baseLabel);
+  baseSelectorContainer.appendChild(baseSelect);
+  baseSelectorContainer.appendChild(loadButton);
   
-  const blogForm = createBlogPostForm(blogFormConfig);
-  appState.formInstances.modalBlogForm = blogForm;
+  // Products container
+  const productsContainer = document.createElement('div');
+  productsContainer.id = 'base-products-container';
+  productsContainer.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  `;
   
-  // Set up form submission handler
-  blogForm.onSubmit(async (postConfig) => {
-    console.log('📤 Modal form submitted:', postConfig);
+  // Status message
+  const statusMessage = document.createElement('div');
+  statusMessage.id = 'browse-status';
+  statusMessage.style.cssText = `
+    text-align: center;
+    padding: 40px;
+    color: ${appState.currentTheme.colors.secondary};
+    font-style: italic;
+  `;
+  statusMessage.textContent = 'Select a base and click "Load Products" to browse available products';
+  
+  // Load products function
+  async function loadBaseProducts() {
+    const selectedBase = baseSelect.value;
+    if (!selectedBase) {
+      alert('Please select a base');
+      return;
+    }
+    
+    loadButton.disabled = true;
+    loadButton.textContent = 'Loading...';
+    statusMessage.textContent = 'Loading products from base...';
+    statusMessage.style.color = appState.currentTheme.colors.info;
+    
+    // Clear existing products
+    productsContainer.innerHTML = '';
     
     try {
-      // Show loading state
-      showMessage('Creating post...', 'info');
+      console.log('🔄 Loading products from base:', selectedBase);
       
-      // Create and save post
-      const result = await createAndSavePost(
-        blogForm, 
-        POST_TYPES.BLOG, 
-        appState.currentTheme, 
-        appState.allyabaseClient
-      );
-      
-      if (result.success) {
-        showMessage('✅ Post created successfully!', 'success');
+      // Try to fetch from backend
+      try {
+        const baseProducts = await invoke('get_base_products', {
+          sanoraUrl: selectedBase
+        });
         
-        // Add to layered UI feed
-        addPostToFeed(result.post);
+        console.log('✅ Loaded base products:', baseProducts);
         
-        // Update HUD status
-        updateHUDStatus();
+        if (baseProducts && baseProducts.length > 0) {
+          // Display products
+          baseProducts.forEach(productData => {
+            // Convert Sanora product format to our display format if needed
+            const displayProduct = {
+              id: productData.id || productData.uuid,
+              title: productData.title || productData.name,
+              description: productData.description,
+              price: productData.price,
+              category: productData.category || 'ebook', // Default category
+              author: productData.author || 'Unknown Creator',
+              timestamp: productData.created_at || new Date().toISOString(),
+              downloadCount: productData.download_count || 0,
+              rating: productData.rating || 4.5,
+              tags: productData.tags || [],
+              featuredImage: PRODUCT_IMAGES[productData.category || 'ebook'],
+              previewContent: productData.description,
+              fileSize: productData.file_size || 'Unknown',
+              fileType: productData.file_type || 'Digital Product'
+            };
+            
+            const productElement = createProductCard(displayProduct);
+            productsContainer.appendChild(productElement);
+          });
+          
+          statusMessage.textContent = `Found ${baseProducts.length} products on this base`;
+          statusMessage.style.color = appState.currentTheme.colors.success;
+        } else {
+          statusMessage.textContent = 'No products found on this base';
+          statusMessage.style.color = appState.currentTheme.colors.secondary;
+        }
         
-        // Close modal
-        closeModal();
+      } catch (backendError) {
+        console.warn('⚠️ Backend fetch failed, showing placeholder data:', backendError);
         
-        console.log('✅ Post created and saved:', result);
-      } else {
-        showMessage(`❌ Failed to create post: ${result.error}`, 'error');
+        // Fallback to showing sample/placeholder data
+        const placeholderProducts = [
+          {
+            ...SAMPLE_PRODUCTS[0],
+            author: 'Creator on ' + baseOptions.find(b => b.value === selectedBase)?.label
+          },
+          {
+            ...SAMPLE_PRODUCTS[1],
+            author: 'Creator on ' + baseOptions.find(b => b.value === selectedBase)?.label
+          }
+        ];
+        
+        placeholderProducts.forEach(productData => {
+          const productElement = createProductCard(productData);
+          productsContainer.appendChild(productElement);
+        });
+        
+        statusMessage.textContent = `Showing sample products (base connection unavailable)`;
+        statusMessage.style.color = appState.currentTheme.colors.warning;
       }
       
     } catch (error) {
-      console.error('❌ Error creating post:', error);
-      showMessage(`❌ Error: ${error.message}`, 'error');
+      console.error('❌ Failed to load base products:', error);
+      statusMessage.textContent = 'Failed to load products from base';
+      statusMessage.style.color = appState.currentTheme.colors.accent;
+    } finally {
+      loadButton.disabled = false;
+      loadButton.textContent = 'Load Products';
     }
+  }
+  
+  // Add event listener
+  loadButton.addEventListener('click', loadBaseProducts);
+  
+  screen.appendChild(header);
+  screen.appendChild(baseSelectorContainer);
+  screen.appendChild(statusMessage);
+  screen.appendChild(productsContainer);
+  
+  return screen;
+}
+
+/**
+ * Create Main Screen (Product Marketplace)
+ */
+function createMainScreen() {
+  const screen = document.createElement('div');
+  screen.id = 'main-screen';
+  screen.className = 'screen';
+  screen.style.cssText = `
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 80px);
+    overflow: hidden;
+  `;
+  
+  // Left column - Products (2/3 width)
+  const productsColumn = document.createElement('div');
+  productsColumn.className = 'products-column';
+  productsColumn.style.cssText = `
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  `;
+  
+  // Products header
+  const productsHeader = document.createElement('div');
+  productsHeader.style.cssText = `
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid ${appState.currentTheme.colors.background};
+  `;
+  productsHeader.innerHTML = `
+    <h1 style="
+      margin: 0 0 8px 0;
+      color: ${appState.currentTheme.colors.primary};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 2rem;
+      font-weight: 600;
+    ">Digital Marketplace</h1>
+    <p style="
+      margin: 0;
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 16px;
+    ">Discover and purchase digital goods from creators worldwide</p>
+  `;
+  
+  // Products container with scrolling
+  const productsContainer = document.createElement('div');
+  productsContainer.id = 'products-container';
+  productsContainer.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 20px;
+  `;
+  
+  // Custom scrollbar styling
+  const scrollbarStyle = document.createElement('style');
+  scrollbarStyle.textContent = `
+    #products-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    #products-container::-webkit-scrollbar-track {
+      background: ${appState.currentTheme.colors.background};
+      border-radius: 4px;
+    }
+    #products-container::-webkit-scrollbar-thumb {
+      background: ${appState.currentTheme.colors.secondary};
+      border-radius: 4px;
+    }
+    #products-container::-webkit-scrollbar-thumb:hover {
+      background: ${appState.currentTheme.colors.primary};
+    }
+  `;
+  document.head.appendChild(scrollbarStyle);
+  
+  productsColumn.appendChild(productsHeader);
+  productsColumn.appendChild(productsContainer);
+  
+  // Right column - Teleported content (1/3 width)
+  const teleportedColumn = document.createElement('div');
+  teleportedColumn.className = 'teleported-column';
+  teleportedColumn.style.cssText = `
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: ${appState.currentTheme.colors.background};
+    border-radius: 12px;
+    padding: 20px;
+    overflow: hidden;
+  `;
+  
+  // Teleported header
+  const teleportedHeader = document.createElement('div');
+  teleportedHeader.style.cssText = `
+    margin-bottom: 20px;
+    padding-bottom: 15px;  
+    border-bottom: 2px solid ${appState.currentTheme.colors.border};
+  `;
+  teleportedHeader.innerHTML = `
+    <h2 style="
+      margin: 0 0 8px 0;
+      color: ${appState.currentTheme.colors.primary};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 1.5rem;
+      font-weight: 600;
+    ">🌐 Teleported</h2>
+    <p style="
+      margin: 0;
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 14px;
+    ">Latest from the marketplace network</p>
+  `;
+  
+  // Teleported container with scrolling
+  const teleportedContainer = document.createElement('div');
+  teleportedContainer.id = 'teleported-container';
+  teleportedContainer.style.cssText = `
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+  `;
+  
+  teleportedColumn.appendChild(teleportedHeader);
+  teleportedColumn.appendChild(teleportedContainer);
+  
+  screen.appendChild(productsColumn);
+  screen.appendChild(teleportedColumn);
+  
+  return screen;
+}
+
+/**
+ * Create Product Details Screen
+ */
+function createDetailsScreen() {
+  const screen = document.createElement('div');
+  screen.id = 'details-screen';
+  screen.className = 'screen';
+  
+  if (appState.currentProduct) {
+    const product = appState.currentProduct;
+    
+    // Display the selected product
+    const productContainer = document.createElement('div');
+    productContainer.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.8;
+    `;
+    
+    // Product image
+    if (product.featuredImage) {
+      const imageElement = document.createElement('img');
+      imageElement.src = product.featuredImage;
+      imageElement.style.cssText = `
+        width: 100%;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 12px;
+        margin-bottom: 30px;
+      `;
+      productContainer.appendChild(imageElement);
+    }
+    
+    // Product header
+    const headerContainer = document.createElement('div');
+    headerContainer.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 20px;
+    `;
+    
+    const titlePriceContainer = document.createElement('div');
+    titlePriceContainer.style.cssText = `
+      flex: 1;
+    `;
+    
+    // Product title
+    const title = document.createElement('h1');
+    title.textContent = product.title;
+    title.style.cssText = `
+      color: ${appState.currentTheme.colors.primary};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: ${appState.currentTheme.typography.headerSize}px;
+      margin: 0 0 10px 0;
+      line-height: 1.3;
+    `;
+    
+    // Price and category
+    const priceCategory = document.createElement('div');
+    priceCategory.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    `;
+    
+    const price = document.createElement('span');
+    price.textContent = formatPrice(product.price);
+    price.style.cssText = `
+      font-size: 28px;
+      font-weight: bold;
+      color: ${appState.currentTheme.colors.accent};
+    `;
+    
+    const category = document.createElement('span');
+    category.textContent = `${getCategoryIcon(product.category)} ${product.category}`;
+    category.style.cssText = `
+      background: ${appState.currentTheme.colors.background};
+      color: ${appState.currentTheme.colors.secondary};
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+    `;
+    
+    priceCategory.appendChild(price);
+    priceCategory.appendChild(category);
+    
+    // Author and stats
+    const authorStats = document.createElement('div');
+    authorStats.style.cssText = `
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 14px;
+      margin-bottom: 20px;
+    `;
+    authorStats.innerHTML = `
+      by <strong>${product.author}</strong> • 
+      ⭐ ${product.rating} • 
+      💾 ${product.downloadCount.toLocaleString()} downloads • 
+      📁 ${product.fileSize}
+    `;
+    
+    titlePriceContainer.appendChild(title);
+    titlePriceContainer.appendChild(priceCategory);
+    titlePriceContainer.appendChild(authorStats);
+    
+    // Buy button
+    const buyButton = document.createElement('button');
+    buyButton.textContent = `Buy for ${formatPrice(product.price)}`;
+    buyButton.style.cssText = `
+      background: ${appState.currentTheme.colors.accent};
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-left: 20px;
+    `;
+    
+    buyButton.addEventListener('mouseenter', () => {
+      buyButton.style.transform = 'translateY(-2px)';
+      buyButton.style.boxShadow = '0 4px 8px rgba(231, 76, 60, 0.3)';
+    });
+    
+    buyButton.addEventListener('mouseleave', () => {
+      buyButton.style.transform = 'translateY(0)';
+      buyButton.style.boxShadow = 'none';
+    });
+    
+    buyButton.addEventListener('click', async () => {
+      try {
+        // Check if payment system is available
+        if (!window.initializePayment) {
+          alert('Payment system is not available. Please check your internet connection and try again.');
+          return;
+        }
+        
+        // Initialize Stripe payment for this product
+        console.log('🛒 Initiating purchase for:', product.title);
+        await window.initializePayment(product, product.price, 'usd');
+      } catch (error) {
+        console.error('❌ Payment initialization failed:', error);
+        if (error.message.includes('Tauri not available')) {
+          alert('Payment processing requires the Tauri desktop app. Please run the app via "npm run tauri dev".');
+        } else if (error.message.includes('Stripe library not loaded')) {
+          alert('Payment system is loading. Please wait a moment and try again.');
+        } else {
+          alert('Failed to initialize payment. Please check your connection and try again.');
+        }
+      }
+    });
+    
+    headerContainer.appendChild(titlePriceContainer);
+    headerContainer.appendChild(buyButton);
+    
+    // Product description
+    const description = document.createElement('div');
+    description.innerHTML = parseMarkdown(product.previewContent);
+    description.style.cssText = `
+      color: ${appState.currentTheme.colors.text};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 16px;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    `;
+    
+    // Tags
+    if (product.tags && product.tags.length > 0) {
+      const tagsContainer = document.createElement('div');
+      tagsContainer.style.cssText = `
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
+      `;
+      
+      product.tags.forEach(tag => {
+        const tagElement = document.createElement('span');
+        tagElement.textContent = `#${tag}`;
+        tagElement.style.cssText = `
+          background: ${appState.currentTheme.colors.background};
+          color: ${appState.currentTheme.colors.accent};
+          padding: 6px 12px;
+          border-radius: 15px;
+          font-size: 12px;
+          font-weight: 500;
+        `;
+        tagsContainer.appendChild(tagElement);
+      });
+      
+      productContainer.appendChild(tagsContainer);
+    }
+    
+    // Back button
+    const backButton = document.createElement('button');
+    backButton.textContent = '← Back to Shop';
+    backButton.style.cssText = `
+      background: ${appState.currentTheme.colors.secondary};
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 16px;
+    `;
+    backButton.addEventListener('click', () => {
+      appState.currentProduct = null;
+      navigateToScreen('main');
+    });
+    
+    productContainer.appendChild(headerContainer);
+    productContainer.appendChild(description);
+    productContainer.appendChild(backButton);
+    screen.appendChild(productContainer);
+  } else {
+    // No product selected
+    screen.innerHTML = `
+      <div style="
+        text-align: center;
+        padding: 100px 20px;
+        color: ${appState.currentTheme.colors.secondary};
+      ">
+        <h1 style="
+          color: ${appState.currentTheme.colors.primary};
+          margin-bottom: 20px;
+          font-size: 2rem;
+        ">📄 Product Details</h1>
+        <p>Select a product from the Shop to view its details here.</p>
+      </div>
+    `;
+  }
+  
+  return screen;
+}
+
+/**
+ * Create Product Upload Form
+ */
+function createProductUploadForm() {
+  const formContainer = document.createElement('div');
+  formContainer.className = 'product-form';
+  formContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  `;
+  
+  // Title input
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.placeholder = 'Product title...';
+  titleInput.id = 'product-title';
+  titleInput.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: ${appState.currentTheme.typography.productTitleSize}px;
+    font-weight: bold;
+  `;
+  
+  // Category select
+  const categorySelect = document.createElement('select');
+  categorySelect.id = 'product-category';
+  categorySelect.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 16px;
+    background: white;
+  `;
+  
+  const categories = [
+    { value: '', label: 'Select category...' },
+    { value: 'ebook', label: '📚 E-Book' },
+    { value: 'music', label: '🎵 Music' },
+    { value: 'software', label: '💻 Software' },
+    { value: 'course', label: '🎓 Course' },
+    { value: 'template', label: '🎨 Template' },
+    { value: 'ticket', label: '🎫 Ticket' }
+  ];
+  
+  categories.forEach(cat => {
+    const option = document.createElement('option');
+    option.value = cat.value;
+    option.textContent = cat.label;
+    if (!cat.value) option.disabled = true;
+    categorySelect.appendChild(option);
   });
   
-  // Set up clear handler
-  blogForm.onClear(() => {
-    console.log('🧹 Modal form cleared');
-  });
+  // Price input
+  const priceContainer = document.createElement('div');
+  priceContainer.style.cssText = `
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  `;
   
-  modalContent.appendChild(blogForm.element);
+  const priceLabel = document.createElement('span');
+  priceLabel.textContent = '$';
+  priceLabel.style.cssText = `
+    font-size: 18px;
+    font-weight: bold;
+    margin-right: 8px;
+  `;
   
-  // Create close button
-  const closeButton = document.createElement('button');
-  closeButton.textContent = '✕ Close';
-  closeButton.style.cssText = `
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: transparent;
+  const priceInput = document.createElement('input');
+  priceInput.type = 'number';
+  priceInput.placeholder = '29.99';
+  priceInput.id = 'product-price';
+  priceInput.step = '0.01';
+  priceInput.min = '0';
+  priceInput.style.cssText = `
+    flex: 1;
+    padding: 12px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 16px;
+  `;
+  
+  priceContainer.appendChild(priceLabel);
+  priceContainer.appendChild(priceInput);
+  
+  // Description textarea
+  const descriptionTextarea = document.createElement('textarea');
+  descriptionTextarea.placeholder = 'Product description and details...\n\nMarkdown supported:\n• **bold** and *italic*\n• # Headers\n• ![Image](url)\n• `code` and ```code blocks```\n• > blockquotes\n• ✅ checkboxes';
+  descriptionTextarea.id = 'product-description';
+  descriptionTextarea.rows = 12;
+  descriptionTextarea.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: ${appState.currentTheme.typography.fontSize}px;
+    line-height: ${appState.currentTheme.typography.lineHeight};
+    resize: vertical;
+  `;
+  
+  // File upload section
+  const fileSection = document.createElement('div');
+  fileSection.style.cssText = `
+    border: 2px dashed ${appState.currentTheme.colors.border};
+    border-radius: 8px;
+    padding: 30px;
+    margin-bottom: 20px;
+    text-align: center;
+    background: ${appState.currentTheme.colors.background};
+  `;
+  fileSection.innerHTML = `
+    <div style="color: ${appState.currentTheme.colors.secondary}; margin-bottom: 15px;">
+      📁 <strong>Upload Product Files</strong>
+    </div>
+    <div style="font-size: 14px; color: ${appState.currentTheme.colors.secondary};">
+      Drag and drop files here or click to browse<br>
+      <em>Supported: ZIP, PDF, MP3, MP4, and more</em>
+    </div>
+  `;
+  
+  // Tags input
+  const tagsInput = document.createElement('input');
+  tagsInput.type = 'text';
+  tagsInput.placeholder = 'Tags (comma-separated): javascript, tutorial, beginner';
+  tagsInput.id = 'product-tags';
+  tagsInput.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid ${appState.currentTheme.colors.border};
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 14px;
+  `;
+  
+  // Submit and Clear buttons
+  const buttonContainer = document.createElement('div');
+  buttonContainer.style.cssText = `
+    display: flex;
+    gap: 15px;
+  `;
+  
+  const submitButton = document.createElement('button');
+  submitButton.textContent = 'Upload Product';
+  submitButton.style.cssText = `
+    background: ${appState.currentTheme.colors.accent};
+    color: white;
     border: none;
+    padding: 15px 30px;
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+  `;
+  
+  const clearButton = document.createElement('button');
+  clearButton.textContent = 'Clear Form';
+  clearButton.style.cssText = `
+    background: ${appState.currentTheme.colors.secondary};
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 6px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
     font-size: 16px;
     cursor: pointer;
-    padding: 5px 10px;
-    border-radius: 4px;
-    color: #666;
+    flex: 1;
   `;
-  closeButton.addEventListener('click', closeModal);
-  closeButton.addEventListener('mouseenter', () => {
-    closeButton.style.background = '#f0f0f0';
-  });
-  closeButton.addEventListener('mouseleave', () => {
-    closeButton.style.background = 'transparent';
-  });
   
-  modalContent.appendChild(closeButton);
-  modalOverlay.appendChild(modalContent);
-  document.body.appendChild(modalOverlay);
-  
-  // Close modal function
-  function closeModal() {
-    modalOverlay.style.opacity = '0';
-    modalContent.style.transform = 'scale(0.9)';
-    setTimeout(() => {
-      if (modalOverlay.parentNode) {
-        modalOverlay.parentNode.removeChild(modalOverlay);
-      }
-    }, 300);
-  }
-  
-  // Close on overlay click
-  modalOverlay.addEventListener('click', (e) => {
-    if (e.target === modalOverlay) {
-      closeModal();
+  // Add event handlers
+  submitButton.addEventListener('click', async function() {
+    const title = titleInput.value.trim();
+    const category = categorySelect.value;
+    const price = parseFloat(priceInput.value);
+    const description = descriptionTextarea.value.trim();
+    const tags = tagsInput.value.trim();
+    
+    if (!title || !category || !price || !description) {
+      alert('Please fill in all required fields');
+      return;
     }
-  });
-  
-  // Escape key to close
-  const escapeHandler = (e) => {
-    if (e.key === 'Escape') {
-      closeModal();
-      document.removeEventListener('keydown', escapeHandler);
-    }
-  };
-  document.addEventListener('keydown', escapeHandler);
-  
-  // Animate in
-  setTimeout(() => {
-    modalOverlay.style.opacity = '1';
-    modalContent.style.transform = 'scale(1)';
-  }, 10);
-}
-
-/**
- * Load existing posts from storage
- */
-async function loadExistingPosts() {
-  console.log('📄 Loading existing posts...');
-  
-  try {
-    // Try to load from allyabase or local storage
-    const savedPosts = localStorage.getItem('rhapsold-posts');
-    if (savedPosts) {
-      const posts = JSON.parse(savedPosts);
-      appState.posts = posts;
+    
+    // Disable submit button while processing
+    submitButton.disabled = true;
+    submitButton.textContent = 'Uploading...';
+    
+    try {
+      // First try to upload to Sanora backend
+      console.log('🔄 Uploading product to Sanora...');
       
-      // Add posts to feed
-      if (appState.layeredUI && posts.length > 0) {
-        // Convert stored post data back to elements
-        const feedPosts = posts.map(post => ({
-          id: post.id || Date.now(),
-          element: recreatePostElement(post),
-          timestamp: post.timestamp,
-          type: post.type,
-          data: post.data
-        }));
+      // For now, we'll use a placeholder UUID and URL - in a real app,
+      // these would be retrieved from user authentication and base configuration
+      const mockSanoraUser = 'user-uuid-placeholder';
+      const mockSanoraUrl = 'http://localhost:7243'; // Local development
+      
+      const priceInCents = Math.round(price * 100);
+      
+      try {
+        // Try to upload to Sanora if available
+        let uploadedToSanora = false;
+        let sanoraResult = null;
         
-        appState.layeredUI.setPosts(feedPosts);
+        if (invoke) {
+          try {
+            sanoraResult = await invoke('add_product', {
+              uuid: mockSanoraUser,
+              sanoraUrl: mockSanoraUrl,
+              title: title,
+              description: description,
+              price: priceInCents
+            });
+            
+            console.log('✅ Product uploaded to Sanora:', sanoraResult);
+            uploadedToSanora = true;
+          } catch (sanoraError) {
+            console.warn('⚠️ Sanora upload failed:', sanoraError);
+          }
+        }
+        
+        // Create product data object
+        const productData = {
+          id: sanoraResult?.id || Date.now().toString(),
+          title: title,
+          description: description,
+          price: priceInCents,
+          category: category,
+          author: 'You',
+          timestamp: new Date().toISOString(),
+          downloadCount: 0,
+          rating: 0,
+          tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+          featuredImage: PRODUCT_IMAGES[category] || PRODUCT_IMAGES.ebook,
+          previewContent: description,
+          fileSize: 'Unknown',
+          fileType: 'Digital Product',
+          sanoraId: sanoraResult?.id,
+          available: true
+        };
+        
+        // Save to localStorage
+        const currentProducts = JSON.parse(localStorage.getItem('ninefy-products') || '[]');
+        currentProducts.unshift(productData);
+        localStorage.setItem('ninefy-products', JSON.stringify(currentProducts));
+        
+        const message = uploadedToSanora 
+          ? 'Product uploaded successfully to Sanora!' 
+          : 'Product saved locally (backend unavailable)';
+        alert(message);
+        
+      } catch (generalError) {
+        console.error('❌ Unexpected error during product upload:', generalError);
+        alert('Unexpected error occurred. Please try again.');
       }
       
-      console.log(`📄 Loaded ${posts.length} existing posts`);
+      // Clear form
+      titleInput.value = '';
+      categorySelect.value = '';
+      priceInput.value = '';
+      descriptionTextarea.value = '';
+      tagsInput.value = '';
+      
+      // Navigate back to main screen
+      navigateToScreen('main');
+      
+    } catch (error) {
+      console.error('❌ Product upload failed:', error);
+      alert('Failed to upload product. Please try again.');
+    } finally {
+      // Re-enable submit button
+      submitButton.disabled = false;
+      submitButton.textContent = 'Upload Product';
     }
-  } catch (error) {
-    console.warn('⚠️ Could not load existing posts:', error);
-  }
-}
-
-/**
- * Recreate post element from stored data
- */
-function recreatePostElement(post) {
-  try {
-    if (post.type === 'blog' && post.data) {
-      // Recreate blog post element
-      const postElement = createPostFromForm(
-        post.data,
-        POST_TYPES.BLOG,
-        appState.currentTheme
-      );
-      return postElement.element;
-    }
-    
-    // Fallback: create simple text element
-    return createTextComponent({
-      text: post.data?.content || 'Post content unavailable',
-      fontSize: 16,
-      fontFamily: appState.currentTheme.typography.fontFamily,
-      color: appState.currentTheme.colors.text || '#2c3e50',
-      width: 600,
-      height: 'auto',
-      padding: 20
-    });
-  } catch (error) {
-    console.warn('⚠️ Could not recreate post element:', error);
-    return createTextComponent({
-      text: 'Error loading post',
-      fontSize: 14,
-      color: '#ef4444',
-      width: 600,
-      height: 40
-    });
-  }
-}
-
-/**
- * Add post to the layered UI feed
- */
-function addPostToFeed(post) {
-  if (!appState.layeredUI || !post.element) return;
+  });
   
-  // Create feed post object
-  const feedPost = {
-    id: post.id || Date.now(),
-    element: post.element,
-    timestamp: post.timestamp,
-    type: post.type,
-    data: post.data
+  clearButton.addEventListener('click', function() {
+    titleInput.value = '';
+    categorySelect.value = '';
+    priceInput.value = '';
+    descriptionTextarea.value = '';
+    tagsInput.value = '';
+  });
+  
+  buttonContainer.appendChild(submitButton);
+  buttonContainer.appendChild(clearButton);
+  
+  // Append all elements
+  formContainer.appendChild(titleInput);
+  formContainer.appendChild(categorySelect);
+  formContainer.appendChild(priceContainer);
+  formContainer.appendChild(descriptionTextarea);
+  formContainer.appendChild(fileSection);
+  formContainer.appendChild(tagsInput);
+  formContainer.appendChild(buttonContainer);
+  
+  return formContainer;
+}
+
+/**
+ * Create Upload Screen
+ */
+function createUploadScreen() {
+  const screen = document.createElement('div');
+  screen.id = 'upload-screen';
+  screen.className = 'screen';
+  
+  // Create header
+  const header = document.createElement('header');
+  header.innerHTML = `
+    <h1 style="
+      text-align: center;
+      color: ${appState.currentTheme.colors.primary};
+      margin-bottom: 20px;
+      font-size: 2rem;
+    ">Upload Your Product</h1>
+    <p style="
+      text-align: center;
+      color: ${appState.currentTheme.colors.secondary};
+      margin-bottom: 30px;
+    ">Share your digital goods with the Ninefy marketplace</p>
+  `;
+  
+  // Create form
+  const formContainer = createProductUploadForm();
+  
+  screen.appendChild(header);
+  screen.appendChild(formContainer);
+  
+  return screen;
+}
+
+/**
+ * Create base server card (reused from rhapsold)
+ */
+function createBaseCard(base) {
+  const card = document.createElement('div');
+  card.className = 'base-card';
+  card.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid ${getStatusColor(base.status)};
+    transition: all 0.2s ease;
+    cursor: pointer;
+  `;
+  
+  // Status indicator
+  const statusEmoji = {
+    'connected': '🟢',
+    'available': '🟡', 
+    'limited': '🟠',
+    'offline': '🔴'
   };
   
-  // Add to layered UI feed
-  appState.layeredUI.addPost(feedPost);
-  
-  // Add to app state
-  appState.posts.unshift(post);
-  
-  // Save to local storage
-  try {
-    localStorage.setItem('rhapsold-posts', JSON.stringify(appState.posts));
-  } catch (error) {
-    console.warn('⚠️ Could not save posts to local storage:', error);
-  }
-  
-  console.log('📄 Post added to feed:', post.type);
-}
-
-/**
- * Show message to user
- */
-function showMessage(text, type = 'info') {
-  console.log(`💬 Message (${type}): ${text}`);
-  
-  // Create temporary message element
-  const messageConfig = {
-    text: text,
-    fontSize: 14,
-    fontFamily: appState.currentTheme.typography.fontFamily,
-    color: type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3498db',
-    backgroundColor: type === 'error' ? '#fef2f2' : type === 'success' ? '#f0fdf4' : '#eff6ff',
-    borderColor: type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3498db',
-    borderWidth: 1,
-    textAlign: 'center',
-    width: 500,
-    height: 50,
-    padding: 10,
-    className: 'message-toast'
+  // Type emoji
+  const typeEmoji = {
+    'development': '🛠️',
+    'production': '🏭',
+    'community': '👥',
+    'privacy': '🔒',
+    'research': '🔬'
   };
   
-  const messageElement = createTextComponent(messageConfig);
-  messageElement.style.position = 'fixed';
-  messageElement.style.top = '20px';
-  messageElement.style.left = '50%';
-  messageElement.style.transform = 'translateX(-50%)';
-  messageElement.style.zIndex = '1000';
-  messageElement.style.opacity = '0';
-  messageElement.style.transition = 'opacity 0.3s ease';
+  card.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 24px;">${typeEmoji[base.type] || '🌐'}</span>
+        <div>
+          <h3 style="
+            margin: 0 0 4px 0;
+            color: ${appState.currentTheme.colors.primary};
+            font-size: 18px;
+            font-weight: 600;
+          ">${base.name}</h3>
+          <p style="
+            margin: 0;
+            color: ${appState.currentTheme.colors.secondary};
+            font-size: 12px;
+            font-family: monospace;
+          ">${base.url}</p>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-bottom: 4px;
+          font-size: 14px;
+          font-weight: 500;
+          color: ${getStatusColor(base.status)};
+        ">
+          ${statusEmoji[base.status]} ${base.status.toUpperCase()}
+        </div>
+        <div style="
+          font-size: 11px;
+          color: ${appState.currentTheme.colors.secondary};
+        ">
+          ${base.users.toLocaleString()} users
+        </div>
+      </div>
+    </div>
+    
+    <p style="
+      margin: 0 0 16px 0;
+      color: ${appState.currentTheme.colors.text};
+      font-size: 14px;
+      line-height: 1.4;
+    ">${base.description}</p>
+    
+    <div style="
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    ">
+      ${base.services.map(service => `
+        <span style="
+          background: ${appState.currentTheme.colors.background};
+          color: ${appState.currentTheme.colors.accent};
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 11px;
+          font-weight: 500;
+        ">${service}</span>
+      `).join('')}
+    </div>
+    
+    <div style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 1px solid ${appState.currentTheme.colors.background};
+    ">
+      <div style="
+        font-size: 12px;
+        color: ${appState.currentTheme.colors.secondary};
+      ">
+        Uptime: ${base.uptime}
+      </div>
+      <button style="
+        background: ${base.status === 'connected' ? appState.currentTheme.colors.secondary : appState.currentTheme.colors.accent};
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: 500;
+      ">
+        ${base.status === 'connected' ? 'Disconnect' : 'Connect'}
+      </button>
+    </div>
+  `;
   
-  document.body.appendChild(messageElement);
+  // Hover effects
+  card.addEventListener('mouseenter', () => {
+    card.style.transform = 'translateY(-2px)';
+    card.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+  });
   
-  // Fade in
-  setTimeout(() => {
-    messageElement.style.opacity = '1';
-  }, 100);
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'translateY(0)';
+    card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+  });
   
-  // Fade out and remove
-  setTimeout(() => {
-    messageElement.style.opacity = '0';
-    setTimeout(() => {
-      if (messageElement.parentNode) {
-        messageElement.parentNode.removeChild(messageElement);
-      }
-    }, 300);
-  }, 3000);
+  // Click handler
+  card.addEventListener('click', () => {
+    console.log('Base clicked:', base.name);
+    alert(`Would ${base.status === 'connected' ? 'disconnect from' : 'connect to'} ${base.name}`);
+  });
+  
+  return card;
 }
 
 /**
- * Create demo blog post
+ * Get status color
  */
-async function createDemoPost() {
-  console.log('📄 Creating demo post...');
+function getStatusColor(status) {
+  const colors = {
+    'connected': '#10b981',
+    'available': '#f59e0b',
+    'limited': '#f97316', 
+    'offline': '#ef4444'
+  };
+  return colors[status] || '#6b7280';
+}
+
+/**
+ * Create Base Screen (Server Management) - reused from rhapsold
+ */
+function createBaseScreen() {
+  const screen = document.createElement('div');
+  screen.id = 'base-screen';
+  screen.className = 'screen';
+  screen.style.cssText = `
+    padding: 20px;
+    overflow-y: auto;
+  `;
+  
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    text-align: center;
+    margin-bottom: 40px;
+  `;
+  header.innerHTML = `
+    <h1 style="
+      color: ${appState.currentTheme.colors.primary};
+      margin-bottom: 12px;
+      font-size: 2rem;
+      font-family: ${appState.currentTheme.typography.fontFamily};
+    ">🌐 Base Server Management</h1>
+    <p style="
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 16px;
+      margin: 0;
+    ">Connect to allyabase servers across the decentralized network</p>
+  `;
+  
+  // Bases container
+  const basesContainer = document.createElement('div');
+  basesContainer.style.cssText = `
+    max-width: 800px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+  `;
+  
+  // Placeholder base data (same as rhapsold)
+  const placeholderBases = [
+    {
+      name: 'Local Development',
+      url: 'http://localhost:7243',
+      status: 'connected',
+      type: 'development',
+      services: ['sanora', 'bdo', 'dolores', 'addie', 'fount'],
+      description: 'Local development environment for testing',
+      users: 1,
+      uptime: '99.9%'
+    },
+    {
+      name: 'Planet Nine Alpha',
+      url: 'https://alpha.allyabase.com',
+      status: 'connected', 
+      type: 'production',
+      services: ['sanora', 'bdo', 'dolores', 'addie', 'fount', 'julia'],
+      description: 'Main Planet Nine production cluster',
+      users: 15420,
+      uptime: '99.8%'
+    },
+    {
+      name: 'Community Beta',
+      url: 'https://beta.community.allyabase.com',
+      status: 'available',
+      type: 'community',
+      services: ['sanora', 'bdo', 'dolores'],
+      description: 'Community-run server for beta testing',
+      users: 892,
+      uptime: '98.5%'
+    },
+    {
+      name: 'Privacy-First Base',
+      url: 'https://privacy.allyabase.org',
+      status: 'available',
+      type: 'privacy',
+      services: ['sanora', 'bdo', 'julia'],
+      description: 'Enhanced privacy and encryption focus',
+      users: 3241,
+      uptime: '99.2%'
+    },
+    {
+      name: 'Academic Research',
+      url: 'https://research.edu.allyabase.net',
+      status: 'limited',
+      type: 'research', 
+      services: ['bdo', 'dolores'],
+      description: 'University research cluster (restricted access)',
+      users: 156,
+      uptime: '97.1%'
+    }
+  ];
+  
+  placeholderBases.forEach(base => {
+    const baseCard = createBaseCard(base);
+    basesContainer.appendChild(baseCard);
+  });
+  
+  screen.appendChild(header);
+  screen.appendChild(basesContainer);
+  
+  return screen;
+}
+
+/**
+ * Render the current screen
+ */
+function renderCurrentScreen() {
+  const contentContainer = document.getElementById('screen-content');
+  if (!contentContainer) return;
+  
+  // Clear existing content
+  contentContainer.innerHTML = '';
+  
+  // Create the appropriate screen
+  let screen;
+  switch (appState.currentScreen) {
+    case 'main':
+      screen = createMainScreen();
+      // Load products after screen is added to DOM
+      setTimeout(() => {
+        loadProducts();
+      }, 10);
+      break;
+    case 'browse':
+      screen = createBrowseBaseScreen();
+      break;
+    case 'details':
+      screen = createDetailsScreen();
+      break;
+    case 'upload':
+      screen = createUploadScreen();
+      break;
+    case 'base':
+      screen = createBaseScreen();
+      break;
+    default:
+      screen = createMainScreen();
+      appState.currentScreen = 'main';
+  }
+  
+  contentContainer.appendChild(screen);
+}
+
+/**
+ * Load products and teleported content
+ */
+function loadProducts() {
+  console.log('🛒 Loading products and teleported content...');
   
   try {
-    // Create demo post data
-    const demoPostData = {
-      title: 'Welcome to Rhapsold',
-      content: `This is a demonstration of Rhapsold's new layered UI system with scrollable feeds and SVG HUD overlays.
-
-The platform now features:
-• Scrollable feed with virtual scrolling support
-• SVG HUD overlay with transparent scrolling zones
-• Layered UI manager for complex interactions
-• Modal compose forms for distraction-free writing
-• Persistent local storage for your posts
-• Smooth animations and responsive design
-
-The feed below is fully scrollable, while the navigation HUD remains fixed on top. The transparent zones allow you to scroll through posts while interacting with the HUD controls.
-
-Try clicking the "Compose" button in the top-right to create your own post!`,
-      timestamp: new Date().toISOString()
-    };
+    // Load products (use sample data + localStorage)
+    const localProducts = JSON.parse(localStorage.getItem('ninefy-products') || '[]');
+    const allProducts = [...localProducts, ...SAMPLE_PRODUCTS];
     
-    // Create post element
-    const demoPost = createPostFromForm(
-      demoPostData,
-      POST_TYPES.BLOG,
-      appState.currentTheme
-    );
+    const productsContainer = document.getElementById('products-container');
+    if (productsContainer) {
+      // Clear existing content
+      productsContainer.innerHTML = '';
+      
+      allProducts.forEach(productData => {
+        const productElement = createProductCard(productData);
+        productsContainer.appendChild(productElement);
+      });
+      
+      console.log(`🛒 Loaded ${allProducts.length} products (${localProducts.length} user + ${SAMPLE_PRODUCTS.length} sample)`);
+    }
     
-    if (demoPost.success) {
-      // Add to feed
-      addPostToFeed(demoPost);
-      console.log('✅ Demo post created and added to feed');
-    } else {
-      console.warn('⚠️ Could not create demo post:', demoPost.error);
+    // Load teleported content
+    const teleportedContainer = document.getElementById('teleported-container');
+    if (teleportedContainer) {
+      // Clear existing content
+      teleportedContainer.innerHTML = '';
+      
+      TELEPORTED_CONTENT.forEach(item => {
+        const teleportedElement = createTeleportedItem(item);
+        teleportedContainer.appendChild(teleportedElement);
+      });
+      
+      console.log(`🌐 Loaded ${TELEPORTED_CONTENT.length} teleported items`);
     }
     
   } catch (error) {
-    console.error('❌ Error creating demo post:', error);
+    console.warn('⚠️ Could not load content:', error);
   }
-}
-
-/**
- * Update HUD status text
- */
-function updateHUDStatus() {
-  if (appState.layeredUI) {
-    const statusText = `${appState.posts.length} posts • ${appState.connected ? 'Connected to allyabase' : 'Offline mode'}`;
-    
-    appState.layeredUI.updateHUDElement('status-text', {
-      content: statusText
-    });
-  }
-}
-
-/**
- * Setup event handlers
- */
-function setupEventHandlers() {
-  if (!appState.layeredUI) return;
-  
-  // Handle post clicks
-  appState.layeredUI.onPostClick((post, index, event) => {
-    console.log('📄 Post clicked:', post);
-    // Could open post details, edit mode, etc.
-  });
-  
-  // Handle feed scroll
-  appState.layeredUI.onFeedScroll((scrollPosition) => {
-    // Could implement scroll-based features like infinite loading
-    // console.log('📜 Feed scrolled to:', scrollPosition);
-  });
-  
-  // Handle window resize
-  window.addEventListener('resize', () => {
-    console.log('📐 Window resized, layout will auto-adjust');
-  });
 }
 
 /**
@@ -581,259 +2142,59 @@ function hideLoadingScreen() {
 }
 
 /**
- * Show error message
+ * Initialize the application
  */
-function showError(message) {
-  console.error('❌ Application Error:', message);
-  
-  // Create error display using SVG components
-  const errorContainer = document.getElementById('content-container');
-  if (errorContainer) {
-    errorContainer.innerHTML = '';
+async function init() {
+  try {
+    console.log('🛒 Initializing Ninefy...');
     
-    const errorConfig = {
-      text: `Error: ${message}`,
-      fontSize: 18,
-      fontFamily: 'Arial, sans-serif',
-      color: '#e74c3c',
-      textAlign: 'center',
-      width: 600,
-      height: 100,
-      padding: 20,
-      backgroundColor: '#fdf2f2',
-      borderColor: '#e74c3c',
-      borderWidth: 1,
-      className: 'error-message'
-    };
-    
-    const errorSVG = createTextComponent(errorConfig);
-    errorContainer.appendChild(errorSVG);
-  }
-}
-
-/**
- * Create a simple fallback UI when main initialization fails
- */
-function createFallbackUI(error) {
-  console.log('🔄 Creating simple fallback UI...');
-  
-  // Get the app container
-  const appContainer = document.getElementById('app') || document.body;
-  appContainer.innerHTML = '';
-  
-  // Create simple HTML structure
-  const fallbackHTML = `
-    <div style="
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      font-family: Georgia, serif;
-      line-height: 1.6;
-      color: #2c3e50;
-    ">
-      <h1 style="
-        text-align: center;
-        color: #3498db;
-        margin-bottom: 30px;
-        font-size: 2.5rem;
-      ">🎭 Rhapsold</h1>
-      
-      <div style="
-        background: #f8f9fa;
-        padding: 30px;
-        border-radius: 8px;
-        border-left: 4px solid #e74c3c;
-        margin-bottom: 30px;
-      ">
-        <h2 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Initialization Error</h2>
-        <p style="margin-bottom: 15px;">The advanced UI system failed to load. This is a fallback interface.</p>
-        <p style="font-size: 0.9em; color: #666; font-family: monospace; word-break: break-all;">
-          Error: ${error.message}
-        </p>
-      </div>
-      
-      <div style="
-        display: flex;
-        gap: 20px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-      ">
-        <button id="refresh-btn" style="
-          padding: 12px 24px;
-          background: #3498db;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        ">🔄 Retry</button>
-        
-        <button id="simple-mode-btn" style="
-          padding: 12px 24px;
-          background: #2ecc71;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        ">📝 Simple Mode</button>
-      </div>
-      
-      <div id="simple-interface" style="display: none;">
-        <h3>Simple Blog Interface</h3>
-        <textarea id="simple-content" placeholder="Write your blog post here..." style="
-          width: 100%;
-          min-height: 200px;
-          padding: 15px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          font-family: Georgia, serif;
-          font-size: 16px;
-          line-height: 1.6;
-          resize: vertical;
-        "></textarea>
-        <button id="simple-save-btn" style="
-          margin-top: 15px;
-          padding: 12px 24px;
-          background: #27ae60;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 16px;
-        ">💾 Save Post</button>
-        
-        <div id="simple-posts" style="margin-top: 30px;">
-          <h3>Saved Posts</h3>
-          <div id="posts-list"></div>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  appContainer.innerHTML = fallbackHTML;
-  
-  // Add event handlers
-  document.getElementById('refresh-btn')?.addEventListener('click', () => {
-    console.log('🔄 Retrying initialization...');
-    location.reload();
-  });
-  
-  document.getElementById('simple-mode-btn')?.addEventListener('click', () => {
-    console.log('📝 Enabling simple mode...');
-    const simpleInterface = document.getElementById('simple-interface');
-    if (simpleInterface) {
-      simpleInterface.style.display = 'block';
-      loadSimplePosts();
+    // Get the main app container
+    const appContainer = document.getElementById('app');
+    if (!appContainer) {
+      throw new Error('App container not found');
     }
-  });
-  
-  document.getElementById('simple-save-btn')?.addEventListener('click', () => {
-    console.log('💾 Saving simple post...');
-    saveSimplePost();
-  });
-  
-  // Hide loading screen
-  hideLoadingScreen();
-  
-  console.log('✅ Fallback UI created successfully');
-}
-
-/**
- * Save a simple post
- */
-function saveSimplePost() {
-  const content = document.getElementById('simple-content')?.value;
-  if (!content.trim()) {
-    alert('Please write something first!');
-    return;
-  }
-  
-  const post = {
-    id: Date.now().toString(),
-    content: content.trim(),
-    timestamp: new Date().toISOString(),
-    type: 'simple'
-  };
-  
-  // Save to localStorage
-  const posts = JSON.parse(localStorage.getItem('rhapsold-simple-posts') || '[]');
-  posts.unshift(post);
-  localStorage.setItem('rhapsold-simple-posts', JSON.stringify(posts));
-  
-  // Clear textarea
-  document.getElementById('simple-content').value = '';
-  
-  // Reload posts display
-  loadSimplePosts();
-  
-  console.log('✅ Simple post saved');
-}
-
-/**
- * Load and display simple posts
- */
-function loadSimplePosts() {
-  const posts = JSON.parse(localStorage.getItem('rhapsold-simple-posts') || '[]');
-  const postsContainer = document.getElementById('posts-list');
-  
-  if (!postsContainer) return;
-  
-  if (posts.length === 0) {
-    postsContainer.innerHTML = '<p style="color: #666; font-style: italic;">No posts yet. Write your first post above!</p>';
-    return;
-  }
-  
-  postsContainer.innerHTML = posts.map(post => `
-    <div style="
-      background: white;
+    
+    // Clear existing content
+    appContainer.innerHTML = '';
+    
+    // Create HUD
+    const hud = createHUD();
+    document.body.appendChild(hud);
+    
+    // Create main layout with screen system
+    const mainLayout = document.createElement('div');
+    mainLayout.style.cssText = `
+      max-width: 1200px;
+      margin: 80px auto 20px auto;
       padding: 20px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-      border-left: 4px solid #3498db;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    ">
-      <p style="margin-bottom: 10px; white-space: pre-wrap;">${post.content}</p>
-      <small style="color: #666;">
-        ${new Date(post.timestamp).toLocaleDateString()} at ${new Date(post.timestamp).toLocaleTimeString()}
-      </small>
-    </div>
-  `).join('');
-  
-  console.log(`📄 Loaded ${posts.length} simple posts`);
+      font-family: ${appState.currentTheme.typography.fontFamily};
+    `;
+    
+    // Create screen content container
+    const screenContent = document.createElement('div');
+    screenContent.id = 'screen-content';
+    screenContent.className = 'screen-content';
+    
+    mainLayout.appendChild(screenContent);
+    appContainer.appendChild(mainLayout);
+    
+    // Initialize with main screen
+    renderCurrentScreen();
+    
+    // Hide loading screen
+    hideLoadingScreen();
+    
+    console.log('✅ Ninefy initialized successfully');
+    
+  } catch (error) {
+    console.error('❌ Failed to initialize Ninefy:', error);
+    
+    // Hide loading screen even on error
+    hideLoadingScreen();
+  }
 }
 
-/**
- * Handle application events
- */
-window.addEventListener('DOMContentLoaded', init);
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', init);
 
-// Handle potential Tauri events
-if (window.__TAURI__) {
-  console.log('🦀 Running in Tauri environment');
-  
-  // Listen for Tauri events
-  window.__TAURI__.event.listen('menu-event', (event) => {
-    console.log('📱 Menu event:', event.payload);
-  });
-  
-  // Handle app close
-  window.__TAURI__.event.listen('tauri://close-requested', () => {
-    console.log('👋 Application closing...');
-  });
-}
-
-// Export for debugging
-window.rhapsold = {
-  appState,
-  init,
-  createTextComponent,
-  createMultilineTextComponent,
-  createBlogPostForm,
-  createPostFromForm,
-  POST_TYPES,
-  addPostToDisplay,
-  showMessage
-};
-
-console.log('🎭 Rhapsold main module loaded');
+console.log('🛒 Ninefy main module loaded');

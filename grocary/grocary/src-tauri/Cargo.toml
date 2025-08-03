@@ -1,0 +1,32 @@
+[package]
+name = "grocary"
+version = "0.1.0"
+description = "A grocery pickup app built on The Nullary ecosystem with Kroger API integration"
+authors = ["Planet Nine"]
+license = "MIT"
+repository = "https://github.com/planet-nine-app/planet-nine"
+edition = "2021"
+
+[lib]
+name = "grocary"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.6.2", features = [] }
+tauri-plugin-shell = "2.0"
+tauri-plugin-fs = "2.2.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12.4", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+sessionless = "0.1.1"
+
+# Grocery service client (will be created later)
+# [dependencies.grocery-rs]
+# path = "../../../../grocery/src/client/rust/grocery-rs"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
