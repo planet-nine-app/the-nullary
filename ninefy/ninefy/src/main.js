@@ -5,17 +5,45 @@
 
 // Tauri API for backend communication (with safety check)
 let invoke = null;
-if (typeof window !== 'undefined' && window.__TAURI__ && window.__TAURI__.core) {
-  invoke = window.__TAURI__.core.invoke;
-  console.log('✅ Tauri API available');
-} else {
-  console.warn('⚠️ Tauri API not available - running in browser mode');
-  // Mock invoke function for browser testing
-  invoke = async (command, args) => {
-    console.log(`🔄 Mock invoke: ${command}`, args);
-    throw new Error(`Tauri function '${command}' not available in browser mode`);
-  };
+let tauriInitialized = false;
+
+// Initialize Tauri API when ready
+function initializeTauri() {
+  try {
+    if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+      const { invoke: tauriInvoke } = window.__TAURI__.core;
+      invoke = tauriInvoke;
+      tauriInitialized = true;
+      console.log('✅ Tauri API available');
+      // Update global reference
+      window.ninefyInvoke = invoke;
+      return true;
+    }
+  } catch (error) {
+console.error(error);
+    // Silently fail and retry
+  }
+  return false;
 }
+
+// Retry Tauri initialization with exponential backoff
+function retryTauriInit(maxAttempts = 20, attempt = 1) {
+  if (initializeTauri()) {
+    return; // Success!
+  }
+  
+  if (attempt >= maxAttempts) {
+    console.warn('⚠️ Tauri API not available after maximum attempts - running in browser mode');
+    return;
+  }
+  
+  const delay = Math.min(100 * attempt, 1000); // Cap at 1 second
+  console.log(`🔄 Retrying Tauri initialization (attempt ${attempt}/${maxAttempts})...`);
+  setTimeout(() => retryTauriInit(maxAttempts, attempt + 1), delay);
+}
+
+// Start initialization process
+retryTauriInit();
 
 // Make invoke available globally for other modules
 window.ninefyInvoke = invoke;
@@ -80,7 +108,7 @@ const TELEPORTED_CONTENT = [
     type: 'code',
     title: 'Product Upload API Example',
     description: 'JavaScript code for uploading products to Sanora',
-    codePreview: 'const product = await invoke("add_product", {\n  uuid: sanoraUser.uuid,\n  sanoraUrl: "http://localhost:7243",\n  title: "My Digital Product",\n  description: "Product description...",\n  price: 2999  // $29.99\n});',
+    codePreview: 'const product = await invoke("add_product", {\n  uuid: sanoraUser.uuid,\n  sanoraUrl: "https://dev.sanora.allyabase.com/",\n  title: "My Digital Product",\n  description: "Product description...",\n  price: 2999  // $29.99\n});',
     source: 'github.com/planet-nine-app',
     language: 'javascript',
     timestamp: '2025-01-24T16:15:00Z'
@@ -902,6 +930,7 @@ function createBrowseBaseScreen() {
   
   // Add base options (placeholder data - in real app would come from connected bases)
   const baseOptions = [
+    { value: 'https://dev.sanora.allyabase.com/', label: 'Dev Sanora Base' },
     { value: 'http://localhost:7243', label: 'Local Development' },
     { value: 'https://alpha.allyabase.com', label: 'Planet Nine Alpha' },
     { value: 'https://beta.community.allyabase.com', label: 'Community Beta' }
@@ -1434,6 +1463,107 @@ function createDetailsScreen() {
 }
 
 /**
+ * Upload image to Sanora using HTTP multipart form data
+ */
+async function uploadImageToSanora(uuid, sanoraUrl, title, imageFile) {
+  if (!window.sessionless) {
+    throw new Error('Sessionless library not available');
+  }
+  
+  const timestamp = Date.now().toString();
+  const message = timestamp + uuid + title;
+  const signature = await window.sessionless.sign(message);
+  
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  
+  const encodedTitle = encodeURIComponent(title);
+  const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodedTitle}/image`;
+  
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'x-pn-timestamp': timestamp,
+      'x-pn-signature': signature
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Image upload failed: ${response.status} ${errorText}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Upload artifact to Sanora using HTTP multipart form data
+ */
+async function uploadArtifactToSanora(uuid, sanoraUrl, title, artifactFile) {
+  if (!window.sessionless) {
+    throw new Error('Sessionless library not available');
+  }
+  
+  const timestamp = Date.now().toString();
+  const message = timestamp + uuid + title;
+  const signature = await window.sessionless.sign(message);
+  
+  // Determine artifact type from file extension
+  const fileExtension = artifactFile.name.split('.').pop().toLowerCase();
+  const artifactType = getArtifactType(fileExtension);
+  
+  const formData = new FormData();
+  formData.append('artifact', artifactFile);
+  
+  const encodedTitle = encodeURIComponent(title);
+  const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodedTitle}/artifact`;
+  
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'x-pn-timestamp': timestamp,
+      'x-pn-signature': signature,
+      'x-pn-artifact-type': artifactType
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Artifact upload failed: ${response.status} ${errorText}`);
+  }
+  
+  return await response.json();
+}
+
+/**
+ * Get artifact type from file extension
+ */
+function getArtifactType(extension) {
+  const typeMap = {
+    'epub': 'epub',
+    'pdf': 'pdf',
+    'md': 'md',
+    'txt': 'txt',
+    'zip': 'zip',
+    'mp3': 'mp3',
+    'mp4': 'mp4',
+    'mov': 'mov',
+    'avi': 'avi',
+    'wav': 'wav',
+    'doc': 'doc',
+    'docx': 'docx',
+    'png': 'png',
+    'jpg': 'jpg',
+    'jpeg': 'jpeg',
+    'gif': 'gif'
+  };
+  
+  return typeMap[extension] || 'unknown';
+}
+
+/**
  * Create Product Upload Form
  */
 function createProductUploadForm() {
@@ -1546,25 +1676,273 @@ function createProductUploadForm() {
     resize: vertical;
   `;
   
-  // File upload section
-  const fileSection = document.createElement('div');
-  fileSection.style.cssText = `
-    border: 2px dashed ${appState.currentTheme.colors.border};
-    border-radius: 8px;
-    padding: 30px;
+  // Product Image Upload Section
+  const imageSection = document.createElement('div');
+  imageSection.style.cssText = `
     margin-bottom: 20px;
     text-align: center;
+  `;
+  
+  const imageSectionTitle = document.createElement('div');
+  imageSectionTitle.style.cssText = `
+    color: ${appState.currentTheme.colors.secondary};
+    margin-bottom: 15px;
+    font-weight: bold;
+  `;
+  imageSectionTitle.innerHTML = `🖼️ <strong>Product Image</strong>`;
+  
+  const imageUploadButton = document.createElement('button');
+  imageUploadButton.style.cssText = `
+    background: ${appState.currentTheme.colors.accent};
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 25px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  `;
+  imageUploadButton.innerHTML = `📷 Select Product Image`;
+  
+  imageUploadButton.addEventListener('mouseenter', () => {
+    imageUploadButton.style.backgroundColor = `${appState.currentTheme.colors.accent}dd`;
+  });
+  
+  imageUploadButton.addEventListener('mouseleave', () => {
+    imageUploadButton.style.backgroundColor = appState.currentTheme.colors.accent;
+  });
+  
+  const imageFormatsText = document.createElement('div');
+  imageFormatsText.style.cssText = `
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+    margin-bottom: 15px;
+  `;
+  imageFormatsText.innerHTML = `<em>Supported: PNG, JPG, JPEG (recommended: 800x600px)</em>`;
+  
+  // Create hidden image input
+  const imageInput = document.createElement('input');
+  imageInput.type = 'file';
+  imageInput.accept = '.png,.jpg,.jpeg';
+  imageInput.style.display = 'none';
+  
+  // Image upload state
+  let uploadedImage = null;
+  
+  // Image preview area
+  const imagePreviewContainer = document.createElement('div');
+  imagePreviewContainer.style.cssText = `
+    margin-top: 15px;
+    padding: 15px;
+    border-radius: 8px;
     background: ${appState.currentTheme.colors.background};
+    display: none;
+    text-align: center;
   `;
-  fileSection.innerHTML = `
-    <div style="color: ${appState.currentTheme.colors.secondary}; margin-bottom: 15px;">
-      📁 <strong>Upload Product Files</strong>
-    </div>
-    <div style="font-size: 14px; color: ${appState.currentTheme.colors.secondary};">
-      Drag and drop files here or click to browse<br>
-      <em>Supported: ZIP, PDF, MP3, MP4, and more</em>
-    </div>
+  
+  function updateImageDisplay() {
+    if (!uploadedImage) {
+      imagePreviewContainer.style.display = 'none';
+      return;
+    }
+    
+    imagePreviewContainer.style.display = 'block';
+    imagePreviewContainer.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 10px; color: ${appState.currentTheme.colors.text};">
+        Selected Image:
+      </div>
+      <div style="font-size: 14px; color: ${appState.currentTheme.colors.secondary};">
+        📷 ${uploadedImage.name} (${(uploadedImage.size / 1024 / 1024).toFixed(2)} MB)
+      </div>
+    `;
+    validateForm(); // Check form validation when image changes
+  }
+  
+  // Image input change handler
+  imageInput.addEventListener('change', (e) => {
+    console.log('🖼️ Image input change event triggered');
+    
+    if (e.target.files.length > 0) {
+      uploadedImage = e.target.files[0];
+      console.log('🖼️ Image selected:', uploadedImage.name);
+      updateImageDisplay();
+    }
+  });
+  
+  // Image upload button click handler
+  imageUploadButton.addEventListener('click', () => {
+    console.log('🖱️ Image upload button clicked');
+    imageInput.click();
+  });
+  
+  imageSection.appendChild(imageSectionTitle);
+  imageSection.appendChild(imageUploadButton);
+  imageSection.appendChild(imageFormatsText);
+  imageSection.appendChild(imageInput);
+  imageSection.appendChild(imagePreviewContainer);
+
+  // File Artifacts Upload Section
+  const fileSection = document.createElement('div');
+  fileSection.style.cssText = `
+    margin-bottom: 20px;
+    text-align: center;
   `;
+  
+  const fileSectionTitle = document.createElement('div');
+  fileSectionTitle.style.cssText = `
+    color: ${appState.currentTheme.colors.secondary};
+    margin-bottom: 15px;
+    font-weight: bold;
+  `;
+  fileSectionTitle.innerHTML = `📁 <strong>Product Files</strong>`;
+  
+  const uploadButton = document.createElement('button');
+  uploadButton.style.cssText = `
+    background: ${appState.currentTheme.colors.accent};
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  `;
+  uploadButton.innerHTML = `📦 Select Product Files`;
+  
+  uploadButton.addEventListener('mouseenter', () => {
+    uploadButton.style.backgroundColor = `${appState.currentTheme.colors.accent}dd`;
+  });
+  
+  uploadButton.addEventListener('mouseleave', () => {
+    uploadButton.style.backgroundColor = appState.currentTheme.colors.accent;
+  });
+  
+  const supportedFormatsText = document.createElement('div');
+  supportedFormatsText.style.cssText = `
+    font-size: 12px;
+    color: ${appState.currentTheme.colors.secondary};
+    margin-top: 8px;
+  `;
+  supportedFormatsText.innerHTML = `<em>Supported: ZIP, PDF, MP3, MP4, EPUB, MOBI, and more</em>`;
+  
+  fileSection.appendChild(fileSectionTitle);
+  fileSection.appendChild(uploadButton);
+  fileSection.appendChild(supportedFormatsText);
+  
+  // Create hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.multiple = true;
+  fileInput.accept = '.zip,.pdf,.mp3,.mp4,.epub,.mobi,.txt,.doc,.docx,.png,.jpg,.jpeg';
+  fileInput.style.display = 'none';
+  
+  // File upload state
+  let uploadedFiles = [];
+  
+  // Add file display area
+  const fileListContainer = document.createElement('div');
+  fileListContainer.style.cssText = `
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 4px;
+    background: ${appState.currentTheme.colors.background};
+    display: none;
+  `;
+  
+  function updateFileDisplay() {
+    if (uploadedFiles.length === 0) {
+      fileListContainer.style.display = 'none';
+    } else {
+      fileListContainer.style.display = 'block';
+      fileListContainer.innerHTML = `
+        <div style="font-weight: bold; margin-bottom: 5px; color: ${appState.currentTheme.colors.text};">
+          Selected Files (${uploadedFiles.length}):
+        </div>
+        ${uploadedFiles.map(file => `
+          <div style="font-size: 12px; color: ${appState.currentTheme.colors.secondary}; margin-bottom: 2px;">
+            📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
+          </div>
+        `).join('')}
+      `;
+    }
+    validateForm(); // Check form validation when files change
+  }
+
+  // Form validation function
+  function validateForm() {
+    const title = titleInput.value.trim();
+    const category = categorySelect.value;
+    const price = parseFloat(priceInput.value);
+    const description = descriptionTextarea.value.trim();
+    
+    const isValid = (
+      title.length >= 3 &&
+      category !== '' &&
+      !isNaN(price) && price > 0 &&
+      description.length >= 10 &&
+      uploadedImage !== null &&
+      uploadedFiles.length > 0
+    );
+    
+    // Update submit button state
+    if (isValid) {
+      submitButton.disabled = false;
+      submitButton.style.opacity = '1';
+      submitButton.style.cursor = 'pointer';
+      submitButton.style.background = appState.currentTheme.colors.accent;
+    } else {
+      submitButton.disabled = true;
+      submitButton.style.opacity = '0.5';
+      submitButton.style.cursor = 'not-allowed';
+      submitButton.style.background = appState.currentTheme.colors.secondary;
+    }
+    
+    return isValid;
+  }
+  
+  // File input change handler
+  fileInput.addEventListener('change', (e) => {
+    console.log('📁 File input change event triggered');
+    console.log('📁 Files from input:', e.target.files);
+    
+    const files = Array.from(e.target.files);
+    console.log('📁 Files array created from input:', files);
+    console.log('📁 File names from input:', files.map(f => f.name));
+    
+    uploadedFiles = [...uploadedFiles, ...files];
+    console.log('📁 Total uploaded files after input:', uploadedFiles.length);
+    
+    updateFileDisplay();
+    console.log('✅ File display updated from input');
+  });
+  
+  // Click handler for upload button
+  uploadButton.addEventListener('click', () => {
+    console.log('🖱️ Upload button clicked - opening file dialog');
+    fileInput.click();
+  });
+  
+  // Store references for later event listener setup after DOM integration
+  formContainer.fileSection = fileSection;
+  // No longer using drag and drop - file selection is handled by the button click
+  formContainer.setupDragAndDrop = function() {
+    console.log('🔧 File upload button is ready - no drag and drop needed');
+  };
+  
+  // Append file input and display to file section
+  fileSection.appendChild(fileInput);
+  fileSection.appendChild(fileListContainer);
   
   // Tags input
   const tagsInput = document.createElement('input');
@@ -1619,16 +1997,33 @@ function createProductUploadForm() {
   
   // Add event handlers
   submitButton.addEventListener('click', async function() {
+    console.log('🔄 Submit button clicked - starting product upload');
+    
     const title = titleInput.value.trim();
     const category = categorySelect.value;
     const price = parseFloat(priceInput.value);
     const description = descriptionTextarea.value.trim();
     const tags = tagsInput.value.trim();
     
-    if (!title || !category || !price || !description) {
-      alert('Please fill in all required fields');
+    console.log('📝 Form data collected:', {
+      title,
+      category,
+      price,
+      description: description.substring(0, 50) + '...',
+      tags,
+      uploadedFilesCount: uploadedFiles.length,
+      hasImage: !!uploadedImage
+    });
+    
+    // Form validation is handled by the validateForm function and submit button state
+    // The button should only be enabled when all required fields are valid
+    
+    if (!validateForm()) {
+      console.log('❌ Form validation failed - submit should be disabled');
       return;
     }
+    
+    console.log('✅ Form validation passed - proceeding with upload');
     
     // Disable submit button while processing
     submitButton.disabled = true;
@@ -1638,34 +2033,77 @@ function createProductUploadForm() {
       // First try to upload to Sanora backend
       console.log('🔄 Uploading product to Sanora...');
       
-      // For now, we'll use a placeholder UUID and URL - in a real app,
-      // these would be retrieved from user authentication and base configuration
-      const mockSanoraUser = 'user-uuid-placeholder';
-      const mockSanoraUrl = 'http://localhost:7243'; // Local development
-      
+      const sanoraUrl = 'https://dev.sanora.allyabase.com/'; // Dev Sanora base
       const priceInCents = Math.round(price * 100);
+      
+      console.log('💰 Price converted to cents:', priceInCents);
+      console.log('🌐 Connecting to Sanora URL:', sanoraUrl);
       
       try {
         // Try to upload to Sanora if available
         let uploadedToSanora = false;
         let sanoraResult = null;
         
+        console.log('🔍 Checking if invoke is available:', !!invoke);
+        
         if (invoke) {
+          console.log('👤 Creating Sanora user first...');
           try {
+            // Step 1: Create a Sanora user
+            const sanoraUser = await invoke('create_sanora_user', {
+              sanoraUrl: sanoraUrl
+            });
+            console.log('✅ Sanora user created:', sanoraUser);
+            
+            // Step 2: Add product metadata
+            console.log('📤 Step 2: Adding product metadata...');
             sanoraResult = await invoke('add_product', {
-              uuid: mockSanoraUser,
-              sanoraUrl: mockSanoraUrl,
+              uuid: sanoraUser.uuid,
+              sanoraUrl: sanoraUrl,
               title: title,
               description: description,
               price: priceInCents
             });
+            console.log('✅ Product metadata uploaded:', sanoraResult);
             
-            console.log('✅ Product uploaded to Sanora:', sanoraResult);
+            // Step 3: Upload product image if available
+            if (uploadedImage) {
+              console.log('🖼️ Step 3: Uploading product image...');
+              try {
+                await uploadImageToSanora(sanoraUser.uuid, sanoraUrl, title, uploadedImage);
+                console.log('✅ Product image uploaded successfully');
+              } catch (imageError) {
+                console.warn('⚠️ Image upload failed:', imageError);
+              }
+            }
+            
+            // Step 4: Upload product artifacts (files)
+            if (uploadedFiles.length > 0) {
+              console.log('📦 Step 4: Uploading product artifacts...');
+              for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                console.log(`📄 Uploading artifact ${i + 1}/${uploadedFiles.length}: ${file.name}`);
+                try {
+                  await uploadArtifactToSanora(sanoraUser.uuid, sanoraUrl, title, file);
+                  console.log(`✅ Artifact ${i + 1} uploaded successfully`);
+                } catch (artifactError) {
+                  console.warn(`⚠️ Artifact ${i + 1} upload failed:`, artifactError);
+                }
+              }
+            }
+            
             uploadedToSanora = true;
           } catch (sanoraError) {
             console.warn('⚠️ Sanora upload failed:', sanoraError);
+            console.error('🔴 Sanora error details:', sanoraError);
           }
+        } else {
+          console.warn('⚠️ invoke not available - skipping Sanora upload');
         }
+        
+        // Calculate total file size
+        const totalFileSize = uploadedFiles.reduce((total, file) => total + file.size, 0);
+        const fileSizeMB = (totalFileSize / 1024 / 1024).toFixed(2);
         
         // Create product data object
         const productData = {
@@ -1681,8 +2119,14 @@ function createProductUploadForm() {
           tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
           featuredImage: PRODUCT_IMAGES[category] || PRODUCT_IMAGES.ebook,
           previewContent: description,
-          fileSize: 'Unknown',
-          fileType: 'Digital Product',
+          fileSize: `${fileSizeMB} MB`,
+          fileType: uploadedFiles.length === 1 ? uploadedFiles[0].name.split('.').pop().toUpperCase() : 'Mixed Files',
+          fileCount: uploadedFiles.length,
+          files: uploadedFiles.map(file => ({
+            name: file.name,
+            size: file.size,
+            type: file.type || 'application/octet-stream'
+          })),
           sanoraId: sanoraResult?.id,
           available: true
         };
@@ -1708,6 +2152,8 @@ function createProductUploadForm() {
       priceInput.value = '';
       descriptionTextarea.value = '';
       tagsInput.value = '';
+      uploadedFiles = [];
+      updateFileDisplay();
       
       // Navigate back to main screen
       navigateToScreen('main');
@@ -1728,6 +2174,8 @@ function createProductUploadForm() {
     priceInput.value = '';
     descriptionTextarea.value = '';
     tagsInput.value = '';
+    uploadedFiles = [];
+    updateFileDisplay();
   });
   
   buttonContainer.appendChild(submitButton);
@@ -1738,9 +2186,25 @@ function createProductUploadForm() {
   formContainer.appendChild(categorySelect);
   formContainer.appendChild(priceContainer);
   formContainer.appendChild(descriptionTextarea);
+  formContainer.appendChild(imageSection);
   formContainer.appendChild(fileSection);
   formContainer.appendChild(tagsInput);
   formContainer.appendChild(buttonContainer);
+  
+  // Add real-time validation event listeners
+  titleInput.addEventListener('input', validateForm);
+  categorySelect.addEventListener('change', validateForm);
+  priceInput.addEventListener('input', validateForm);
+  descriptionTextarea.addEventListener('input', validateForm);
+  
+  // Initialize form validation state (disabled by default)
+  validateForm();
+  
+  // Debug: Confirm fileSection is now in DOM
+  console.log('🔍 After appending to formContainer:');
+  console.log('🔍 fileSection in DOM:', document.contains(fileSection));
+  console.log('🔍 formContainer in DOM:', document.contains(formContainer));
+  console.log('🔍 fileSection parent:', fileSection.parentElement);
   
   return formContainer;
 }
@@ -1774,6 +2238,13 @@ function createUploadScreen() {
   
   screen.appendChild(header);
   screen.appendChild(formContainer);
+  
+  // Setup drag and drop after DOM integration
+  screen.setupDragAndDrop = function() {
+    if (formContainer.setupDragAndDrop) {
+      formContainer.setupDragAndDrop();
+    }
+  };
   
   return screen;
 }
@@ -1982,9 +2453,19 @@ function createBaseScreen() {
   // Placeholder base data (same as rhapsold)
   const placeholderBases = [
     {
+      name: 'Dev Sanora Base',
+      url: 'https://dev.sanora.allyabase.com/',
+      status: 'connected',
+      type: 'development',
+      services: ['sanora', 'bdo', 'dolores', 'addie', 'fount'],
+      description: 'Development Sanora base for testing digital goods marketplace',
+      users: 25,
+      uptime: '99.5%'
+    },
+    {
       name: 'Local Development',
       url: 'http://localhost:7243',
-      status: 'connected',
+      status: 'available',
       type: 'development',
       services: ['sanora', 'bdo', 'dolores', 'addie', 'fount'],
       description: 'Local development environment for testing',
@@ -2082,6 +2563,13 @@ function renderCurrentScreen() {
   }
   
   contentContainer.appendChild(screen);
+  
+  // Setup any screen-specific functionality after DOM integration
+  if (screen.setupDragAndDrop) {
+    setTimeout(() => {
+      screen.setupDragAndDrop();
+    }, 10);
+  }
 }
 
 /**

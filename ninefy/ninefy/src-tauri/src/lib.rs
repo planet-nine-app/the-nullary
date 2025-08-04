@@ -111,7 +111,7 @@ async fn get_payment_intent_with_splits(
     match s {
         Ok(sessionless) => {
             let addie = Addie::new(
-                Some("https://livetest.addie.allyabase.com/".to_string()),
+                Some("https://dev.addie.allyabase.com/".to_string()),
                 Some(sessionless),
             );
             let addie_user = match addie.create_user().await {
@@ -149,7 +149,7 @@ async fn get_payment_intent_without_splits(
     match s {
         Ok(sessionless) => {
             let addie = Addie::new(
-                Some("https://livetest.addie.allyabase.com/".to_string()),
+                Some("https://dev.addie.allyabase.com/".to_string()),
                 Some(sessionless),
             );
             let addie_user = match addie.create_user().await {
