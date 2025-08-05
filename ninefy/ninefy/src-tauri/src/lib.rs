@@ -33,6 +33,13 @@ async fn get_sessionless() -> Result<Sessionless, String> {
     Ok(sessionless)
 }
 
+/// Sign a message using sessionless
+async fn sign_message(message: String) -> Result<String, String> {
+    let sessionless = get_sessionless().await?;
+    let signature = sessionless.sign(&message);
+    Ok(signature.into_hex())
+}
+
 /// Create a new Fount user for MAGIC transactions
 #[tauri::command]
 async fn create_fount_user() -> Result<FountUser, String> {
@@ -341,6 +348,117 @@ async fn toggle_product_availability(
     }))
 }
 
+/// Upload image to Sanora with sessionless authentication
+#[tauri::command]
+async fn upload_image(file_data: Vec<u8>, file_name: String, url: String, message: String, timestamp: String) -> Result<String, String> {
+    println!("🦀 Rust uploading image: {} to: {} with message: {}", file_name, url, message);
+
+    let signature = sign_message(message).await?;
+
+    let client = Client::new();
+
+    // Get extension from file name
+    let extension = file_name.split('.').last().unwrap_or("jpg");
+
+    let mime_type = match extension.to_lowercase().as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        _ => "image/jpeg", // default
+    };
+
+    // Create multipart form - just like the server test
+    let part = reqwest::multipart::Part::bytes(file_data)
+        .file_name(file_name.clone())
+        .mime_str(mime_type)
+        .map_err(|e| format!("Failed to create multipart form: {}", e))?;
+
+    let form = reqwest::multipart::Form::new()
+        .part("image", part);
+
+    let response = client
+        .put(&url)
+        .header("Accept", "application/json")
+        .header("x-pn-timestamp", &timestamp)
+        .header("x-pn-signature", &signature)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = response.status();
+
+    if status.is_success() {
+        let body = response.text().await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        println!("🦀 Image upload success: {}", body);
+        Ok(body)
+    } else {
+        let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        println!("❌ Image upload error {}: {}", status.as_u16(), error_body);
+        Err(format!("HTTP error {}: {}", status.as_u16(), error_body))
+    }
+}
+
+/// Upload artifact to Sanora with sessionless authentication
+#[tauri::command]
+async fn upload_artifact(file_data: Vec<u8>, file_name: String, url: String, message: String, timestamp: String, artifact_type: String) -> Result<String, String> {
+    println!("🦀 Rust uploading artifact: {} to: {} with message: {}", file_name, url, message);
+
+    let signature = sign_message(message).await?;
+
+    let client = Client::new();
+
+    // Get extension from file name
+    let extension = file_name.split('.').last().unwrap_or("bin");
+
+    let mime_type = match extension.to_lowercase().as_str() {
+        "pdf" => "application/pdf",
+        "epub" => "application/epub+zip",
+        "mobi" => "application/x-mobipocket-ebook",
+        "txt" => "text/plain",
+        "zip" => "application/zip",
+        "mp3" => "audio/mpeg",
+        "mp4" => "video/mp4",
+        "exe" => "application/octet-stream",
+        _ => "application/octet-stream", // default
+    };
+
+    // Create multipart form
+    let part = reqwest::multipart::Part::bytes(file_data)
+        .file_name(file_name.clone())
+        .mime_str(mime_type)
+        .map_err(|e| format!("Failed to create multipart form: {}", e))?;
+
+    let form = reqwest::multipart::Form::new()
+        .part("artifact", part);
+
+    let response = client
+        .put(&url)
+        .header("Accept", "application/json")
+        .header("x-pn-timestamp", &timestamp)
+        .header("x-pn-signature", &signature)
+        .header("x-pn-artifact-type", &artifact_type)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = response.status();
+
+    if status.is_success() {
+        let body = response.text().await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        println!("🦀 Artifact upload success: {}", body);
+        Ok(body)
+    } else {
+        let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        println!("❌ Artifact upload error {}: {}", status.as_u16(), error_body);
+        Err(format!("HTTP error {}: {}", status.as_u16(), error_body))
+    }
+}
+
 /// Get all products available on a base (HTTP-based implementation)
 #[tauri::command]
 async fn get_base_products(sanora_url: &str) -> Result<Value, String> {
@@ -423,7 +541,9 @@ pub fn run() {
             add_product,
             get_sanora_user,
             toggle_product_availability,
-            get_base_products
+            get_base_products,
+            upload_image,
+            upload_artifact
         ])
         .setup(|_app| {
             println!("🛒 Ninefy backend is starting up...");

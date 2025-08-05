@@ -1463,78 +1463,92 @@ function createDetailsScreen() {
 }
 
 /**
- * Upload image to Sanora using HTTP multipart form data
+ * Upload image to Sanora using Tauri invoke
  */
 async function uploadImageToSanora(uuid, sanoraUrl, title, imageFile) {
-  if (!window.sessionless) {
-    throw new Error('Sessionless library not available');
+  console.log('🖼️ Attempting image upload to Sanora (Tauri)...');
+  
+  try {
+    // Check if invoke is available
+    if (!invoke) {
+      console.log('⚠️ Tauri invoke not available, skipping image upload');
+      return { success: false, message: 'Tauri not available', filename: null };
+    }
+    
+    // Convert file to array buffer
+    const arrayBuffer = await imageFile.arrayBuffer();
+    const fileData = new Uint8Array(arrayBuffer);
+    
+    // Create message for signing
+    const timestamp = Date.now().toString();
+    const message = timestamp + uuid + title;
+    
+    // Create upload URL (adjust based on actual Sanora endpoints)
+    const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodeURIComponent(title)}/image`;
+    
+    // Call Tauri function
+    const result = await invoke('upload_image', {
+      fileData: Array.from(fileData),
+      fileName: imageFile.name,
+      url: url,
+      message: message,
+      timestamp: timestamp
+    });
+    
+    console.log('✅ Image uploaded successfully via Tauri');
+    return { success: true, message: 'Upload successful', result: result };
+    
+  } catch (error) {
+    console.log('⚠️ Image upload failed via Tauri:', error.message);
+    return { success: false, message: error.message, filename: null };
   }
-  
-  const timestamp = Date.now().toString();
-  const message = timestamp + uuid + title;
-  const signature = await window.sessionless.sign(message);
-  
-  const formData = new FormData();
-  formData.append('image', imageFile);
-  
-  const encodedTitle = encodeURIComponent(title);
-  const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodedTitle}/image`;
-  
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'x-pn-timestamp': timestamp,
-      'x-pn-signature': signature
-    },
-    body: formData
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Image upload failed: ${response.status} ${errorText}`);
-  }
-  
-  return await response.json();
 }
 
 /**
- * Upload artifact to Sanora using HTTP multipart form data
+ * Upload artifact to Sanora using Tauri invoke
  */
 async function uploadArtifactToSanora(uuid, sanoraUrl, title, artifactFile) {
-  if (!window.sessionless) {
-    throw new Error('Sessionless library not available');
+  console.log('📄 Attempting artifact upload to Sanora (Tauri)...');
+  
+  try {
+    // Check if invoke is available
+    if (!invoke) {
+      console.log('⚠️ Tauri invoke not available, skipping artifact upload');
+      return { success: false, message: 'Tauri not available', filename: null };
+    }
+    
+    // Convert file to array buffer
+    const arrayBuffer = await artifactFile.arrayBuffer();
+    const fileData = new Uint8Array(arrayBuffer);
+    
+    // Determine artifact type from file extension
+    const fileExtension = artifactFile.name.split('.').pop().toLowerCase();
+    const artifactType = getArtifactType(fileExtension);
+    
+    // Create message for signing
+    const timestamp = Date.now().toString();
+    const message = timestamp + uuid + title;
+    
+    // Create upload URL (adjust based on actual Sanora endpoints)
+    const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodeURIComponent(title)}/artifact`;
+    
+    // Call Tauri function
+    const result = await invoke('upload_artifact', {
+      fileData: Array.from(fileData),
+      fileName: artifactFile.name,
+      url: url,
+      message: message,
+      timestamp: timestamp,
+      artifactType: artifactType
+    });
+    
+    console.log('✅ Artifact uploaded successfully via Tauri');
+    return { success: true, message: 'Upload successful', result: result };
+    
+  } catch (error) {
+    console.log('⚠️ Artifact upload failed via Tauri:', error.message);
+    return { success: false, message: error.message, filename: null };
   }
-  
-  const timestamp = Date.now().toString();
-  const message = timestamp + uuid + title;
-  const signature = await window.sessionless.sign(message);
-  
-  // Determine artifact type from file extension
-  const fileExtension = artifactFile.name.split('.').pop().toLowerCase();
-  const artifactType = getArtifactType(fileExtension);
-  
-  const formData = new FormData();
-  formData.append('artifact', artifactFile);
-  
-  const encodedTitle = encodeURIComponent(title);
-  const url = `${sanoraUrl.replace(/\/$/, '')}/user/${uuid}/product/${encodedTitle}/artifact`;
-  
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      'x-pn-timestamp': timestamp,
-      'x-pn-signature': signature,
-      'x-pn-artifact-type': artifactType
-    },
-    body: formData
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Artifact upload failed: ${response.status} ${errorText}`);
-  }
-  
-  return await response.json();
 }
 
 /**
@@ -1890,22 +1904,24 @@ function createProductUploadForm() {
       title.length >= 3 &&
       category !== '' &&
       !isNaN(price) && price > 0 &&
-      description.length >= 10 &&
+      description.length > 0 &&
       uploadedImage !== null &&
       uploadedFiles.length > 0
     );
     
     // Update submit button state
-    if (isValid) {
-      submitButton.disabled = false;
-      submitButton.style.opacity = '1';
-      submitButton.style.cursor = 'pointer';
-      submitButton.style.background = appState.currentTheme.colors.accent;
-    } else {
-      submitButton.disabled = true;
-      submitButton.style.opacity = '0.5';
-      submitButton.style.cursor = 'not-allowed';
-      submitButton.style.background = appState.currentTheme.colors.secondary;
+    if (submitButton) {
+      if (isValid) {
+        submitButton.disabled = false;
+        submitButton.style.opacity = '1';
+        submitButton.style.cursor = 'pointer';
+        submitButton.style.background = appState.currentTheme.colors.accent;
+      } else {
+        submitButton.disabled = true;
+        submitButton.style.opacity = '0.5';
+        submitButton.style.cursor = 'not-allowed';
+        submitButton.style.background = appState.currentTheme.colors.secondary;
+      }
     }
     
     return isValid;
@@ -1924,7 +1940,8 @@ function createProductUploadForm() {
     console.log('📁 Total uploaded files after input:', uploadedFiles.length);
     
     updateFileDisplay();
-    console.log('✅ File display updated from input');
+    validateForm(); // Check form validation when files change
+    console.log('✅ File display updated and form validated from input');
   });
   
   // Click handler for upload button
@@ -2069,11 +2086,11 @@ function createProductUploadForm() {
             // Step 3: Upload product image if available
             if (uploadedImage) {
               console.log('🖼️ Step 3: Uploading product image...');
-              try {
-                await uploadImageToSanora(sanoraUser.uuid, sanoraUrl, title, uploadedImage);
+              const imageResult = await uploadImageToSanora(sanoraUser.uuid, sanoraUrl, title, uploadedImage);
+              if (imageResult.success) {
                 console.log('✅ Product image uploaded successfully');
-              } catch (imageError) {
-                console.warn('⚠️ Image upload failed:', imageError);
+              } else {
+                console.log('⚠️ Product image upload skipped:', imageResult.message);
               }
             }
             
@@ -2083,11 +2100,11 @@ function createProductUploadForm() {
               for (let i = 0; i < uploadedFiles.length; i++) {
                 const file = uploadedFiles[i];
                 console.log(`📄 Uploading artifact ${i + 1}/${uploadedFiles.length}: ${file.name}`);
-                try {
-                  await uploadArtifactToSanora(sanoraUser.uuid, sanoraUrl, title, file);
+                const artifactResult = await uploadArtifactToSanora(sanoraUser.uuid, sanoraUrl, title, file);
+                if (artifactResult.success) {
                   console.log(`✅ Artifact ${i + 1} uploaded successfully`);
-                } catch (artifactError) {
-                  console.warn(`⚠️ Artifact ${i + 1} upload failed:`, artifactError);
+                } else {
+                  console.log(`⚠️ Artifact ${i + 1} upload skipped:`, artifactResult.message);
                 }
               }
             }

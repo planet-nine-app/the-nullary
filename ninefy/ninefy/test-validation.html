@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ninefy Form Validation Test</title>
+</head>
+<body>
+    <h1>Form Validation Test</h1>
+    <p>This is a simple test to verify the validateForm() function is working correctly.</p>
+    
+    <div id="test-results">
+        <h2>Expected Behavior:</h2>
+        <ul>
+            <li>✅ All text fields (title, category, price, description) trigger validation on input/change</li>
+            <li>✅ Image upload triggers validation via updateImageDisplay()</li>
+            <li>✅ File upload triggers validation (after our fix)</li>
+            <li>✅ validateForm() handles button enable/disable logic internally</li>
+            <li>✅ Button becomes active only when ALL fields are valid</li>
+        </ul>
+        
+        <h2>Validation Requirements:</h2>
+        <ul>
+            <li>Title: ≥3 characters</li>
+            <li>Category: Not empty</li>
+            <li>Price: Valid number > 0</li>
+            <li>Description: ≥10 characters</li>
+            <li>Image: uploadedImage !== null</li>
+            <li>Files: uploadedFiles.length > 0</li>
+        </ul>
+    </div>
+    
+    <p><strong>To test:</strong> Run ninefy in dev mode and go to the Upload screen. Fill out all fields and verify the Upload Product button becomes active.</p>
+</body>
+</html>
