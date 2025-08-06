@@ -459,66 +459,135 @@ async fn upload_artifact(file_data: Vec<u8>, file_name: String, url: String, mes
     }
 }
 
-/// Get all products available on a base (HTTP-based implementation)
+/// Get all products available on the entire base (new /products/base endpoint)
 #[tauri::command]
-async fn get_base_products(sanora_url: &str) -> Result<Value, String> {
-    // NOTE: Since get_all_products() doesn't exist in sanora_rs,
-    // we'll use HTTP calls to get products from known users or 
-    // implement a marketplace endpoint discovery approach
+async fn get_all_base_products(sanora_url: &str) -> Result<Value, String> {
+    println!("🔄 Getting ALL base products from: {}", sanora_url);
     
+    let client = Client::new();
+    
+    // Use the new /products/base endpoint (no authentication required)
+    let products_url = format!("{}/products/base", sanora_url.trim_end_matches('/'));
+    
+    println!("🔍 Trying base products endpoint: {}", products_url);
+    
+    match client.get(&products_url).send().await {
+        Ok(response) => {
+            let status = response.status();
+            println!("📡 Response status: {}", status);
+            
+            if status.is_success() {
+                match response.text().await {
+                    Ok(body) => {
+                        println!("📄 Response body: {}", body);
+                        
+                        // Try to parse as JSON
+                        match serde_json::from_str::<Value>(&body) {
+                            Ok(json_value) => {
+                                println!("✅ Got products JSON from base endpoint");
+                                Ok(json_value)
+                            }
+                            Err(_) => {
+                                // If it's not JSON, return it as a string in an array
+                                println!("⚠️ Response is not JSON, wrapping as string");
+                                Ok(json!([{"response": body}]))
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to read response body: {}", e);
+                        Err(format!("Failed to read response: {}", e))
+                    }
+                }
+            } else {
+                let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                println!("❌ HTTP error {}: {}", status.as_u16(), error_body);
+                
+                // Instead of failing, return empty array for now
+                println!("⚠️ Returning empty array due to HTTP error");
+                Ok(json!([]))
+            }
+        }
+        Err(e) => {
+            println!("❌ Request failed: {}", e);
+            Err(format!("Request failed: {}", e))
+        }
+    }
+}
+
+/// Get all products available on a base (HTTP-based implementation) - DEPRECATED
+#[tauri::command]
+async fn get_base_products(sanora_url: &str, user_uuid: Option<String>) -> Result<Value, String> {
     println!("🔄 Getting base products from: {}", sanora_url);
     
     let client = Client::new();
     
-    // For now, we'll try a few approaches:
-    // 1. Try to hit a hypothetical marketplace endpoint
-    // 2. Get products from a few sample user UUIDs
-    // 3. Return mock data if neither works
-    
-    // Approach 1: Try marketplace endpoint (may not exist)
-    let marketplace_url = format!("{}/marketplace/products", sanora_url.trim_end_matches('/'));
-    match client.get(&marketplace_url).send().await {
-        Ok(response) if response.status().is_success() => {
-            match response.json::<Value>().await {
-                Ok(products) => {
-                    println!("✅ Got products from marketplace endpoint");
-                    return Ok(products);
+    // Use provided user UUID, or try to create/get one
+    let uuid = match user_uuid {
+        Some(uuid) => uuid,
+        None => {
+            // If no UUID provided, try to create a user first
+            println!("🔍 No user UUID provided, creating Sanora user...");
+            match create_sanora_user(sanora_url).await {
+                Ok(user) => {
+                    println!("✅ Created user with UUID: {}", user.uuid);
+                    user.uuid
                 }
-                Err(e) => println!("⚠️ Marketplace endpoint parse error: {}", e)
+                Err(e) => {
+                    println!("❌ Failed to create user: {}", e);
+                    return Err(format!("Failed to create user: {}", e));
+                }
             }
         }
-        Ok(response) => println!("⚠️ Marketplace endpoint returned: {}", response.status()),
-        Err(e) => println!("⚠️ Marketplace endpoint failed: {}", e)
-    }
+    };
     
-    // Approach 2: Try to get products from sample users
-    let sample_uuids = vec![
-        "user-1", "user-2", "user-3", "sample-user", "demo-user"
-    ];
+    // The correct endpoint pattern from the test is: GET /products/{uuid}
+    let products_url = format!("{}/products/{}", sanora_url.trim_end_matches('/'), uuid);
     
-    let mut all_products = Vec::new();
-    for uuid in sample_uuids {
-        let user_products_url = format!("{}/products/{}", sanora_url.trim_end_matches('/'), uuid);
-        match client.get(&user_products_url).send().await {
-            Ok(response) if response.status().is_success() => {
-                if let Ok(products) = response.json::<Value>().await {
-                    if let Some(products_array) = products.as_array() {
-                        all_products.extend(products_array.clone());
+    println!("🔍 Trying user products endpoint: {}", products_url);
+    
+    match client.get(&products_url).send().await {
+        Ok(response) => {
+            let status = response.status();
+            println!("📡 Response status: {}", status);
+            
+            if status.is_success() {
+                match response.text().await {
+                    Ok(body) => {
+                        println!("📄 Response body: {}", body);
+                        
+                        // Try to parse as JSON
+                        match serde_json::from_str::<Value>(&body) {
+                            Ok(json_value) => {
+                                println!("✅ Got products JSON from user endpoint");
+                                Ok(json_value)
+                            }
+                            Err(_) => {
+                                // If it's not JSON, return it as a string in an array
+                                println!("⚠️ Response is not JSON, wrapping as string");
+                                Ok(json!([{"response": body}]))
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to read response body: {}", e);
+                        Err(format!("Failed to read response: {}", e))
                     }
                 }
+            } else {
+                let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                println!("❌ HTTP error {}: {}", status.as_u16(), error_body);
+                
+                // Instead of failing, return empty array for now
+                println!("⚠️ Returning empty array due to HTTP error");
+                Ok(json!([]))
             }
-            _ => continue
+        }
+        Err(e) => {
+            println!("❌ Request failed: {}", e);
+            Err(format!("Request failed: {}", e))
         }
     }
-    
-    if !all_products.is_empty() {
-        println!("✅ Got {} products from user endpoints", all_products.len());
-        return Ok(json!(all_products));
-    }
-    
-    // Approach 3: Return empty array (base is available but no products)
-    println!("⚠️ No products found on base, returning empty array");
-    Ok(json!([]))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -542,6 +611,7 @@ pub fn run() {
             get_sanora_user,
             toggle_product_availability,
             get_base_products,
+            get_all_base_products,
             upload_image,
             upload_artifact
         ])

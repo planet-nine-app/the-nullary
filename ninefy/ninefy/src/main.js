@@ -63,263 +63,25 @@ const PRODUCT_IMAGES = {
   ticket: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%2327ae60'/%3E%3Crect x='60' y='80' width='280' height='90' fill='%23ffffff' rx='8'/%3E%3Cpath d='M190 80 Q200 90 190 100 Q200 110 190 120 Q200 130 190 140 Q200 150 190 160 Q200 170 190 170 L210 170 Q200 170 210 160 Q200 150 210 140 Q200 130 210 120 Q200 110 210 100 Q200 90 210 80 Z' fill='%2327ae60'/%3E%3Ctext x='125' y='105' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='12' font-weight='bold'%3EEVENT%3C/text%3E%3Ctext x='125' y='125' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='20' font-weight='bold'%3ETICKET%3C/text%3E%3Ctext x='125' y='145' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='10'%3EADMIT ONE%3C/text%3E%3Ctext x='275' y='115' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='10'%3E$50.00%3C/text%3E%3Ctext x='275' y='135' text-anchor='middle' fill='%2327ae60' font-family='Arial' font-size='8'%3E#001234%3C/text%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ETicket%3C/text%3E%3C/svg%3E"
 };
 
-// Teleported content data (marketplace-focused)
-const TELEPORTED_CONTENT = [
-  {
-    id: 'tp-1',
-    type: 'link',
-    title: 'Digital Commerce Trends 2025',
-    description: 'Latest insights on selling digital products in the decentralized web',
-    url: 'https://planet-nine.org/digital-commerce',
-    source: 'planet-nine.org',
-    timestamp: '2025-01-28T08:00:00Z'
-  },
-  {
-    id: 'tp-2', 
-    type: 'image',
-    title: 'Sanora Marketplace Architecture',
-    description: 'How digital products are stored and distributed on allyabase',
-    imageUrl: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%234a90e2'/%3E%3Crect x='50' y='50' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Crect x='160' y='70' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Crect x='270' y='50' width='80' height='40' fill='%23ffffff' opacity='0.9' rx='5'/%3E%3Ctext x='90' y='75' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3ESanora%3C/text%3E%3Ctext x='200' y='95' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3EAddie%3C/text%3E%3Ctext x='310' y='75' text-anchor='middle' fill='%234a90e2' font-family='Arial' font-size='10' font-weight='bold'%3EBDO%3C/text%3E%3Ctext x='200' y='200' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='16' font-weight='bold'%3EMarketplace%3C/text%3E%3C/svg%3E",
-    source: 'engineering.allyabase.com',
-    timestamp: '2025-01-27T15:30:00Z'
-  },
-  {
-    id: 'tp-3',
-    type: 'video',
-    title: 'Creating Your First Product on Ninefy',
-    description: '10-minute walkthrough of the product creation process',
-    videoUrl: 'https://example.com/ninefy-tutorial.mp4',
-    thumbnail: "data:image/svg+xml,%3Csvg width='400' height='225' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='225' fill='%239b59b6'/%3E%3Ccircle cx='200' cy='112' r='30' fill='%23ffffff' opacity='0.9'/%3E%3Cpolygon points='190,102 190,122 210,112' fill='%239b59b6'/%3E%3Ctext x='200' y='180' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='14' font-weight='bold'%3ETutorial%3C/text%3E%3C/svg%3E",
-    source: 'learn.ninefy.com',
-    duration: '10:34',
-    timestamp: '2025-01-26T12:45:00Z'
-  },
-  {
-    id: 'tp-4',
-    type: 'link',
-    title: 'MAGIC Payment Integration Guide',
-    description: 'How to accept payments for digital goods using MAGIC protocol',
-    url: 'https://magic.planet-nine.org/payments',
-    source: 'magic.planet-nine.org',
-    timestamp: '2025-01-25T14:20:00Z'
-  },
-  {
-    id: 'tp-5',
-    type: 'code',
-    title: 'Product Upload API Example',
-    description: 'JavaScript code for uploading products to Sanora',
-    codePreview: 'const product = await invoke("add_product", {\n  uuid: sanoraUser.uuid,\n  sanoraUrl: "https://dev.sanora.allyabase.com/",\n  title: "My Digital Product",\n  description: "Product description...",\n  price: 2999  // $29.99\n});',
-    source: 'github.com/planet-nine-app',
-    language: 'javascript',
-    timestamp: '2025-01-24T16:15:00Z'
-  }
-];
+// No demo teleported content - production ready
 
-// Sample product data
-const SAMPLE_PRODUCTS = [
-  {
-    id: 'prod-1',
-    title: 'The Complete JavaScript Handbook',
-    description: 'A comprehensive guide to modern JavaScript development, covering ES6+, async programming, and best practices.',
-    price: 4999, // $49.99 in cents
-    category: 'ebook',
-    author: 'Sarah Johnson',
-    timestamp: '2025-01-28T10:30:00Z',
-    downloadCount: 1247,
-    rating: 4.8,
-    tags: ['javascript', 'programming', 'web-development'],
-    featuredImage: PRODUCT_IMAGES.ebook,
-    previewContent: `# Chapter 1: Introduction to Modern JavaScript
+// No sample products - production ready
+const SAMPLE_PRODUCTS = [];
 
-JavaScript has evolved tremendously over the past decade. What started as a simple scripting language for web pages has become a powerful, versatile programming language used for:
+// No demo teleported content - production ready  
+const TELEPORTED_CONTENT = [];
 
-- **Frontend Development**: Building interactive user interfaces
-- **Backend Development**: Server-side applications with Node.js  
-- **Mobile Apps**: React Native and other frameworks
-- **Desktop Apps**: Electron and Tauri applications
+// Base management (adapted from screenary pattern)
+const BASE_CONFIG = {
+  HOME_BASE_URL: 'https://dev.bdo.allyabase.com/',
+  CACHE_TIMEOUT: 600000, // 10 minutes
+  PRODUCT_CACHE_TIMEOUT: 300000 // 5 minutes  
+};
 
-## Key Features of ES6+
-
-Modern JavaScript includes many powerful features:
-
-\`\`\`javascript
-// Arrow functions
-const sum = (a, b) => a + b;
-
-// Destructuring
-const { name, age } = user;
-
-// Template literals
-const message = \`Hello, \${name}!\`;
-\`\`\`
-
-This handbook will take you through each concept step by step...`,
-    fileSize: '2.4 MB',
-    fileType: 'PDF'
-  },
-  {
-    id: 'prod-2',
-    title: 'Ambient Focus - Productivity Soundtrack',
-    description: 'A carefully curated collection of ambient tracks designed to enhance focus and creativity during work sessions.',
-    price: 1999, // $19.99
-    category: 'music',
-    author: 'Harmony Studios',
-    timestamp: '2025-01-27T14:15:00Z',
-    downloadCount: 892,
-    rating: 4.9,
-    tags: ['ambient', 'focus', 'productivity', 'instrumental'],
-    featuredImage: PRODUCT_IMAGES.music,
-    previewContent: '🎵 **Track Listing:**\n\n1. Morning Flow (6:42)\n2. Deep Concentration (8:15)\n3. Creative Spark (5:28)\n4. Mindful Pause (4:33)\n5. Evening Wind Down (7:12)\n\n**Total Runtime:** 32 minutes\n\n*"These tracks have transformed my work sessions. Perfect background music that doesn\'t distract but somehow makes everything flow better."* - Alex M.\n\nAll tracks are available in high-quality 320kbps MP3 and lossless FLAC formats.',
-    fileSize: '156 MB',
-    fileType: 'ZIP (MP3 + FLAC)'
-  },
-  {
-    id: 'prod-3',
-    title: 'React Component Library Starter',
-    description: 'A professional-grade starter template for building and publishing React component libraries with TypeScript, Storybook, and automated testing.',
-    price: 7999, // $79.99
-    category: 'software',
-    author: 'DevTools Pro',
-    timestamp: '2025-01-26T09:45:00Z',
-    downloadCount: 456,
-    rating: 4.7,
-    tags: ['react', 'typescript', 'components', 'storybook'],
-    featuredImage: PRODUCT_IMAGES.software,
-    previewContent: `# React Component Library Starter
-
-## What's Included
-
-✅ **TypeScript Setup** - Fully configured with strict typing  
-✅ **Storybook Integration** - Interactive component documentation  
-✅ **Jest & Testing Library** - Comprehensive testing setup  
-✅ **Rollup Build System** - Optimized bundling for distribution  
-✅ **ESLint & Prettier** - Code quality and formatting  
-✅ **GitHub Actions** - Automated testing and publishing  
-
-## Quick Start
-
-\`\`\`bash
-npm install
-npm run storybook  # Start component playground
-npm test          # Run test suite
-npm run build     # Build for distribution
-\`\`\`
-
-Perfect for teams looking to build reusable component libraries!`,
-    fileSize: '45 MB',
-    fileType: 'ZIP'
-  },
-  {
-    id: 'prod-4',
-    title: 'Mastering SVG Animations',
-    description: 'Learn to create stunning, performant animations using SVG and CSS. Includes 50+ examples and hands-on projects.',
-    price: 8999, // $89.99
-    category: 'course',
-    author: 'Animation Academy',
-    timestamp: '2025-01-25T11:20:00Z',
-    downloadCount: 234,
-    rating: 4.9,
-    tags: ['svg', 'animation', 'css', 'design'],
-    featuredImage: PRODUCT_IMAGES.course,
-    previewContent: `# Course Overview
-
-**Duration:** 6 hours of video content + exercises  
-**Level:** Intermediate  
-**Prerequisites:** Basic HTML, CSS, and SVG knowledge  
-
-## What You'll Learn
-
-### Module 1: SVG Fundamentals
-- Understanding the SVG coordinate system
-- Path elements and Bezier curves
-- Viewports and responsive SVG
-
-### Module 2: CSS Animation Techniques  
-- Transforms and transitions
-- Keyframe animations
-- Timing functions and easing
-
-### Module 3: Advanced Projects
-- Interactive data visualizations
-- Logo animations
-- Loading spinners and UI elements
-
-**Bonus:** Access to private Discord community and monthly Q&A sessions!`,
-    fileSize: '3.2 GB',
-    fileType: 'Video Course'
-  },
-  {
-    id: 'prod-5',
-    title: 'Minimalist Landing Page Templates',
-    description: 'A collection of 15 clean, conversion-optimized landing page templates built with modern CSS and vanilla JavaScript.',
-    price: 2999, // $29.99
-    category: 'template',
-    author: 'Design Collective',
-    timestamp: '2025-01-24T16:45:00Z',
-    downloadCount: 678,
-    rating: 4.6,
-    tags: ['templates', 'landing-pages', 'css', 'responsive'],
-    featuredImage: PRODUCT_IMAGES.template,
-    previewContent: `# Template Collection
-
-## 15 Professional Templates
-
-**Included Styles:**
-- SaaS Product Launch
-- App Download Page  
-- Course Sales Page
-- Portfolio Showcase
-- Agency Services
-- E-commerce Product
-- Event Registration
-- Newsletter Signup
-- And 7 more...
-
-## Features
-✅ Fully responsive design  
-✅ Cross-browser compatibility  
-✅ SEO optimized structure  
-✅ Fast loading performance  
-✅ Easy customization  
-✅ Comprehensive documentation  
-
-Perfect for marketers, developers, and small businesses!`,
-    fileSize: '28 MB',
-    fileType: 'HTML/CSS/JS'
-  },
-  {
-    id: 'prod-6',
-    title: 'Planet Nine Developer Conference 2025',
-    description: 'Two-day virtual conference featuring talks on decentralized web development, sessionless authentication, and the future of digital ownership.',
-    price: 12999, // $129.99
-    category: 'ticket',
-    author: 'Planet Nine Foundation',
-    timestamp: '2025-01-23T09:00:00Z',
-    downloadCount: 89,
-    rating: 5.0,
-    tags: ['conference', 'blockchain', 'web3', 'development'],
-    featuredImage: PRODUCT_IMAGES.ticket,
-    previewContent: `# Conference Schedule
-
-## Day 1: Foundations
-**10:00 AM** - Keynote: The Future of Decentralized Web  
-**11:30 AM** - sessionless Authentication Deep Dive  
-**1:00 PM** - Building with allyabase Services  
-**2:30 PM** - MAGIC Protocol Workshop  
-**4:00 PM** - Community Roundtable  
-
-## Day 2: Advanced Topics
-**10:00 AM** - Scaling Decentralized Applications  
-**11:30 AM** - Privacy-First Development  
-**1:00 PM** - Economic Models for Web3  
-**2:30 PM** - Case Studies: Real-World Implementations  
-**4:00 PM** - Closing & Networking  
-
-**Includes:** All recordings, slides, and exclusive access to speaker Discord!`,
-    fileSize: 'Digital Event',
-    fileType: 'Conference Ticket'
-  }
-];
+let basesCache = null;
+let lastBaseRefresh = 0;
+let productsCache = [];
+let lastProductsRefresh = 0;
 
 // Application state
 const appState = {
@@ -533,6 +295,109 @@ function createTeleportedItem(item) {
   return container;
 }
 
+// Base Management Functions (adapted from screenary pattern)
+async function connectToHomeBase() {
+  try {
+    console.log('🏠 Connecting to home base:', BASE_CONFIG.HOME_BASE_URL);
+    
+    // Create BDO user on home base
+    const bdoUser = await invoke('create_bdo_user');
+    console.log('✅ BDO user created:', bdoUser);
+    
+    return {
+      name: 'DEV',
+      description: 'Development base for Ninefy marketplace',
+      dns: {
+        bdo: BASE_CONFIG.HOME_BASE_URL,
+        sanora: 'https://dev.sanora.allyabase.com/',
+        dolores: 'https://dev.dolores.allyabase.com/',
+        addie: 'https://dev.addie.allyabase.com/',
+        fount: 'https://dev.fount.allyabase.com/'
+      },
+      users: { bdo: bdoUser },
+      joined: true,
+      uuid: 'home-base'
+    };
+  } catch (err) {
+    console.warn('⚠️ Failed to connect to home base:', err);
+    return null;
+  }
+}
+
+async function fetchBasesFromBDO() {
+  try {
+    const homeBase = await connectToHomeBase();
+    if (!homeBase) return {};
+    
+    const bdoUser = homeBase.users.bdo;
+    const updatedBases = await invoke('get_bases', {
+      uuid: bdoUser.uuid, 
+      bdoUrl: BASE_CONFIG.HOME_BASE_URL
+    });
+    
+    console.log('📡 Fetched bases from BDO:', Object.keys(updatedBases || {}).length);
+    return { [homeBase.uuid]: homeBase, ...(updatedBases || {}) };
+  } catch (err) {
+    console.error('❌ Failed to fetch bases:', err);
+    return {};
+  }
+}
+
+async function getAvailableBases() {
+  const now = new Date().getTime();
+  
+  if (basesCache && (now - lastBaseRefresh < BASE_CONFIG.CACHE_TIMEOUT)) {
+    console.log('📋 Using cached bases');
+    return basesCache;
+  }
+  
+  console.log('🔄 Refreshing bases from BDO...');
+  basesCache = await fetchBasesFromBDO();
+  lastBaseRefresh = now;
+  
+  return basesCache;
+}
+
+async function getProductsFromBases() {
+  const now = new Date().getTime();
+  
+  if (productsCache.length > 0 && (now - lastProductsRefresh < BASE_CONFIG.PRODUCT_CACHE_TIMEOUT)) {
+    console.log('📦 Using cached products');
+    return productsCache;
+  }
+  
+  console.log('🔄 Refreshing products from all bases...');
+  
+  const bases = await getAvailableBases();
+  const allProducts = [];
+  
+  for (const [baseId, base] of Object.entries(bases)) {
+    if (!base.dns?.sanora) continue;
+    
+    try {
+      // Use the new /products/base endpoint (no authentication required)
+      const products = await invoke('get_all_base_products', {
+        sanoraUrl: base.dns.sanora
+      });
+      
+      if (Array.isArray(products)) {
+        allProducts.push(...products.map(p => ({...p, baseId, baseName: base.name})));
+      } else if (products && typeof products === 'object') {
+        const productArray = Object.values(products);
+        allProducts.push(...productArray.map(p => ({...p, baseId, baseName: base.name})));
+      }
+    } catch (err) {
+      console.warn(`⚠️ Failed to get products from ${base.name}:`, err);
+    }
+  }
+  
+  productsCache = allProducts;
+  lastProductsRefresh = now;
+  
+  console.log(`📦 Loaded ${allProducts.length} products from ${Object.keys(bases).length} bases`);
+  return allProducts;
+}
+
 /**
  * Format price in cents to dollars
  */
@@ -616,6 +481,9 @@ function createProductCard(product) {
     cursor: pointer;
     transition: all 0.2s ease;
     overflow: hidden;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
   `;
   
   // Featured image
@@ -634,6 +502,9 @@ function createProductCard(product) {
   const contentContainer = document.createElement('div');
   contentContainer.style.cssText = `
     padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   `;
   
   // Product metadata header
@@ -681,6 +552,7 @@ function createProductCard(product) {
     font-size: 14px;
     line-height: 1.5;
     margin-bottom: 16px;
+    flex-grow: 1;
   `;
   
   // Product stats
@@ -928,20 +800,42 @@ function createBrowseBaseScreen() {
     min-width: 200px;
   `;
   
-  // Add base options (placeholder data - in real app would come from connected bases)
-  const baseOptions = [
-    { value: 'https://dev.sanora.allyabase.com/', label: 'Dev Sanora Base' },
-    { value: 'http://localhost:7243', label: 'Local Development' },
-    { value: 'https://alpha.allyabase.com', label: 'Planet Nine Alpha' },
-    { value: 'https://beta.community.allyabase.com', label: 'Community Beta' }
-  ];
+  // Load available bases from BDO
+  async function populateBaseOptions() {
+    try {
+      const bases = await getAvailableBases();
+      const baseEntries = Object.entries(bases);
+      
+      if (baseEntries.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No bases available';
+        option.disabled = true;
+        baseSelect.appendChild(option);
+        return;
+      }
+      
+      baseEntries.forEach(([baseId, base]) => {
+        const option = document.createElement('option');
+        option.value = base.dns?.sanora || '';
+        option.textContent = `${base.name} - ${base.description || 'Marketplace base'}`;
+        option.dataset.baseId = baseId;
+        baseSelect.appendChild(option);
+      });
+      
+      console.log(`📋 Loaded ${baseEntries.length} available bases`);
+    } catch (err) {
+      console.error('❌ Failed to load bases:', err);
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = 'Failed to load bases';
+      option.disabled = true;
+      baseSelect.appendChild(option);
+    }
+  }
   
-  baseOptions.forEach(base => {
-    const option = document.createElement('option');
-    option.value = base.value;
-    option.textContent = base.label;
-    baseSelect.appendChild(option);
-  });
+  // Populate base options on load
+  populateBaseOptions();
   
   const loadButton = document.createElement('button');
   loadButton.textContent = 'Load Products';
@@ -1000,40 +894,60 @@ function createBrowseBaseScreen() {
     try {
       console.log('🔄 Loading products from base:', selectedBase);
       
-      // Try to fetch from backend
+      // Try to fetch from backend using new /products/base endpoint
       try {
-        const baseProducts = await invoke('get_base_products', {
+        const baseProducts = await invoke('get_all_base_products', {
           sanoraUrl: selectedBase
         });
         
         console.log('✅ Loaded base products:', baseProducts);
         
-        if (baseProducts && baseProducts.length > 0) {
+        // Handle both array and object formats from Sanora
+        let productsArray = [];
+        if (Array.isArray(baseProducts)) {
+          productsArray = baseProducts;
+        } else if (baseProducts && typeof baseProducts === 'object') {
+          // Convert object format to array (Sanora returns products as object properties)
+          productsArray = Object.values(baseProducts);
+          console.log('🔄 Converted object format to array:', productsArray);
+        }
+        
+        if (productsArray && productsArray.length > 0) {
           // Display products
-          baseProducts.forEach(productData => {
-            // Convert Sanora product format to our display format if needed
+          productsArray.forEach(productData => {
+            // Convert Sanora product format to our display format
+            console.log('🔍 Processing product data:', productData);
+            
             const displayProduct = {
-              id: productData.id || productData.uuid,
-              title: productData.title || productData.name,
-              description: productData.description,
-              price: productData.price,
+              id: productData.uuid || productData.productId || productData.id,
+              title: productData.title || 'Untitled Product',
+              description: productData.description || 'No description available',
+              price: productData.price || 0,
               category: productData.category || 'ebook', // Default category
-              author: productData.author || 'Unknown Creator',
-              timestamp: productData.created_at || new Date().toISOString(),
-              downloadCount: productData.download_count || 0,
+              author: productData.author || 'Anonymous',
+              timestamp: productData.timestamp || productData.created_at || new Date().toISOString(),
+              downloadCount: productData.downloadCount || productData.download_count || 0,
               rating: productData.rating || 4.5,
               tags: productData.tags || [],
-              featuredImage: PRODUCT_IMAGES[productData.category || 'ebook'],
-              previewContent: productData.description,
-              fileSize: productData.file_size || 'Unknown',
-              fileType: productData.file_type || 'Digital Product'
+              featuredImage: productData.image ? 
+                `https://dev.sanora.allyabase.com/images/${productData.image}` : 
+                PRODUCT_IMAGES[productData.category || 'ebook'],
+              previewContent: productData.description || 'No preview available',
+              fileSize: productData.fileSize || productData.file_size || 
+                (productData.artifacts && productData.artifacts.length > 0 ? 
+                  `${productData.artifacts.length} file(s)` : 'Unknown'),
+              fileType: productData.fileType || productData.file_type || 
+                (productData.artifacts && productData.artifacts.length > 0 ? 
+                  productData.artifacts[0].split('.').pop().toUpperCase() : 'Digital Product')
             };
+            
+            console.log('✅ Created display product:', displayProduct);
             
             const productElement = createProductCard(displayProduct);
             productsContainer.appendChild(productElement);
           });
           
-          statusMessage.textContent = `Found ${baseProducts.length} products on this base`;
+          statusMessage.textContent = `Found ${productsArray.length} products on this base`;
           statusMessage.style.color = appState.currentTheme.colors.success;
         } else {
           statusMessage.textContent = 'No products found on this base';
@@ -1041,26 +955,26 @@ function createBrowseBaseScreen() {
         }
         
       } catch (backendError) {
-        console.warn('⚠️ Backend fetch failed, showing placeholder data:', backendError);
+        console.warn('⚠️ Backend fetch failed, cannot connect to base:', backendError);
         
-        // Fallback to showing sample/placeholder data
-        const placeholderProducts = [
-          {
-            ...SAMPLE_PRODUCTS[0],
-            author: 'Creator on ' + baseOptions.find(b => b.value === selectedBase)?.label
-          },
-          {
-            ...SAMPLE_PRODUCTS[1],
-            author: 'Creator on ' + baseOptions.find(b => b.value === selectedBase)?.label
-          }
-        ];
+        // Show "connection failed" message instead of placeholder data
+        const noConnectionElement = document.createElement('div');
+        noConnectionElement.style.cssText = `
+          padding: 40px 20px;
+          text-align: center;
+          color: ${appState.currentTheme.colors.secondary};
+          font-family: ${appState.currentTheme.typography.fontFamily};
+          font-size: 18px;
+        `;
+        noConnectionElement.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 16px;">🔌</div>
+          <div style="font-weight: bold; margin-bottom: 8px;">Connection failed</div>
+          <div style="font-size: 14px;">Could not connect to the selected base server</div>
+          <div style="font-size: 14px; margin-top: 8px;">Please check your connection and try again</div>
+        `;
+        productsContainer.appendChild(noConnectionElement);
         
-        placeholderProducts.forEach(productData => {
-          const productElement = createProductCard(productData);
-          productsContainer.appendChild(productElement);
-        });
-        
-        statusMessage.textContent = `Showing sample products (base connection unavailable)`;
+        statusMessage.textContent = `Base connection unavailable`;
         statusMessage.style.color = appState.currentTheme.colors.warning;
       }
       
@@ -1140,7 +1054,9 @@ function createMainScreen() {
     padding-right: 10px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    grid-auto-rows: min-content;
     gap: 20px;
+    align-content: start;
   `;
   
   // Custom scrollbar styling
@@ -2072,6 +1988,9 @@ function createProductUploadForm() {
             });
             console.log('✅ Sanora user created:', sanoraUser);
             
+            // Store user UUID for later use
+            appState.lastCreatedUserUuid = sanoraUser.uuid;
+            
             // Step 2: Add product metadata
             console.log('📤 Step 2: Adding product metadata...');
             sanoraResult = await invoke('add_product', {
@@ -2558,8 +2477,8 @@ function renderCurrentScreen() {
     case 'main':
       screen = createMainScreen();
       // Load products after screen is added to DOM
-      setTimeout(() => {
-        loadProducts();
+      setTimeout(async () => {
+        await loadProducts();
       }, 10);
       break;
     case 'browse':
@@ -2592,25 +2511,47 @@ function renderCurrentScreen() {
 /**
  * Load products and teleported content
  */
-function loadProducts() {
+async function loadProducts() {
   console.log('🛒 Loading products and teleported content...');
   
   try {
-    // Load products (use sample data + localStorage)
+    // Load products from localStorage and connected bases
     const localProducts = JSON.parse(localStorage.getItem('ninefy-products') || '[]');
-    const allProducts = [...localProducts, ...SAMPLE_PRODUCTS];
+    
+    // Get products from all connected bases
+    const baseProducts = await getProductsFromBases();
+    
+    const allProducts = [...localProducts, ...baseProducts];
     
     const productsContainer = document.getElementById('products-container');
     if (productsContainer) {
       // Clear existing content
       productsContainer.innerHTML = '';
       
-      allProducts.forEach(productData => {
-        const productElement = createProductCard(productData);
-        productsContainer.appendChild(productElement);
-      });
+      if (allProducts.length === 0) {
+        // Show "no data yet" message for products
+        const noDataElement = document.createElement('div');
+        noDataElement.style.cssText = `
+          padding: 40px 20px;
+          text-align: center;
+          color: ${appState.currentTheme.colors.secondary};
+          font-family: ${appState.currentTheme.typography.fontFamily};
+          font-size: 18px;
+        `;
+        noDataElement.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+          <div style="font-weight: bold; margin-bottom: 8px;">No products yet</div>
+          <div style="font-size: 14px;">Products will appear here when they're added to your marketplace</div>
+        `;
+        productsContainer.appendChild(noDataElement);
+      } else {
+        allProducts.forEach(productData => {
+          const productElement = createProductCard(productData);
+          productsContainer.appendChild(productElement);
+        });
+      }
       
-      console.log(`🛒 Loaded ${allProducts.length} products (${localProducts.length} user + ${SAMPLE_PRODUCTS.length} sample)`);
+      console.log(`🛒 Loaded ${allProducts.length} products (${localProducts.length} local + ${baseProducts.length} from bases)`);
     }
     
     // Load teleported content
@@ -2619,10 +2560,28 @@ function loadProducts() {
       // Clear existing content
       teleportedContainer.innerHTML = '';
       
-      TELEPORTED_CONTENT.forEach(item => {
-        const teleportedElement = createTeleportedItem(item);
-        teleportedContainer.appendChild(teleportedElement);
-      });
+      if (TELEPORTED_CONTENT.length === 0) {
+        // Show "no data yet" message for teleported content
+        const noDataElement = document.createElement('div');
+        noDataElement.style.cssText = `
+          padding: 40px 20px;
+          text-align: center;
+          color: ${appState.currentTheme.colors.secondary};
+          font-family: ${appState.currentTheme.typography.fontFamily};
+          font-size: 18px;
+        `;
+        noDataElement.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 16px;">🌐</div>
+          <div style="font-weight: bold; margin-bottom: 8px;">No teleported content yet</div>
+          <div style="font-size: 14px;">Teleported content from other bases will appear here</div>
+        `;
+        teleportedContainer.appendChild(noDataElement);
+      } else {
+        TELEPORTED_CONTENT.forEach(item => {
+          const teleportedElement = createTeleportedItem(item);
+          teleportedContainer.appendChild(teleportedElement);
+        });
+      }
       
       console.log(`🌐 Loaded ${TELEPORTED_CONTENT.length} teleported items`);
     }
