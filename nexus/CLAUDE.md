@@ -72,6 +72,49 @@ nexus/
 
 ### Development Commands
 ```bash
+
+### Environment Configuration
+
+nexus supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+nexusEnv.switch('test')
+location.reload()
+
+// Check current environment
+nexusEnv.current()
+
+// List all environments
+nexusEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 # Install dependencies  
 cd server && npm install
 
@@ -116,6 +159,49 @@ The portal serves as a comprehensive showcase:
 - Sessionless authentication integration
 
 ## Usage in Ecosystem Testing
+
+### Environment Configuration
+
+nexus supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+nexusEnv.switch('test')
+location.reload()
+
+// Check current environment
+nexusEnv.current()
+
+// List all environments
+nexusEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 
 Nexus is the visual centerpiece of Planet Nine ecosystem demonstration:
 

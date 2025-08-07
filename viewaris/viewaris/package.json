@@ -4,7 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "dev": "npm run dev:local",
+    "dev:dev": "NULLARY_ENV=dev npm run tauri dev",
+    "dev:test": "NULLARY_ENV=test npm run tauri dev",
+    "dev:local": "NULLARY_ENV=local npm run tauri dev",
+    "build": "npm run tauri build",
+    "build:dev": "NULLARY_ENV=dev npm run tauri build",
+    "build:test": "NULLARY_ENV=test npm run tauri build",
+    "build:local": "NULLARY_ENV=local npm run tauri build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.7"

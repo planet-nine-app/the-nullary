@@ -168,8 +168,52 @@ lexary/
 
 ## Development Workflow
 
-1. **Start Development**: `npm run tauri dev`
-2. **Build Application**: `npm run tauri build`
+### Environment Configuration
+
+Lexary supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+lexaryEnv.switch('test')
+location.reload()
+
+// Check current environment
+lexaryEnv.current()
+
+// List all environments
+lexaryEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+### Development Commands
+
+1. **Start Development**: 
+   ```bash
+   npm run dev:dev      # Dev server (default)
+   npm run dev:test     # 3-base test ecosystem  
+   npm run dev:local    # Local development
+   ```
+
+2. **Build Application**: 
+   ```bash
+   npm run build:dev    # Build for dev server
+   npm run build:test   # Build for test ecosystem
+   npm run build:local  # Build for local
+   ```
+
 3. **Backend Changes**: Modify `src-tauri/src/lib.rs`
 4. **Frontend Changes**: Modify `src/main.js` or `src/index.html`
 5. **Shared Components**: Update in `/the-nullary/shared/feeds/text-feed.js`

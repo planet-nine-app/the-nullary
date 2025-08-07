@@ -3,6 +3,73 @@
  * A minimalist blogging platform using SVG components
  */
 
+// Environment configuration for Rhapsold
+function getEnvironmentConfig() {
+  const env = localStorage.getItem('nullary-env') || 'dev';
+  
+  const configs = {
+    dev: {
+      sanora: 'https://dev.sanora.allyabase.com/',
+      bdo: 'https://dev.bdo.allyabase.com/',
+      dolores: 'https://dev.dolores.allyabase.com/',
+      fount: 'https://dev.fount.allyabase.com/',
+      addie: 'https://dev.addie.allyabase.com/',
+      pref: 'https://dev.pref.allyabase.com/'
+    },
+    test: {
+      sanora: 'http://localhost:5121/',
+      bdo: 'http://localhost:5114/',
+      dolores: 'http://localhost:5118/',
+      fount: 'http://localhost:5117/',
+      addie: 'http://localhost:5116/',
+      pref: 'http://localhost:5113/'
+    },
+    local: {
+      sanora: 'http://localhost:7243/',
+      bdo: 'http://localhost:3003/',
+      dolores: 'http://localhost:3005/',
+      fount: 'http://localhost:3002/',
+      addie: 'http://localhost:3005/',
+      pref: 'http://localhost:3004/'
+    }
+  };
+  
+  const config = configs[env] || configs.dev;
+  return { env, services: config, name: env };
+}
+
+function getServiceUrl(serviceName) {
+  const config = getEnvironmentConfig();
+  return config.services[serviceName] || config.services.sanora;
+}
+
+// Environment switching functions for browser console
+window.rhapsoldEnv = {
+  switch: (env) => {
+    const envs = { dev: 'dev', test: 'test', local: 'local' };
+    if (!envs[env]) {
+      console.error(`❌ Unknown environment: ${env}. Available: dev, test, local`);
+      return false;
+    }
+    localStorage.setItem('nullary-env', env);
+    console.log(`🔄 Rhapsold environment switched to ${env}. Refresh app to apply changes.`);
+    console.log(`Run: location.reload() to refresh`);
+    return true;
+  },
+  current: () => {
+    const config = getEnvironmentConfig();
+    console.log(`🌐 Current environment: ${config.env}`);
+    console.log(`📍 Services:`, config.services);
+    return config;
+  },
+  list: () => {
+    console.log('🌍 Available environments for Rhapsold:');
+    console.log('• dev - https://dev.*.allyabase.com (production dev server)');
+    console.log('• test - localhost:5111-5122 (3-base test ecosystem)');
+    console.log('• local - localhost:3000-3007 (local development)');
+  }
+};
+
 // Simple SVG data URLs (URL-encoded instead of base64 to avoid btoa issues)
 const SVG_IMAGES = {
   decentralizedNetwork: "data:image/svg+xml,%3Csvg width='600' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='grad1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%233498db;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%232980b9;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='600' height='300' fill='url(%23grad1)'/%3E%3Ccircle cx='150' cy='100' r='30' fill='%23ffffff' opacity='0.8'/%3E%3Ccircle cx='450' cy='80' r='25' fill='%23ffffff' opacity='0.8'/%3E%3Ccircle cx='300' cy='150' r='35' fill='%23ffffff' opacity='0.9'/%3E%3Cline x1='150' y1='100' x2='300' y2='150' stroke='%23ffffff' stroke-width='2' opacity='0.6'/%3E%3Ctext x='300' y='250' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='24' font-weight='bold'%3EDecentralized Network%3C/text%3E%3C/svg%3E",
@@ -1261,7 +1328,7 @@ function createBaseScreen() {
   const placeholderBases = [
     {
       name: 'Local Development',
-      url: 'http://localhost:7243',
+      url: getServiceUrl('sanora'),
       status: 'connected',
       type: 'development',
       services: ['sanora', 'bdo', 'dolores', 'addie', 'fount'],
@@ -1271,7 +1338,7 @@ function createBaseScreen() {
     },
     {
       name: 'Planet Nine Alpha',
-      url: 'https://alpha.allyabase.com',
+      url: 'https://alpha.allyabase.com', // Keep as-is for alpha server
       status: 'connected', 
       type: 'production',
       services: ['sanora', 'bdo', 'dolores', 'addie', 'fount', 'julia'],

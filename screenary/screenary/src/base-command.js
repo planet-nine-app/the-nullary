@@ -32,8 +32,8 @@ const devBase = {
     ]
   },
   dns: {
-    bdo: 'https://dev.bdo.allyabase.com/',
-    dolores: 'https://dev.dolores.allyabase.com/'
+    bdo: getServiceUrl ? getServiceUrl('bdo') : 'https://dev.bdo.allyabase.com/',
+    dolores: getServiceUrl ? getServiceUrl('dolores') : 'https://dev.dolores.allyabase.com/'
   },
   joined: true
 };

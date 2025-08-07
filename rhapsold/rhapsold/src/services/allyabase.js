@@ -4,16 +4,52 @@
  */
 
 /**
+ * Get environment-based configuration
+ */
+function getEnvironmentConfig() {
+  const env = localStorage.getItem('nullary-env') || 'dev';
+  
+  const configs = {
+    dev: {
+      baseUrl: 'https://dev.sanora.allyabase.com',
+      services: {
+        dolores: 'https://dev.dolores.allyabase.com',
+        pref: 'https://dev.pref.allyabase.com',
+        bdo: 'https://dev.bdo.allyabase.com',
+        fount: 'https://dev.fount.allyabase.com',
+        sanora: 'https://dev.sanora.allyabase.com'
+      }
+    },
+    test: {
+      baseUrl: 'http://localhost:5111',
+      services: {
+        dolores: 5118,
+        pref: 5113,
+        bdo: 5114,
+        fount: 5117,
+        sanora: 5121
+      }
+    },
+    local: {
+      baseUrl: 'http://localhost:3000',
+      services: {
+        dolores: 3005,
+        pref: 3004,
+        bdo: 3003,
+        fount: 3002,
+        sanora: 7243
+      }
+    }
+  };
+  
+  return configs[env] || configs.dev;
+}
+
+/**
  * Default allyabase configuration
  */
 const DEFAULT_CONFIG = {
-  baseUrl: 'http://localhost:3000', // Default local allyabase instance
-  services: {
-    dolores: 3005, // Video/media storage
-    pref: 3004,    // Preferences
-    bdo: 3003,     // Big dumb objects
-    fount: 3002    // MAGIC/rewards
-  },
+  ...getEnvironmentConfig(),
   timeout: 5000
 };
 

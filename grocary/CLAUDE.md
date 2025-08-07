@@ -219,12 +219,98 @@ To enable Kroger integration:
 
 ## Development Workflow
 
+### Environment Configuration
+
+grocary supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+grocaryEnv.switch('test')
+location.reload()
+
+// Check current environment
+grocaryEnv.current()
+
+// List all environments
+grocaryEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
+
 ### Prerequisites
 - Node.js 16+ and npm installed
 - Rust toolchain installed
 - Kroger API credentials (optional for basic testing)
 
 ### Running the Application
+
+### Environment Configuration
+
+grocary supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+grocaryEnv.switch('test')
+location.reload()
+
+// Check current environment
+grocaryEnv.current()
+
+// List all environments
+grocaryEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 
 1. **Start Grocery Service**:
    ```bash

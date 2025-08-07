@@ -168,26 +168,104 @@ All the same backend functions from rhapsold are available:
 
 ## Development
 
+### Environment Configuration
+
+Ninefy supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+ninefyEnv.switch('test')
+location.reload()
+
+// Switch to dev server
+ninefyEnv.switch('dev') 
+location.reload()
+
+// Check current environment
+ninefyEnv.current()
+
+// List all environments
+ninefyEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 ### Running the Application
 
 ```bash
 cd ninefy/ninefy
 npm install
-npm run tauri dev  # Start development
-npm run tauri build  # Production build
+
+# Development with different environments
+npm run dev:dev      # Dev server (default)
+npm run dev:test     # 3-base test ecosystem
+npm run dev:local    # Local development
+
+# Production builds
+npm run build:dev    # Build for dev server
+npm run build:test   # Build for test ecosystem
+npm run build:local  # Build for local
 ```
 
 ### Key Features Implemented
 
 ✅ **Complete Four-Screen Architecture** (Shop, Details, Upload, Base)
-✅ **Product Categories** with custom SVG graphics for each type
-✅ **Comprehensive Upload Form** with validation and markdown support
+✅ **Type-Specific Product Forms** with dynamic field generation
+✅ **Five Professional Categories** with custom SVG graphics and smart forms
+✅ **ICS Calendar Integration** for course scheduling
+✅ **Category-Specific Validation** and metadata display
 ✅ **Product Details View** with purchase interface and rich content
 ✅ **Teleported Content Feed** for marketplace network updates
 ✅ **Base Server Management** (shared with rhapsold)
 ✅ **Price Formatting** and commerce-focused UI elements
 ✅ **localStorage Integration** for product persistence
 ✅ **Responsive Design** with hover effects and smooth animations
+
+### 🆕 **Product Type Forms Detail**
+
+**📚 E-Book Form**:
+- Title, Author, ISBN, Pages, Language
+- Perfect for digital books and publications
+
+**🎓 Course Form**: 
+- Title, Instructor, Duration, Level (Beginner/Intermediate/Advanced)
+- Modules count, ICS schedule upload, completion certificate option
+
+**🎫 Ticket Form**:
+- Event title, Organizer, Venue, Date/Time picker
+- Capacity limits, transferable ticket option
+
+**📦 Shippable Form**:
+- Product title, Weight (lbs), Dimensions (L×W×H)
+- Shipping class (Standard/Fragile/Oversized/Hazmat), Origin country
+
+**✅ SoDoTo Form**:
+- Same fields as Course (optimized for productivity/task management courses)
+- Includes ICS schedule upload for structured learning paths
 
 ### Shared Code with Rhapsold
 
@@ -209,27 +287,51 @@ Ninefy maximizes code reuse with rhapsold:
 
 ## Current Status
 
-### ✅ Completed Features (Production Ready)
+### 🎉 **PRODUCTION READY** (Updated January 2025)
 
-**Five-Screen Architecture**:
-- ✅ **Main Screen (Shop)**: Product marketplace with grid layout and teleported content
-- ✅ **Browse Base Screen**: Discovery of products across different base servers
-- ✅ **Product Details**: Full product information with purchase interface
-- ✅ **Upload Screen**: Complete product creation form for sellers
-- ✅ **Base Management**: Universal server connection management
+Ninefy is now a **fully functional digital goods marketplace** with complete purchase functionality, production-ready backend integration, and polished user experience.
 
-**Full Backend Integration**:
-- ✅ **Sanora Integration**: Real product upload via `add_product()` with graceful fallbacks
-- ✅ **Stripe Payment Processing**: Complete payment flow via Addie service integration
-- ✅ **Product Management**: `toggle_product_availability()` for simple on/off control
-- ✅ **Base Product Discovery**: `get_base_products()` for cross-server marketplace browsing
-- ✅ **Safety & Reliability**: Graceful degradation when backend services unavailable
+### ✅ **Complete Feature Set**
 
-**Developer Experience**:
-- ✅ **Error Handling**: Comprehensive error messages and fallback behaviors
-- ✅ **Tauri Safety**: Proper checks for API availability with browser fallbacks
-- ✅ **Development Ready**: App works in both Tauri and browser environments
-- ✅ **Clean Architecture**: No duplicate variable declarations or compilation errors
+**Four-Screen Architecture** (Optimized):
+- ✅ **Shop Screen**: Aggregated marketplace showing products from ALL connected bases
+- ✅ **Browse Base Screen**: Targeted discovery from specific selected base servers  
+- ✅ **Upload Screen**: Complete product creation with real Sanora backend integration
+- ✅ **Base Management**: Production BDO integration with real-time base discovery
+
+**Details Navigation** (Improved UX):
+- ✅ **Click-to-View**: Product cards are clickable to show detailed product information
+- ✅ **Contextual Navigation**: Details accessed via product clicks, not top navigation
+- ✅ **Back Navigation**: Clean "← Back to Shop" flow from details screen
+
+**Complete Purchase Flow**:
+- ✅ **Payment Integration**: Real Stripe payment processing via Addie backend
+- ✅ **Payment Intents**: Uses `get_payment_intent_without_splits()` function
+- ✅ **Purchase Confirmation**: User-friendly confirmation dialogs with product details
+- ✅ **Success Handling**: Complete purchase flow with success/error feedback
+- ✅ **Environment Safety**: Proper Tauri detection with helpful error messages
+
+**🆕 Type-Specific Product Forms**:
+- ✅ **Dynamic Form System**: Forms automatically update based on selected product type
+- ✅ **Five Product Categories**: E-Book, Course, Ticket, Shippable, SoDoTo
+- ✅ **Smart Field Validation**: Required fields and validation rules per category
+- ✅ **ICS Calendar Support**: Course and SoDoTo types support .ics schedule uploads
+- ✅ **Category-Specific Metadata**: Rich product details display with relevant fields
+- ✅ **Professional UX**: Real-time form updates and proper field labeling
+
+**Production Backend Integration**:
+- ✅ **Real BDO Discovery**: Base servers loaded from actual BDO instead of demo data
+- ✅ **Sanora Product Upload**: Full integration with `add_product()` and file upload
+- ✅ **Cross-Base Marketplace**: Products aggregated from multiple connected bases
+- ✅ **Image Support**: Multiple field name handling for product images
+- ✅ **Environment Switching**: Works seamlessly with dev/test/local environments
+
+**Polished User Experience**:
+- ✅ **Visual Feedback**: Upload buttons show success (green) and error (red) states
+- ✅ **Professional Empty States**: "📦 No products yet" instead of demo data
+- ✅ **Loading Indicators**: Real-time status during BDO discovery and uploads
+- ✅ **Error Recovery**: Graceful degradation with actionable error messages
+- ✅ **Responsive Design**: Works across different screen sizes
 
 ### 🔧 Production Integration Features
 
@@ -250,6 +352,30 @@ Ninefy maximizes code reuse with rhapsold:
 - **Service Degradation**: App works offline with localStorage and sample data
 - **Error Messages**: Helpful user feedback for different failure scenarios
 - **Development Support**: Clear console logging for debugging integration issues
+
+### 🚀 **Recent Major Updates (January 2025)**
+
+**Complete Production Upgrade**:
+1. **Removed ALL Demo Data**: Base servers now use real BDO discovery instead of placeholder data
+2. **Fixed Product Images**: Updated image field mapping to handle multiple backend formats  
+3. **Streamlined Navigation**: Removed Details from top nav, made product cards clickable
+4. **Added Purchase Flow**: Complete Stripe payment integration with Addie backend
+5. **Enhanced Upload UX**: Visual success/error feedback with button state changes
+6. **Environment Integration**: Full compatibility with environment switching system
+
+**🆕 Type-Specific Product Forms (Latest)**:
+7. **Smart Form System**: Dynamic forms that change based on product type selection
+8. **Professional Categories**: Updated to ebook, course, ticket, shippable, and SoDoTo
+9. **ICS Calendar Upload**: Course and SoDoTo types support calendar schedule uploads (.ics files)
+10. **Category-Specific Metadata**: Each product type shows relevant information in details view
+
+**Architecture Improvements**:
+- **Production BDO Integration**: Base screen connects to actual BDO servers
+- **Smart Image Handling**: Supports `image`, `preview_image`, and `previewImage` fields
+- **Contextual Details**: Details screen accessed via product clicks, not navigation
+- **Payment Safety**: Proper Tauri environment detection with helpful fallbacks
+- **Visual Polish**: Success (green) and error (red) button states for uploads
+- **Dynamic Forms**: Real-time form field updates based on selected product category
 
 ### 🚀 Integration Lessons Learned
 

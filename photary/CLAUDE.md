@@ -53,6 +53,49 @@ Photary uses shared components from `/the-nullary/shared/` to maintain consisten
 
 ## Development Patterns
 
+### Environment Configuration
+
+photary supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+photaryEnv.switch('test')
+location.reload()
+
+// Check current environment
+photaryEnv.current()
+
+// List all environments
+photaryEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
+
 ### No-Modules Architecture
 Photary follows The Nullary's no-modules approach for Tauri compatibility:
 
@@ -144,6 +187,49 @@ photary/
 - SVG-based UI components (inline)
 
 ## Development Workflow
+
+### Environment Configuration
+
+photary supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+photaryEnv.switch('test')
+location.reload()
+
+// Check current environment
+photaryEnv.current()
+
+// List all environments
+photaryEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server (default)
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 
 1. **Start Development**: `npm run tauri dev`
 2. **Build Application**: `npm run tauri build`

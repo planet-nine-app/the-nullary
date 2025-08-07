@@ -9,11 +9,17 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "dev": "npm run tauri:dev",
-    "build": "npm run tauri:build",
+    "dev": "npm run dev:local",
+    "build": "npm run tauri build",
     "preview": "vite preview",
     "lint": "eslint src --ext .js",
-    "format": "prettier --write src/**/*.{js,html,css}"
+    "format": "prettier --write src/**/*.{js,html,css}",
+    "dev:dev": "NULLARY_ENV=dev npm run tauri dev",
+    "dev:test": "NULLARY_ENV=test npm run tauri dev",
+    "dev:local": "NULLARY_ENV=local npm run tauri dev",
+    "build:dev": "NULLARY_ENV=dev npm run tauri build",
+    "build:test": "NULLARY_ENV=test npm run tauri build",
+    "build:local": "NULLARY_ENV=local npm run tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0"

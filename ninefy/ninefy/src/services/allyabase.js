@@ -4,18 +4,85 @@
  */
 
 /**
+ * Configuration profiles for different environments
+ */
+const CONFIGS = {
+  dev: {
+    baseUrl: 'https://dev.sanora.allyabase.com', // Dev server
+    services: {
+      dolores: 'https://dev.dolores.allyabase.com', // Video/media storage
+      pref: 'https://dev.pref.allyabase.com',      // Preferences  
+      bdo: 'https://dev.bdo.allyabase.com',        // Big dumb objects
+      fount: 'https://dev.fount.allyabase.com',    // MAGIC/rewards
+      sanora: 'https://dev.sanora.allyabase.com'   // Product hosting
+    },
+    timeout: 5000
+  },
+  test: {
+    baseUrl: 'http://localhost:5111', // Test Base 1 (leader)
+    services: {
+      dolores: 5118, // Video/media storage
+      pref: 5113,    // Preferences  
+      bdo: 5114,     // Big dumb objects
+      fount: 5117,   // MAGIC/rewards
+      sanora: 5121   // Product hosting
+    },
+    timeout: 5000
+  },
+  local: {
+    baseUrl: 'http://localhost:3000', // Standard local allyabase
+    services: {
+      dolores: 3005, // Video/media storage
+      pref: 3004,    // Preferences  
+      bdo: 3003,     // Big dumb objects
+      fount: 3002,   // MAGIC/rewards
+      sanora: 7243   // Product hosting
+    },
+    timeout: 5000
+  }
+};
+
+/**
+ * Get environment-based configuration
+ */
+function getEnvironmentConfig() {
+  // Try to get environment from Tauri or fallback methods
+  let env = 'dev'; // default
+  
+  try {
+    // Check if we're in Tauri and can access environment
+    if (window.__TAURI__) {
+      // For now, we'll check localStorage for manual override
+      const storedEnv = localStorage.getItem('ninefy-env');
+      if (storedEnv && CONFIGS[storedEnv]) {
+        env = storedEnv;
+      }
+    }
+    
+    // Check URL parameters for quick switching (dev only)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlEnv = urlParams.get('env');
+    if (urlEnv && CONFIGS[urlEnv]) {
+      env = urlEnv;
+      localStorage.setItem('ninefy-env', env); // Remember choice
+    }
+    
+  } catch (error) {
+    console.warn('Could not detect environment, using dev:', error);
+  }
+  
+  const config = CONFIGS[env] || CONFIGS.dev;
+  
+  console.log(`🌐 Using ${env} environment configuration`);
+  console.log(`📍 Base URL: ${config.baseUrl}`);
+  
+  return config;
+}
+
+/**
  * Default allyabase configuration
  */
-const DEFAULT_CONFIG = {
-  baseUrl: 'http://localhost:3000', // Default local allyabase instance
-  services: {
-    dolores: 3005, // Video/media storage
-    pref: 3004,    // Preferences
-    bdo: 3003,     // Big dumb objects
-    fount: 3002    // MAGIC/rewards
-  },
-  timeout: 5000
-};
+const DEFAULT_CONFIG = getEnvironmentConfig();
 
 /**
  * Allyabase client instance
@@ -108,9 +175,10 @@ export async function connectToAllyabase(config = {}) {
  * @param {Object} config - Configuration
  */
 async function testServices(config) {
-  const serviceTests = Object.entries(config.services).map(async ([name, port]) => {
+  const serviceTests = Object.entries(config.services).map(async ([name, serviceUrl]) => {
     try {
-      const url = `http://localhost:${port}/health`;
+      // Handle both URL strings and port numbers
+      const url = typeof serviceUrl === 'string' ? `${serviceUrl}/health` : `http://localhost:${serviceUrl}/health`;
       
       let response;
       if (window.__TAURI__) {
@@ -124,15 +192,16 @@ async function testServices(config) {
       
       if (response.ok) {
         connectionStatus.services[name] = true;
-        console.log(`✅ ${name} service available on port ${port}`);
+        console.log(`✅ ${name} service available at ${url}`);
       } else {
         connectionStatus.services[name] = false;
-        console.warn(`⚠️ ${name} service unhealthy on port ${port}`);
+        console.warn(`⚠️ ${name} service unhealthy at ${url}`);
       }
       
     } catch (error) {
       connectionStatus.services[name] = false;
-      console.warn(`⚠️ ${name} service unavailable on port ${port}:`, error.message);
+      const url = typeof serviceUrl === 'string' ? serviceUrl : `localhost:${serviceUrl}`;
+      console.warn(`⚠️ ${name} service unavailable at ${url}:`, error.message);
     }
   });
   
@@ -149,7 +218,8 @@ function createClient(config) {
     // Preferences service
     async savePref(key, value) {
       try {
-        const url = `http://localhost:${config.services.pref}/save`;
+        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://localhost:${config.services.pref}`;
+        const url = `${baseUrl}/save`;
         const response = await makeRequest(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -167,7 +237,8 @@ function createClient(config) {
     
     async getPref(key) {
       try {
-        const url = `http://localhost:${config.services.pref}/get/${key}`;
+        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://localhost:${config.services.pref}`;
+        const url = `${baseUrl}/get/${key}`;
         const response = await makeRequest(url);
         
         return response.value;
@@ -182,7 +253,8 @@ function createClient(config) {
     // Big Dumb Object service for posts
     async saveBDO(data) {
       try {
-        const url = `http://localhost:${config.services.bdo}/save`;
+        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://localhost:${config.services.bdo}`;
+        const url = `${baseUrl}/save`;
         const response = await makeRequest(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -201,7 +273,8 @@ function createClient(config) {
     
     async getBDO(id) {
       try {
-        const url = `http://localhost:${config.services.bdo}/get/${id}`;
+        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://localhost:${config.services.bdo}`;
+        const url = `${baseUrl}/get/${id}`;
         const response = await makeRequest(url);
         
         return response;
@@ -216,7 +289,8 @@ function createClient(config) {
     // Media service (dolores)
     async saveMedia(mediaData) {
       try {
-        const url = `http://localhost:${config.services.dolores}/upload`;
+        const baseUrl = typeof config.services.dolores === 'string' ? config.services.dolores : `http://localhost:${config.services.dolores}`;
+        const url = `${baseUrl}/upload`;
         const response = await makeRequest(url, {
           method: 'POST',
           body: mediaData // FormData for file uploads
@@ -344,6 +418,29 @@ export function isConnected() {
 }
 
 /**
- * Export connection status
+ * Switch environment configuration
+ * @param {string} env - Environment to switch to (dev, test, local)
  */
-export { connectionStatus };
+export function switchEnvironment(env) {
+  if (!CONFIGS[env]) {
+    console.error(`❌ Unknown environment: ${env}. Available: ${Object.keys(CONFIGS).join(', ')}`);
+    return false;
+  }
+  
+  localStorage.setItem('ninefy-env', env);
+  console.log(`🔄 Environment switched to ${env}. Please refresh the app.`);
+  return true;
+}
+
+/**
+ * Get current environment
+ */
+export function getCurrentEnvironment() {
+  const storedEnv = localStorage.getItem('ninefy-env');
+  return storedEnv || 'dev';
+}
+
+/**
+ * Export connection status and configs for debugging
+ */
+export { connectionStatus, CONFIGS };

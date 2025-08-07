@@ -315,6 +315,52 @@ Integration with Sanora service for blog storage:
 
 ## Development Workflow
 
+### Environment Configuration
+
+Rhapsold supports three environments for connecting to different allyabase infrastructures:
+
+- **`dev`** - Production dev server (https://dev.*.allyabase.com)
+- **`test`** - Local 3-base test ecosystem (localhost:5111-5122)  
+- **`local`** - Standard local development (localhost:3000-3007)
+
+#### Environment Switching
+
+**Via Browser Console** (while app is running):
+```javascript
+// Switch to test ecosystem
+rhapsoldEnv.switch('test')
+location.reload()
+
+// Switch to dev server
+rhapsoldEnv.switch('dev') 
+location.reload()
+
+// Check current environment
+rhapsoldEnv.current()
+
+// List all environments
+rhapsoldEnv.list()
+```
+
+**Via Package Scripts**:
+```bash
+npm run dev:dev    # Dev server
+npm run dev:test   # Test ecosystem  
+npm run dev:local  # Local development
+```
+
+#### Programming API
+```javascript
+// Get current environment config
+const config = getEnvironmentConfig();
+console.log(config.env);        // 'dev', 'test', or 'local'
+console.log(config.services);   // Service URLs
+
+// Get specific service URL
+const sanoraUrl = getServiceUrl('sanora');
+const bdoUrl = getServiceUrl('bdo');
+```
+
 ### Running the Application
 
 **Prerequisites**:
@@ -326,12 +372,19 @@ Integration with Sanora service for blog storage:
    ```bash
    cd rhapsold/rhapsold
    npm install  # Install Tauri CLI and dependencies
-   npm run tauri dev  # Start development with hot reload
+   
+   # Development with different environments
+   npm run dev:dev      # Dev server (default)
+   npm run dev:test     # 3-base test ecosystem
+   npm run dev:local    # Local development
    ```
 
 2. **Build for Production**:
    ```bash
-   npm run tauri build  # Create production build
+   # Production builds
+   npm run build:dev    # Build for dev server
+   npm run build:test   # Build for test ecosystem
+   npm run build:local  # Build for local
    ```
 
 3. **Backend Testing**:
@@ -341,7 +394,7 @@ Integration with Sanora service for blog storage:
    node src/server/node/sanora.js
    
    # Test backend functions via Tauri dev tools console
-   await invoke('create_sanora_user', { sanoraUrl: 'http://localhost:7243' });
+   await invoke('create_sanora_user', { sanoraUrl: getServiceUrl('sanora') });
    ```
 
 ### JavaScript Architecture (No ES6 Modules)
