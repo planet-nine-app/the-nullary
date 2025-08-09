@@ -19,7 +19,7 @@ const CONFIGS = {
     timeout: 5000
   },
   test: {
-    baseUrl: 'http://localhost:5111', // Test Base 1 (leader)
+    baseUrl: 'http://127.0.0.1:5111', // Test Base 1 (leader)
     services: {
       dolores: 5118, // Video/media storage
       pref: 5113,    // Preferences  
@@ -30,7 +30,7 @@ const CONFIGS = {
     timeout: 5000
   },
   local: {
-    baseUrl: 'http://localhost:3000', // Standard local allyabase
+    baseUrl: 'http://127.0.0.1:3000', // Standard local allyabase
     services: {
       dolores: 3005, // Video/media storage
       pref: 3004,    // Preferences  
@@ -43,20 +43,28 @@ const CONFIGS = {
 };
 
 /**
- * Get environment-based configuration
+ * Get environment-based configuration using shared environment system
  */
 function getEnvironmentConfig() {
-  // Try to get environment from Tauri or fallback methods
+  // Use shared environment configuration if available
+  if (typeof window.PlanetNineEnvironment !== 'undefined' && window.PlanetNineEnvironment.getEnvironmentConfig) {
+    const sharedConfig = window.PlanetNineEnvironment.getEnvironmentConfig();
+    
+    // Convert shared config to legacy format
+    const legacyConfig = CONFIGS[sharedConfig.env] || CONFIGS.dev;
+    console.log(`🌐 Using ${sharedConfig.env} environment configuration from shared system`);
+    console.log(`📍 Base URL: ${legacyConfig.baseUrl}`);
+    return legacyConfig;
+  }
+  
+  // Fallback to local environment detection
   let env = 'dev'; // default
   
   try {
-    // Check if we're in Tauri and can access environment
-    if (window.__TAURI__) {
-      // For now, we'll check localStorage for manual override
-      const storedEnv = localStorage.getItem('ninefy-env');
-      if (storedEnv && CONFIGS[storedEnv]) {
-        env = storedEnv;
-      }
+    // Check localStorage for manual override
+    const storedEnv = localStorage.getItem('nullary-env');
+    if (storedEnv && CONFIGS[storedEnv]) {
+      env = storedEnv;
     }
     
     // Check URL parameters for quick switching (dev only)
@@ -64,7 +72,7 @@ function getEnvironmentConfig() {
     const urlEnv = urlParams.get('env');
     if (urlEnv && CONFIGS[urlEnv]) {
       env = urlEnv;
-      localStorage.setItem('ninefy-env', env); // Remember choice
+      localStorage.setItem('nullary-env', env); // Remember choice
     }
     
   } catch (error) {
@@ -178,7 +186,7 @@ async function testServices(config) {
   const serviceTests = Object.entries(config.services).map(async ([name, serviceUrl]) => {
     try {
       // Handle both URL strings and port numbers
-      const url = typeof serviceUrl === 'string' ? `${serviceUrl}/health` : `http://localhost:${serviceUrl}/health`;
+      const url = typeof serviceUrl === 'string' ? `${serviceUrl}/health` : `http://127.0.0.1:${serviceUrl}/health`;
       
       let response;
       if (window.__TAURI__) {
@@ -200,7 +208,7 @@ async function testServices(config) {
       
     } catch (error) {
       connectionStatus.services[name] = false;
-      const url = typeof serviceUrl === 'string' ? serviceUrl : `localhost:${serviceUrl}`;
+      const url = typeof serviceUrl === 'string' ? serviceUrl : `127.0.0.1:${serviceUrl}`;
       console.warn(`⚠️ ${name} service unavailable at ${url}:`, error.message);
     }
   });
@@ -218,7 +226,7 @@ function createClient(config) {
     // Preferences service
     async savePref(key, value) {
       try {
-        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://localhost:${config.services.pref}`;
+        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://127.0.0.1:${config.services.pref}`;
         const url = `${baseUrl}/save`;
         const response = await makeRequest(url, {
           method: 'POST',
@@ -237,7 +245,7 @@ function createClient(config) {
     
     async getPref(key) {
       try {
-        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://localhost:${config.services.pref}`;
+        const baseUrl = typeof config.services.pref === 'string' ? config.services.pref : `http://127.0.0.1:${config.services.pref}`;
         const url = `${baseUrl}/get/${key}`;
         const response = await makeRequest(url);
         
@@ -253,7 +261,7 @@ function createClient(config) {
     // Big Dumb Object service for posts
     async saveBDO(data) {
       try {
-        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://localhost:${config.services.bdo}`;
+        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://127.0.0.1:${config.services.bdo}`;
         const url = `${baseUrl}/save`;
         const response = await makeRequest(url, {
           method: 'POST',
@@ -273,7 +281,7 @@ function createClient(config) {
     
     async getBDO(id) {
       try {
-        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://localhost:${config.services.bdo}`;
+        const baseUrl = typeof config.services.bdo === 'string' ? config.services.bdo : `http://127.0.0.1:${config.services.bdo}`;
         const url = `${baseUrl}/get/${id}`;
         const response = await makeRequest(url);
         
@@ -289,7 +297,7 @@ function createClient(config) {
     // Media service (dolores)
     async saveMedia(mediaData) {
       try {
-        const baseUrl = typeof config.services.dolores === 'string' ? config.services.dolores : `http://localhost:${config.services.dolores}`;
+        const baseUrl = typeof config.services.dolores === 'string' ? config.services.dolores : `http://127.0.0.1:${config.services.dolores}`;
         const url = `${baseUrl}/upload`;
         const response = await makeRequest(url, {
           method: 'POST',
@@ -427,7 +435,7 @@ export function switchEnvironment(env) {
     return false;
   }
   
-  localStorage.setItem('ninefy-env', env);
+  localStorage.setItem('nullary-env', env);
   console.log(`🔄 Environment switched to ${env}. Please refresh the app.`);
   return true;
 }
@@ -436,7 +444,7 @@ export function switchEnvironment(env) {
  * Get current environment
  */
 export function getCurrentEnvironment() {
-  const storedEnv = localStorage.getItem('ninefy-env');
+  const storedEnv = localStorage.getItem('nullary-env');
   return storedEnv || 'dev';
 }
 

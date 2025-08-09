@@ -3,68 +3,99 @@
  * A minimalist digital goods marketplace using SVG components
  */
 
+// Dynamic Form Widget Loading from Current Sanora Service
+function loadFormWidget() {
+  // Check if environment functions are available
+  if (typeof getServiceUrl === 'undefined') {
+    console.warn('⚠️ Environment config not ready, retrying in 100ms...');
+    setTimeout(loadFormWidget, 100);
+    return;
+  }
+  
+  const sanoraUrl = getServiceUrl('sanora');
+  const baseUrl = sanoraUrl.endsWith('/') ? sanoraUrl.slice(0, -1) : sanoraUrl;
+  
+  console.log(`📋 Loading form-widget from: ${baseUrl}`);
+  
+  // Load CSS dynamically
+  const cssLink = document.createElement('link');
+  cssLink.rel = 'stylesheet';
+  cssLink.href = `${baseUrl}/form-widget.css`;
+  cssLink.onload = () => console.log('✅ Form widget CSS loaded');
+  cssLink.onerror = (e) => {
+    console.warn('⚠️ Failed to load form widget CSS:', cssLink.href);
+    console.error('CSS load error:', e);
+  };
+  document.head.appendChild(cssLink);
+  
+  // Load JavaScript dynamically
+  const jsScript = document.createElement('script');
+  jsScript.src = `${baseUrl}/form-widget.js`;
+  jsScript.onload = () => {
+    console.log('✅ Form widget JS loaded');
+    console.log('📝 window.getForm available:', typeof window.getForm);
+  };
+  jsScript.onerror = (e) => {
+    console.warn('⚠️ Failed to load form widget JS:', jsScript.src);
+    console.error('JS load error:', e);
+  };
+  document.head.appendChild(jsScript);
+}
+
+// Initialize environment controls and load form widget when ready
+async function initializeEnvironmentAndFormWidget() {
+  // Check if environment functions are available
+  if (typeof createEnvironmentControls === 'undefined') {
+    console.warn('⚠️ Environment config not ready, retrying...');
+    setTimeout(initializeEnvironmentAndFormWidget, 100);
+    return;
+  }
+  
+  console.log('🔧 Environment functions available, initializing environment...');
+  
+  // Initialize environment from Rust first
+  await initializeEnvironment();
+  
+  console.log('🔍 localStorage nullary-env:', localStorage.getItem('nullary-env'));
+  console.log('🔍 typeof getEnvironmentConfig:', typeof getEnvironmentConfig);
+  console.log('🔍 typeof getServiceUrl:', typeof getServiceUrl);
+  
+  // Setup environment controls for browser console
+  window.ninefyEnv = createEnvironmentControls('ninefy');
+  
+  // Load form widget
+  loadFormWidget();
+}
+
+// Load form widget as soon as page loads
+document.addEventListener('DOMContentLoaded', () => {
+  initializeEnvironmentAndFormWidget();
+});
+
 // Tauri API for backend communication (with safety check)
 let invoke = null;
 let tauriInitialized = false;
 
-// Environment configuration
-function getEnvironmentConfig() {
-  const env = localStorage.getItem('ninefy-env') || 'dev';
-  
-  const configs = {
-    dev: {
-      sanora: 'https://dev.sanora.allyabase.com/',
-      bdo: 'https://dev.bdo.allyabase.com/',
-      dolores: 'https://dev.dolores.allyabase.com/',
-      fount: 'https://dev.fount.allyabase.com/',
-      addie: 'https://dev.addie.allyabase.com/'
-    },
-    test: {
-      sanora: 'http://localhost:5121/',
-      bdo: 'http://localhost:5114/',
-      dolores: 'http://localhost:5118/',
-      fount: 'http://localhost:5117/',
-      addie: 'http://localhost:5116/'
-    },
-    local: {
-      sanora: 'http://localhost:7243/',
-      bdo: 'http://localhost:3003/',
-      dolores: 'http://localhost:3005/',
-      fount: 'http://localhost:3002/',
-      addie: 'http://localhost:3005/'
+// Initialize environment from Rust environment variables
+async function initializeEnvironment() {
+  try {
+    if (invoke) {
+      const envFromRust = await invoke('get_env_config');
+      if (envFromRust && ['dev', 'test', 'local'].includes(envFromRust)) {
+        console.log(`🌍 Environment from Rust: ${envFromRust}`);
+        localStorage.setItem('nullary-env', envFromRust);
+        return envFromRust;
+      }
     }
-  };
+  } catch (error) {
+    console.log('⚠️ Could not get environment from Rust, using localStorage/default');
+  }
   
-  return configs[env] || configs.dev;
+  return localStorage.getItem('nullary-env') || 'dev';
 }
 
-// Environment switching functions for browser console
-window.ninefyEnv = {
-  switch: (env) => {
-    const envs = { dev: 'dev', test: 'test', local: 'local' };
-    if (!envs[env]) {
-      console.error(`❌ Unknown environment: ${env}. Available: dev, test, local`);
-      return false;
-    }
-    localStorage.setItem('ninefy-env', env);
-    console.log(`🔄 Environment switched to ${env}. Refresh app to apply changes.`);
-    console.log(`Run: location.reload() to refresh`);
-    return true;
-  },
-  current: () => {
-    const env = localStorage.getItem('ninefy-env') || 'dev';
-    const config = getEnvironmentConfig();
-    console.log(`🌐 Current environment: ${env}`);
-    console.log(`📍 Sanora URL: ${config.sanora}`);
-    return env;
-  },
-  list: () => {
-    console.log('🌍 Available environments:');
-    console.log('• dev - https://dev.*.allyabase.com (production dev server)');
-    console.log('• test - localhost:5111-5122 (3-base test ecosystem)');
-    console.log('• local - localhost:3000-3007 (local development)');
-  }
-};
+// Environment switching now handled by environment-config.js
+// This will be set up by initializeEnvironmentAndFormWidget()
 
 // Initialize Tauri API when ready
 function initializeTauri() {
@@ -109,7 +140,7 @@ window.ninefyInvoke = invoke;
 
 // Product category SVG data URLs (URL-encoded)
 const PRODUCT_IMAGES = {
-  ebook: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%234a90e2'/%3E%3Crect x='80' y='50' width='240' height='150' fill='%23ffffff' rx='8'/%3E%3Cline x1='100' y1='80' x2='280' y2='80' stroke='%234a90e2' stroke-width='2'/%3E%3Cline x1='100' y1='100' x2='280' y2='100' stroke='%234a90e2' stroke-width='2'/%3E%3Cline x1='100' y1='120' x2='250' y2='120' stroke='%234a90e2' stroke-width='2'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3EE-Book%3C/text%3E%3C/svg%3E",
+  ebook: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI1MCIgZmlsbD0iIzRhOTBlMiIvPgogIDxyZWN0IHg9IjgwIiB5PSI1MCIgd2lkdGg9IjI0MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiNmZmZmZmYiIHJ4PSI4Ii8+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjgwIiB4Mj0iMjgwIiB5Mj0iODAiIHN0cm9rZT0iIzRhOTBlMiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjEwMCIgeDI9IjI4MCIgeTI9IjEwMCIgc3Ryb2tlPSIjNGE5MGUyIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8bGluZSB4MT0iMTAwIiB5MT0iMTIwIiB4Mj0iMjUwIiB5Mj0iMTIwIiBzdHJva2U9IiM0YTkwZTIiIHN0cm9rZS13aWR0aD0iMiIvPgogIDx0ZXh0IHg9IjIwMCIgeT0iMjIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmZmZmIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTgiIGZvbnQtd2VpZ2h0PSJib2xkIj5FLUJvb2s8L3RleHQ+Cjwvc3ZnPg==",
   
   course: "data:image/svg+xml,%3Csvg width='400' height='250' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='400' height='250' fill='%23f39c12'/%3E%3Crect x='50' y='70' width='300' height='110' fill='%23ffffff' rx='5'/%3E%3Crect x='60' y='80' width='120' height='90' fill='%23f39c12' rx='3'/%3E%3Ctext x='120' y='130' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='36' font-weight='bold'%3E▶%3C/text%3E%3Cline x1='200' y1='90' x2='330' y2='90' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='110' x2='320' y2='110' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='130' x2='310' y2='130' stroke='%23f39c12' stroke-width='2'/%3E%3Cline x1='200' y1='150' x2='300' y2='150' stroke='%23f39c12' stroke-width='2'/%3E%3Ctext x='200' y='220' text-anchor='middle' fill='%23ffffff' font-family='Arial' font-size='18' font-weight='bold'%3ECourse%3C/text%3E%3C/svg%3E",
   
@@ -130,10 +161,19 @@ const TELEPORTED_CONTENT = [];
 
 // Base management (adapted from screenary pattern)
 const BASE_CONFIG = {
-  HOME_BASE_URL: 'https://dev.bdo.allyabase.com/',
   CACHE_TIMEOUT: 600000, // 10 minutes
   PRODUCT_CACHE_TIMEOUT: 300000 // 5 minutes  
 };
+
+// Get home base URL dynamically from environment
+function getHomeBaseUrl() {
+  if (typeof getServiceUrl !== 'undefined') {
+    const bdoUrl = getServiceUrl('bdo');
+    return bdoUrl.endsWith('/') ? bdoUrl : bdoUrl + '/';
+  }
+  // Fallback to dev if environment not ready
+  return 'https://dev.bdo.allyabase.com/';
+}
 
 let basesCache = null;
 let lastBaseRefresh = 0;
@@ -355,7 +395,8 @@ function createTeleportedItem(item) {
 // Base Management Functions (adapted from screenary pattern)
 async function connectToHomeBase() {
   try {
-    console.log('🏠 Connecting to home base:', BASE_CONFIG.HOME_BASE_URL);
+    const homeBaseUrl = getHomeBaseUrl();
+    console.log('🏠 Connecting to home base:', homeBaseUrl);
     
     // Create BDO user on home base
     const bdoUser = await invoke('create_bdo_user');
@@ -365,11 +406,11 @@ async function connectToHomeBase() {
       name: 'DEV',
       description: 'Development base for Ninefy marketplace',
       dns: {
-        bdo: BASE_CONFIG.HOME_BASE_URL,
-        sanora: getEnvironmentConfig().sanora,
-        dolores: getEnvironmentConfig().dolores,
-        addie: getEnvironmentConfig().addie,
-        fount: getEnvironmentConfig().fount
+        bdo: homeBaseUrl,
+        sanora: getServiceUrl('sanora'),
+        dolores: getServiceUrl('dolores'),
+        addie: getServiceUrl('addie'),
+        fount: getServiceUrl('fount')
       },
       users: { bdo: bdoUser },
       joined: true,
@@ -389,7 +430,7 @@ async function fetchBasesFromBDO() {
     const bdoUser = homeBase.users.bdo;
     const updatedBases = await invoke('get_bases', {
       uuid: bdoUser.uuid, 
-      bdoUrl: BASE_CONFIG.HOME_BASE_URL
+      bdoUrl: getHomeBaseUrl()
     });
     
     console.log('📡 Fetched bases from BDO:', Object.keys(updatedBases || {}).length);
@@ -415,33 +456,125 @@ async function getAvailableBases() {
   return basesCache;
 }
 
+/**
+ * Normalize a product from a base to match the expected local product format
+ */
+function normalizeBaseProduct(rawProduct, baseId, baseName, baseUrl) {
+  console.log('🔧 Normalizing base product:', rawProduct);
+  
+  // Handle the weird nested structure where product data is nested under the title key
+  let productData;
+  if (rawProduct && typeof rawProduct === 'object') {
+    // Check if this has the nested structure like { "Foo": { actualProductData } }
+    const keys = Object.keys(rawProduct).filter(key => !['baseId', 'baseName', 'baseUrl'].includes(key));
+    if (keys.length === 1 && typeof rawProduct[keys[0]] === 'object') {
+      // This is the nested format
+      productData = rawProduct[keys[0]];
+      console.log('📋 Extracted nested product data:', productData);
+    } else {
+      // This is already flat
+      productData = rawProduct;
+    }
+  } else {
+    productData = rawProduct;
+  }
+  
+  // Create normalized product with all required fields
+  const normalizedProduct = {
+    // Core fields
+    id: productData.productId || `${baseId}-${productData.title || 'unknown'}-${Date.now()}`,
+    title: productData.title || 'Untitled Product',
+    description: productData.description || '',
+    price: productData.price || 0,
+    
+    // Category/Type
+    category: productData.category || productData.type || 'ebook',
+    productType: productData.productType || productData.product_type || productData.category || 'ebook', // Explicit product type
+    
+    // Display fields with defaults
+    author: productData.author || productData.creator || 'Unknown Author',
+    downloadCount: productData.downloadCount || Math.floor(Math.random() * 50),
+    rating: productData.rating || (4 + Math.random()).toFixed(1),
+    tags: productData.tags || ['product'],
+    
+    // Image handling
+    featuredImage: (() => {
+      // For products from bases, use the base URL + image path
+      if (productData.image) {
+        const imageUrl = `${baseUrl.replace(/\/$/, '')}/images/${productData.image}`;
+        console.log(`🖼️ Using base image for "${productData.title}": ${imageUrl}`);
+        return imageUrl;
+      } else {
+        const category = productData.category || productData.type || 'ebook';
+        const fallbackImage = PRODUCT_IMAGES[category];
+        console.log(`🖼️ Using fallback SVG for "${productData.title}" (category: ${category}): ${fallbackImage ? 'SVG data URL' : 'MISSING!'}`);
+        return fallbackImage;
+      }
+    })(),
+    
+    // File info
+    fileSize: productData.fileSize || productData.file_size || '1 MB',
+    fileType: productData.fileType || productData.file_type || 'DIGITAL',
+    
+    // Metadata
+    timestamp: productData.timestamp || new Date().toISOString(),
+    previewContent: productData.previewContent || productData.description || 'No preview available',
+    
+    // Base info
+    baseId,
+    baseName,
+    baseUrl,
+    
+    // Keep original artifacts info if present
+    artifacts: productData.artifacts || [],
+    uuid: productData.uuid
+  };
+  
+  console.log('✅ Normalized product:', normalizedProduct);
+  return normalizedProduct;
+}
+
 async function getProductsFromBases() {
   const now = new Date().getTime();
   
-  if (productsCache.length > 0 && (now - lastProductsRefresh < BASE_CONFIG.PRODUCT_CACHE_TIMEOUT)) {
-    console.log('📦 Using cached products');
-    return productsCache;
-  }
+  // Temporarily disable cache for debugging
+  console.log('🔄 Cache disabled for debugging - always fetching fresh products');
+  // if (productsCache.length > 0 && (now - lastProductsRefresh < BASE_CONFIG.PRODUCT_CACHE_TIMEOUT)) {
+  //   console.log('📦 Using cached products');
+  //   return productsCache;
+  // }
   
   console.log('🔄 Refreshing products from all bases...');
   
   const bases = await getAvailableBases();
+  console.log('🏗️ Available bases:', Object.keys(bases).length, bases);
   const allProducts = [];
   
   for (const [baseId, base] of Object.entries(bases)) {
     if (!base.dns?.sanora) continue;
     
     try {
+      console.log(`🔍 Fetching products from ${base.name} at ${base.dns.sanora}`);
+      
       // Use the new /products/base endpoint (no authentication required)
       const products = await invoke('get_all_base_products', {
         sanoraUrl: base.dns.sanora
       });
       
+      console.log(`📦 Raw products from ${base.name}:`, products);
+      console.log(`📦 Products type:`, typeof products, Array.isArray(products));
+      
       if (Array.isArray(products)) {
-        allProducts.push(...products.map(p => ({...p, baseId, baseName: base.name})));
+        const normalizedProducts = products.map(p => normalizeBaseProduct(p, baseId, base.name, base.dns.sanora));
+        allProducts.push(...normalizedProducts);
+        console.log(`✅ Added ${products.length} products from ${base.name} (array format)`);
       } else if (products && typeof products === 'object') {
         const productArray = Object.values(products);
-        allProducts.push(...productArray.map(p => ({...p, baseId, baseName: base.name})));
+        const normalizedProducts = productArray.map(p => normalizeBaseProduct(p, baseId, base.name, base.dns.sanora));
+        allProducts.push(...normalizedProducts);
+        console.log(`✅ Added ${productArray.length} products from ${base.name} (object format)`);
+      } else {
+        console.log(`⚠️ No products or unknown format from ${base.name}:`, products);
       }
     } catch (err) {
       console.warn(`⚠️ Failed to get products from ${base.name}:`, err);
@@ -466,6 +599,11 @@ function formatPrice(priceInCents) {
  * Get category icon
  */
 function getCategoryIcon(category) {
+  if (PRODUCT_FORM_CONFIG && PRODUCT_FORM_CONFIG.productTypes[category]) {
+    return PRODUCT_FORM_CONFIG.productTypes[category].icon;
+  }
+  
+  // Fallback icons if config not loaded
   const icons = {
     'ebook': '📚',
     'course': '🎓',
@@ -480,6 +618,11 @@ function getCategoryIcon(category) {
  * Get metadata section title based on category
  */
 function getMetadataTitle(category) {
+  if (PRODUCT_FORM_CONFIG && PRODUCT_FORM_CONFIG.productTypes[category]) {
+    return PRODUCT_FORM_CONFIG.productTypes[category].title;
+  }
+  
+  // Fallback titles if config not loaded
   const titles = {
     'ebook': '📚 Book Details',
     'course': '🎓 Course Information',
@@ -503,43 +646,50 @@ function createMetadataDisplay(category, metadata) {
     color: ${appState.currentTheme.colors.secondary};
   `;
   
-  const displayFields = {
-    ebook: [
-      { key: 'author', label: 'Author', icon: '✍️' },
-      { key: 'isbn', label: 'ISBN', icon: '🔢' },
-      { key: 'pages', label: 'Pages', icon: '📄' },
-      { key: 'language', label: 'Language', icon: '🌐' }
-    ],
-    course: [
-      { key: 'instructor', label: 'Instructor', icon: '👨‍🏫' },
-      { key: 'duration', label: 'Duration', icon: '⏱️' },
-      { key: 'level', label: 'Level', icon: '📈' },
-      { key: 'modules', label: 'Modules', icon: '📚' },
-      { key: 'schedule', label: 'Schedule', icon: '📅', type: 'file' },
-      { key: 'certificate', label: 'Certificate', icon: '🏆', type: 'boolean' }
-    ],
-    ticket: [
-      { key: 'organizer', label: 'Organizer', icon: '🏢' },
-      { key: 'venue', label: 'Venue', icon: '📍' },
-      { key: 'datetime', label: 'Date & Time', icon: '📅', type: 'datetime' },
-      { key: 'capacity', label: 'Capacity', icon: '👥' },
-      { key: 'transferable', label: 'Transferable', icon: '🔄', type: 'boolean' }
-    ],
-    shippable: [
-      { key: 'weight', label: 'Weight', icon: '⚖️', suffix: ' lbs' },
-      { key: 'dimensions', label: 'Dimensions', icon: '📏' },
-      { key: 'shipping_class', label: 'Shipping Class', icon: '📦' },
-      { key: 'origin_country', label: 'Origin', icon: '🌍' }
-    ],
-    sodoto: [
-      { key: 'instructor', label: 'Instructor', icon: '👨‍🏫' },
-      { key: 'duration', label: 'Duration', icon: '⏱️' },
-      { key: 'level', label: 'Level', icon: '📈' },
-      { key: 'modules', label: 'Modules', icon: '📚' },
-      { key: 'schedule', label: 'Schedule', icon: '📅', type: 'file' },
-      { key: 'certificate', label: 'Certificate', icon: '🏆', type: 'boolean' }
-    ]
-  };
+  // Get display fields from display config or fallback
+  let displayFields = {};
+  if (PRODUCT_DISPLAY_CONFIG && PRODUCT_DISPLAY_CONFIG.productTypes[category]) {
+    displayFields[category] = PRODUCT_DISPLAY_CONFIG.productTypes[category].detailFields;
+  } else {
+    // Fallback display fields if config not loaded
+    displayFields = {
+      ebook: [
+        { key: 'author', label: 'Author', icon: '✍️' },
+        { key: 'isbn', label: 'ISBN', icon: '🔢' },
+        { key: 'pages', label: 'Pages', icon: '📄' },
+        { key: 'language', label: 'Language', icon: '🌐' }
+      ],
+      course: [
+        { key: 'instructor', label: 'Instructor', icon: '👨‍🏫' },
+        { key: 'duration', label: 'Duration', icon: '⏱️' },
+        { key: 'level', label: 'Level', icon: '📈' },
+        { key: 'modules', label: 'Modules', icon: '📚' },
+        { key: 'schedule', label: 'Schedule', icon: '📅', type: 'file' },
+        { key: 'certificate', label: 'Certificate', icon: '🏆', type: 'boolean' }
+      ],
+      ticket: [
+        { key: 'organizer', label: 'Organizer', icon: '🏢' },
+        { key: 'venue', label: 'Venue', icon: '📍' },
+        { key: 'datetime', label: 'Date & Time', icon: '📅', type: 'datetime' },
+        { key: 'capacity', label: 'Capacity', icon: '👥' },
+        { key: 'transferable', label: 'Transferable', icon: '🔄', type: 'boolean' }
+      ],
+      shippable: [
+        { key: 'weight', label: 'Weight', icon: '⚖️', suffix: ' lbs' },
+        { key: 'dimensions', label: 'Dimensions', icon: '📏' },
+        { key: 'shipping_class', label: 'Shipping Class', icon: '📦' },
+        { key: 'origin_country', label: 'Origin', icon: '🌍' }
+      ],
+      sodoto: [
+        { key: 'instructor', label: 'Instructor', icon: '👨‍🏫' },
+        { key: 'duration', label: 'Duration', icon: '⏱️' },
+        { key: 'level', label: 'Level', icon: '📈' },
+        { key: 'modules', label: 'Modules', icon: '📚' },
+        { key: 'schedule', label: 'Schedule', icon: '📅', type: 'file' },
+        { key: 'certificate', label: 'Certificate', icon: '🏆', type: 'boolean' }
+      ]
+    };
+  }
   
   const fields = displayFields[category] || [];
   
@@ -647,6 +797,12 @@ function createProductCard(product) {
   `;
   
   // Featured image
+  console.log('🖼️ Product image debug:', {
+    title: product.title,
+    featuredImage: product.featuredImage,
+    hasImage: !!product.featuredImage
+  });
+  
   if (product.featuredImage) {
     const imageElement = document.createElement('img');
     imageElement.src = product.featuredImage;
@@ -655,7 +811,19 @@ function createProductCard(product) {
       height: 200px;
       object-fit: cover;
     `;
+    
+    imageElement.onerror = function() {
+      console.error(`❌ Failed to load image for "${product.title}": ${product.featuredImage}`);
+      this.style.display = 'none';
+    };
+    
+    imageElement.onload = function() {
+      console.log(`✅ Successfully loaded image for "${product.title}"`);
+    };
+    
     cardContainer.appendChild(imageElement);
+  } else {
+    console.warn(`⚠️ No featuredImage for product: "${product.title}"`);
   }
   
   // Card content
@@ -679,7 +847,8 @@ function createProductCard(product) {
   `;
   
   const categoryAuthor = document.createElement('span');
-  categoryAuthor.textContent = `${getCategoryIcon(product.category)} ${product.category} • by ${product.author}`;
+  const displayCategory = product.productType || product.category;
+  categoryAuthor.textContent = `${getCategoryIcon(displayCategory)} ${displayCategory} • by ${product.author}`;
   
   const priceElement = document.createElement('span');
   priceElement.textContent = formatPrice(product.price);
@@ -1096,9 +1265,21 @@ function createBrowseBaseScreen() {
               downloadCount: productData.downloadCount || productData.download_count || 0,
               rating: productData.rating || 4.5,
               tags: productData.tags || [],
-              featuredImage: (productData.image || productData.preview_image || productData.previewImage) ? 
-                `${getEnvironmentConfig().sanora}images/${productData.image || productData.preview_image || productData.previewImage}` : 
-                PRODUCT_IMAGES[productData.category || 'ebook'],
+              featuredImage: (function() {
+                const imageField = productData.image || productData.preview_image || productData.previewImage;
+                if (imageField) {
+                  // For products from bases, use the base URL; for local products, use current environment
+                  const baseUrl = productData.baseUrl || getEnvironmentConfig().services.sanora;
+                  const imageUrl = `${baseUrl}/images/${imageField}`;
+                  console.log(`🖼️ Using uploaded image for "${productData.title}": ${imageUrl}`);
+                  return imageUrl;
+                } else {
+                  const category = productData.category || 'ebook';
+                  const fallbackImage = PRODUCT_IMAGES[category];
+                  console.log(`🖼️ Using fallback SVG for "${productData.title}" (category: ${category}): ${fallbackImage ? 'SVG data URL' : 'MISSING!'}`);
+                  return fallbackImage;
+                }
+              })(),
               previewContent: productData.description || 'No preview available',
               fileSize: productData.fileSize || productData.file_size || 
                 (productData.artifacts && productData.artifacts.length > 0 ? 
@@ -1382,7 +1563,8 @@ function createDetailsScreen() {
     `;
     
     const category = document.createElement('span');
-    category.textContent = `${getCategoryIcon(product.category)} ${product.category}`;
+    const displayCategory = product.productType || product.category;
+    category.textContent = `${getCategoryIcon(displayCategory)} ${displayCategory}`;
     category.style.cssText = `
       background: ${appState.currentTheme.colors.background};
       color: ${appState.currentTheme.colors.secondary};
@@ -1424,7 +1606,8 @@ function createDetailsScreen() {
       `;
       
       const metadataTitle = document.createElement('h3');
-      metadataTitle.textContent = getMetadataTitle(product.category);
+      const displayCategory = product.productType || product.category;
+      metadataTitle.textContent = getMetadataTitle(displayCategory);
       metadataTitle.style.cssText = `
         margin: 0 0 10px 0;
         color: ${appState.currentTheme.colors.text};
@@ -1432,8 +1615,8 @@ function createDetailsScreen() {
       `;
       metadataContainer.appendChild(metadataTitle);
       
-      // Display relevant metadata fields based on category
-      const metadataContent = createMetadataDisplay(product.category, product.metadata);
+      // Display relevant metadata fields based on category (using same displayCategory variable)
+      const metadataContent = createMetadataDisplay(displayCategory, product.metadata);
       metadataContainer.appendChild(metadataContent);
       
       titlePriceContainer.appendChild(metadataContainer);
@@ -1573,6 +1756,629 @@ function createDetailsScreen() {
 }
 
 /**
+ * Create new form-widget based upload form
+ */
+async function createFormWidgetUploadForm() {
+  // Load configurations first
+  await loadProductFormConfig();
+  await loadProductDisplayConfig();
+  
+  console.log('🔧 Creating clean form-widget upload form...');
+  
+  if (!window.getForm || !PRODUCT_FORM_CONFIG) {
+    console.error('❌ Form-widget or config not available');
+    return document.createElement('div');
+  }
+  
+  const container = document.createElement('div');
+  container.className = 'upload-form-container';
+  container.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 100px 40px 40px 40px;
+    box-sizing: border-box;
+    background: #f8fafc;
+    overflow-y: auto;
+    z-index: 1000;
+  `;
+  
+  // Add close button
+  const closeButton = document.createElement('button');
+  closeButton.innerHTML = '← Back to Ninefy';
+  closeButton.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: #2c3e50;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 1001;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+  `;
+  
+  closeButton.addEventListener('mouseenter', () => {
+    closeButton.style.background = '#34495e';
+    closeButton.style.transform = 'translateY(-1px)';
+  });
+  
+  closeButton.addEventListener('mouseleave', () => {
+    closeButton.style.background = '#2c3e50';
+    closeButton.style.transform = 'translateY(0)';
+  });
+  
+  closeButton.addEventListener('click', () => {
+    // Navigate back to main screen
+    showScreen('main');
+  });
+  
+  // Product Type Selector Section
+  const selectorSection = document.createElement('div');
+  selectorSection.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+  `;
+  
+  const selectorTitle = document.createElement('h3');
+  selectorTitle.textContent = 'Select Product Type';
+  selectorTitle.style.cssText = `
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    color: #2c3e50;
+    font-weight: 600;
+  `;
+  
+  const categorySelect = document.createElement('select');
+  categorySelect.id = 'product-type-selector';
+  categorySelect.style.cssText = `
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+    cursor: pointer;
+  `;
+  
+  // Add default option
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Choose a product type to get started...';
+  defaultOption.disabled = true;
+  defaultOption.selected = true;
+  categorySelect.appendChild(defaultOption);
+  
+  // Add product type options
+  Object.entries(PRODUCT_FORM_CONFIG.productTypes).forEach(([key, config]) => {
+    const option = document.createElement('option');
+    option.value = key;
+    option.textContent = config.label;
+    categorySelect.appendChild(option);
+  });
+  
+  selectorSection.appendChild(selectorTitle);
+  selectorSection.appendChild(categorySelect);
+  
+  // Form display container 
+  const formDisplayContainer = document.createElement('div');
+  formDisplayContainer.id = 'form-display';
+  formDisplayContainer.style.cssText = `
+    flex: 1;
+    min-height: 300px;
+    padding: 30px;
+    text-align: center;
+    color: #777;
+    border-radius: 12px;
+    background: white;
+    border: 2px dashed #ddd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  `;
+  formDisplayContainer.innerHTML = `
+    <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+    <h3 style="color: #555; margin: 0 0 10px 0;">Select a Product Type</h3>
+    <p style="margin: 0; font-size: 14px;">Choose a product type above to generate the appropriate form</p>
+  `;
+  
+  let currentForm = null;
+  let currentFormData = {};
+  
+  // Form submission handler with upload functionality
+  async function handleFormSubmission(formData) {
+    console.log('📝 Form submitted with data:', formData);
+    console.log('🖼️ Images:', window.formImageData);
+    console.log('📦 Artifacts:', window.formArtifactData);
+    console.log('⏰ Date/Times:', window.dateTimes);
+    
+    // Disable submit button immediately to prevent multiple submissions
+    const submitButton = document.getElementById('submitButton');
+    if (submitButton) {
+      submitButton.setAttribute('fill', '#666666');
+      submitButton.style.cursor = 'not-allowed';
+      submitButton.style.pointerEvents = 'none';
+      const submitText = submitButton.nextElementSibling;
+      if (submitText) {
+        submitText.setAttribute('fill', '#999999');
+        submitText.textContent = 'UPLOADING...';
+      }
+    }
+    
+    // Create and show upload overlay
+    const uploadOverlay = createUploadOverlay();
+    container.appendChild(uploadOverlay);
+    
+    try {
+      // Combine all data
+      const selectedType = categorySelect.value;
+      const typeConfig = PRODUCT_FORM_CONFIG.productTypes[selectedType];
+      
+      const completeProductData = {
+        productType: selectedType,
+        productConfig: typeConfig,
+        formData: formData,
+        images: window.formImageData || {},
+        artifacts: window.formArtifactData || {},
+        dateTimes: window.dateTimes || []
+      };
+      
+      console.log('💾 Complete product data ready for upload:', completeProductData);
+      
+      // Upload to Sanora
+      const uploadResult = await uploadProductToSanora(completeProductData);
+      
+      // Remove overlay
+      container.removeChild(uploadOverlay);
+      
+      if (uploadResult.success) {
+        // Show success message
+        const successMessage = createSuccessMessage(typeConfig, uploadResult);
+        container.appendChild(successMessage);
+        
+        // Reset form after successful upload
+        setTimeout(() => {
+          resetUploadForm();
+        }, 3000);
+      } else {
+        // Show error and re-enable button
+        const errorMessage = createErrorMessage(uploadResult.error);
+        container.appendChild(errorMessage);
+        enableSubmitButton();
+      }
+      
+    } catch (error) {
+      console.error('❌ Upload failed:', error);
+      
+      // Remove overlay
+      if (uploadOverlay.parentNode) {
+        container.removeChild(uploadOverlay);
+      }
+      
+      // Show error and re-enable button
+      const errorMessage = createErrorMessage(error.message);
+      container.appendChild(errorMessage);
+      enableSubmitButton();
+    }
+  }
+  
+  // Create upload overlay with green scrim and progress indicator
+  function createUploadOverlay() {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(40, 167, 69, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: Arial, sans-serif;
+    `;
+    
+    overlay.innerHTML = `
+      <div style="
+        background: rgba(255, 255, 255, 0.95);
+        padding: 40px 60px;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        max-width: 400px;
+        width: 90%;
+      ">
+        <div style="
+          font-size: 64px;
+          margin-bottom: 20px;
+          animation: spin 2s linear infinite;
+        ">📤</div>
+        <h3 style="
+          color: #28a745;
+          margin: 0 0 15px 0;
+          font-size: 24px;
+          font-weight: bold;
+        ">Uploading Product</h3>
+        <p style="
+          color: #666;
+          margin: 0 0 20px 0;
+          font-size: 16px;
+          line-height: 1.4;
+        ">Please wait while we upload your product to Sanora...</p>
+        <div style="
+          width: 100%;
+          height: 6px;
+          background: #e9ecef;
+          border-radius: 3px;
+          overflow: hidden;
+        ">
+          <div style="
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            animation: loading 2s ease-in-out infinite;
+          "></div>
+        </div>
+      </div>
+      
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes loading {
+          0%, 100% { transform: translateX(-100%); }
+          50% { transform: translateX(100%); }
+        }
+      </style>
+    `;
+    
+    return overlay;
+  }
+  
+  // Create success message
+  function createSuccessMessage(typeConfig, result) {
+    const successMessage = document.createElement('div');
+    successMessage.style.cssText = `
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+    `;
+    successMessage.innerHTML = `
+      <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+      <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product Uploaded Successfully!</h3>
+      <p style="margin: 0 0 10px 0; font-size: 15px;">Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.</p>
+      <p style="margin: 0; font-size: 13px; opacity: 0.8;">Form will reset automatically in 3 seconds...</p>
+    `;
+    return successMessage;
+  }
+  
+  // Create error message
+  function createErrorMessage(errorText) {
+    const errorMessage = document.createElement('div');
+    errorMessage.style.cssText = `
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      padding: 20px;
+      border-radius: 12px;
+      margin: 20px 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    `;
+    errorMessage.innerHTML = `
+      <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+      <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #721c24;">Upload Failed</h3>
+      <p style="margin: 0 0 10px 0; font-size: 15px;">${errorText}</p>
+      <p style="margin: 0; font-size: 13px; opacity: 0.8;">Please try again or check your connection.</p>
+    `;
+    return errorMessage;
+  }
+  
+  // Re-enable submit button
+  function enableSubmitButton() {
+    const submitButton = document.getElementById('submitButton');
+    if (submitButton) {
+      submitButton.setAttribute('fill', 'url(#buttonGradient)');
+      submitButton.style.cursor = 'pointer';
+      submitButton.style.pointerEvents = 'auto';
+      const submitText = submitButton.nextElementSibling;
+      if (submitText) {
+        submitText.setAttribute('fill', '#ffffff');
+        submitText.textContent = 'SUBMIT';
+      }
+    }
+  }
+  
+  // Reset upload form
+  function resetUploadForm() {
+    // Reset category selector
+    categorySelect.value = '';
+    
+    // Clear form display
+    formDisplayContainer.innerHTML = `
+      <div style="text-align: center; padding: 60px 20px; color: #666;">
+        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+        <h3 style="color: #555; margin: 0 0 10px 0;">Select a Product Type</h3>
+        <p style="margin: 0; font-size: 14px;">Choose a product type above to generate the appropriate form</p>
+      </div>
+    `;
+    
+    // Clear global form data
+    window.formImageData = {};
+    window.formArtifactData = {};
+    window.dateTimes = [];
+    
+    console.log('🔄 Upload form reset for new product');
+  }
+  
+  // Type selection handler
+  categorySelect.addEventListener('change', function() {
+    const selectedType = this.value;
+    if (!selectedType) {
+      formDisplayContainer.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+        <h3 style="color: #555; margin: 0 0 10px 0;">Select a Product Type</h3>
+        <p style="margin: 0; font-size: 14px;">Choose a product type above to generate the appropriate form</p>
+      `;
+      return;
+    }
+    
+    const typeConfig = PRODUCT_FORM_CONFIG.productTypes[selectedType];
+    if (!typeConfig || !typeConfig.formConfig) {
+      formDisplayContainer.innerHTML = `
+        <div style="color: #e74c3c;">❌ Configuration error for ${selectedType}</div>
+      `;
+      return;
+    }
+    
+    console.log(`🎯 Creating form-widget for: ${typeConfig.label}`);
+    
+    try {
+      // Clear previous form
+      formDisplayContainer.innerHTML = '';
+      
+      // Create new form using form-widget
+      currentForm = window.getForm(typeConfig.formConfig, handleFormSubmission);
+      
+      // Add form title
+      const formHeader = document.createElement('div');
+      formHeader.style.cssText = `
+        margin-bottom: 20px;
+        text-align: center;
+      `;
+      formHeader.innerHTML = `
+        <h3 style="margin: 0; color: #2c3e50; font-size: 20px;">
+          ${typeConfig.icon} ${typeConfig.title}
+        </h3>
+        <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+          Fill out the form below to create your ${typeConfig.label.toLowerCase()}
+        </p>
+      `;
+      
+      formDisplayContainer.appendChild(formHeader);
+      formDisplayContainer.appendChild(currentForm);
+      
+      // Update styling for active form
+      formDisplayContainer.style.cssText = `
+        flex: 1;
+        width: 100%;
+        padding: 30px;
+        border-radius: 12px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        display: block;
+        text-align: left;
+        box-sizing: border-box;
+      `;
+      
+    } catch (error) {
+      console.error('❌ Failed to create form:', error);
+      formDisplayContainer.innerHTML = `
+        <div style="color: #e74c3c;">
+          <h3>❌ Form Creation Error</h3>
+          <p>Failed to create form for ${typeConfig.label}</p>
+          <small>Error: ${error.message}</small>
+        </div>
+      `;
+    }
+  });
+  
+  // Add title header
+  const titleHeader = document.createElement('h1');
+  titleHeader.textContent = 'Upload Your Product';
+  titleHeader.style.cssText = `
+    text-align: center;
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 300;
+  `;
+  
+  const subtitle = document.createElement('p');
+  subtitle.textContent = 'Share your digital goods with the Ninefy marketplace';
+  subtitle.style.cssText = `
+    text-align: center;
+    color: #64748b;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+  `;
+  
+  container.appendChild(closeButton);
+  container.appendChild(titleHeader);
+  container.appendChild(subtitle);
+  container.appendChild(selectorSection);
+  container.appendChild(formDisplayContainer);
+  
+  return container;
+}
+
+/**
+ * Upload complete product to Sanora with images and artifacts
+ */
+async function uploadProductToSanora(productData) {
+  console.log('🚀 Starting complete product upload to Sanora...');
+  console.log('📦 Product data:', productData);
+  
+  try {
+    // Check if Tauri is available
+    if (!invoke) {
+      console.log('⚠️ Tauri invoke not available for product upload');
+      console.log('🔍 invoke variable:', invoke);
+      console.log('🔍 tauriInitialized:', tauriInitialized);
+      console.log('🔍 window.__TAURI__:', !!window.__TAURI__);
+      console.log('🔍 window.ninefyInvoke:', !!window.ninefyInvoke);
+      throw new Error('Tauri not available - this function requires the desktop app');
+    }
+    
+    console.log('✅ Tauri invoke is available:', typeof invoke);
+    
+    // Get current environment config
+    const sanoraUrl = getServiceUrl('sanora');
+    console.log('🌐 Using Sanora URL:', sanoraUrl);
+    
+    // Generate user UUID (in a real app, this would come from sessionless auth)
+    let userUuid = generateMockUuid();
+    console.log('👤 Using initial UUID:', userUuid);
+    
+    // Extract basic product info from form data
+    const title = productData.formData.Title || productData.formData.title || 'Untitled Product';
+    const description = productData.formData.Description || productData.formData.description || '';
+    // E-book forms don't have price, set a default
+    const price = productData.formData.Price || productData.formData.price || '9.99';
+    
+    console.log(`📊 Form data keys:`, Object.keys(productData.formData));
+    console.log(`💰 Extracted price: "${price}" from form data`);
+    
+    console.log(`📝 Product: "${title}" - $${price}`);
+    
+    // Step 0: Create Sanora user first (might be needed)
+    console.log('👤 Ensuring Sanora user exists...');
+    try {
+      const sanoraUser = await invoke('create_sanora_user', {
+        sanoraUrl: sanoraUrl
+      });
+      console.log('✅ Sanora user ready:', sanoraUser);
+      // Use the user's UUID from Sanora instead of mock UUID
+      userUuid = sanoraUser.uuid;
+    } catch (error) {
+      console.log('⚠️ Could not create Sanora user, continuing with mock UUID:', error.message);
+    }
+    
+    // Step 1: Create product in Sanora FIRST
+    console.log('📦 Creating product in Sanora...');
+    
+    const addProductParams = {
+      uuid: userUuid,
+      sanoraUrl: sanoraUrl,
+      title: title,
+      description: description,
+      price: Math.round(parseFloat(price) * 100), // Ensure integer cents
+      productType: productData.productType // Add the product type: 'ebook', 'course', 'ticket', 'shippable', 'sodoto'
+    };
+    
+    console.log('📋 add_product parameters:', addProductParams);
+    
+    const productResult = await invoke('add_product', addProductParams);
+    console.log('✅ Product created successfully:', productResult);
+    
+    // Step 2: Upload images to the created product
+    let imageResults = {};
+    if (productData.images && Object.keys(productData.images).length > 0) {
+      console.log('📸 Uploading images to existing product...');
+      for (const [fieldName, imageData] of Object.entries(productData.images)) {
+        try {
+          const result = await uploadImageToSanora(userUuid, sanoraUrl, title, imageData.file);
+          imageResults[fieldName] = result;
+          console.log(`✅ Image uploaded for ${fieldName}:`, result);
+        } catch (error) {
+          console.warn(`⚠️ Image upload failed for ${fieldName}:`, error);
+          imageResults[fieldName] = { success: false, error: error.message };
+        }
+      }
+    }
+    
+    // Step 3: Upload artifacts to the created product
+    let artifactResults = {};
+    if (productData.artifacts && Object.keys(productData.artifacts).length > 0) {
+      console.log('📄 Uploading artifacts to existing product...');
+      for (const [fieldName, artifactData] of Object.entries(productData.artifacts)) {
+        try {
+          const result = await uploadArtifactToSanora(userUuid, sanoraUrl, title, artifactData.file);
+          artifactResults[fieldName] = result;
+          console.log(`✅ Artifact uploaded for ${fieldName}:`, result);
+        } catch (error) {
+          console.warn(`⚠️ Artifact upload failed for ${fieldName}:`, error);
+          artifactResults[fieldName] = { success: false, error: error.message };
+        }
+      }
+    }
+    
+    // Return success result
+    return {
+      success: true,
+      productId: productResult.id || Date.now().toString(),
+      productType: productData.productType, // Include product type in result
+      title: title,
+      price: price,
+      imageUploads: Object.keys(imageResults).length,
+      artifactUploads: Object.keys(artifactResults).length,
+      sanoraUrl: sanoraUrl,
+      details: productResult
+    };
+    
+  } catch (error) {
+    console.error('❌ Complete product upload failed:', error);
+    
+    // Return detailed error
+    return {
+      success: false,
+      error: error.message,
+      details: error
+    };
+  }
+}
+
+/**
+ * Generate a mock UUID for testing (replace with real sessionless auth)
+ */
+function generateMockUuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
  * Upload image to Sanora using Tauri invoke
  */
 async function uploadImageToSanora(uuid, sanoraUrl, title, imageFile) {
@@ -1582,6 +2388,10 @@ async function uploadImageToSanora(uuid, sanoraUrl, title, imageFile) {
     // Check if invoke is available
     if (!invoke) {
       console.log('⚠️ Tauri invoke not available, skipping image upload');
+      console.log('🔍 invoke variable:', invoke);
+      console.log('🔍 tauriInitialized:', tauriInitialized);
+      console.log('🔍 window.__TAURI__:', !!window.__TAURI__);
+      console.log('🔍 window.ninefyInvoke:', !!window.ninefyInvoke);
       return { success: false, message: 'Tauri not available', filename: null };
     }
     
@@ -1609,7 +2419,9 @@ async function uploadImageToSanora(uuid, sanoraUrl, title, imageFile) {
     return { success: true, message: 'Upload successful', result: result };
     
   } catch (error) {
-    console.log('⚠️ Image upload failed via Tauri:', error.message);
+    console.log('⚠️ Image upload failed via Tauri:', error);
+    console.log('⚠️ Error message:', error.message);
+    console.log('⚠️ Error stack:', error.stack);
     return { success: false, message: error.message, filename: null };
   }
 }
@@ -1690,984 +2502,57 @@ function getArtifactType(extension) {
 /**
  * Create Product Upload Form
  */
-// Form field templates for different product types
-const PRODUCT_FORM_FIELDS = {
-  ebook: {
-    title: { type: 'text', placeholder: 'E-book title...', required: true },
-    author: { type: 'text', placeholder: 'Author name', required: true },
-    isbn: { type: 'text', placeholder: 'ISBN (optional)' },
-    pages: { type: 'number', placeholder: 'Number of pages', min: 1 },
-    language: { type: 'text', placeholder: 'Language', value: 'English' },
-    category: { type: 'hidden', value: 'ebook' }
-  },
-  course: {
-    title: { type: 'text', placeholder: 'Course title...', required: true },
-    instructor: { type: 'text', placeholder: 'Instructor name', required: true },
-    duration: { type: 'text', placeholder: 'Course duration (e.g., 2 hours)' },
-    level: { 
-      type: 'select', 
-      options: ['Beginner', 'Intermediate', 'Advanced'],
-      placeholder: 'Select difficulty level'
-    },
-    modules: { type: 'number', placeholder: 'Number of modules', min: 1 },
-    schedule: { 
-      type: 'file', 
-      accept: '.ics,.ical', 
-      label: 'Course Schedule (ICS file)', 
-      placeholder: 'Upload .ics calendar file'
-    },
-    certificate: { type: 'checkbox', label: 'Includes completion certificate' },
-    category: { type: 'hidden', value: 'course' }
-  },
-  ticket: {
-    title: { type: 'text', placeholder: 'Event title...', required: true },
-    organizer: { type: 'text', placeholder: 'Event organizer', required: true },
-    venue: { type: 'text', placeholder: 'Venue or location', required: true },
-    datetime: { type: 'datetime-local', placeholder: 'Event date and time', required: true },
-    capacity: { type: 'number', placeholder: 'Max attendees', min: 1 },
-    transferable: { type: 'checkbox', label: 'Tickets can be transferred' },
-    category: { type: 'hidden', value: 'ticket' }
-  },
-  shippable: {
-    title: { type: 'text', placeholder: 'Product title...', required: true },
-    weight: { type: 'number', placeholder: 'Weight in lbs', step: 0.1, min: 0 },
-    dimensions: { type: 'text', placeholder: 'L x W x H (inches)' },
-    shipping_class: { 
-      type: 'select',
-      options: ['Standard', 'Fragile', 'Oversized', 'Hazmat'],
-      placeholder: 'Select shipping class'
-    },
-    origin_country: { type: 'text', placeholder: 'Country of origin' },
-    category: { type: 'hidden', value: 'shippable' }
-  },
-  sodoto: {
-    title: { type: 'text', placeholder: 'SoDoTo course title...', required: true },
-    instructor: { type: 'text', placeholder: 'Instructor name', required: true },
-    duration: { type: 'text', placeholder: 'Course duration (e.g., 2 hours)' },
-    level: { 
-      type: 'select', 
-      options: ['Beginner', 'Intermediate', 'Advanced'],
-      placeholder: 'Select difficulty level'
-    },
-    modules: { type: 'number', placeholder: 'Number of modules', min: 1 },
-    schedule: { 
-      type: 'file', 
-      accept: '.ics,.ical', 
-      label: 'Course Schedule (ICS file)', 
-      placeholder: 'Upload .ics calendar file'
-    },
-    certificate: { type: 'checkbox', label: 'Includes completion certificate' },
-    category: { type: 'hidden', value: 'sodoto' }
-  }
-};
+// Global variables for form and display configuration
+let PRODUCT_FORM_CONFIG = null;
+let PRODUCT_FORM_FIELDS = {};
+let PRODUCT_DISPLAY_CONFIG = null;
 
-function createProductUploadForm() {
-  const formContainer = document.createElement('div');
-  formContainer.className = 'product-form';
-  formContainer.style.cssText = `
-    background: white;
-    border-radius: 12px;
-    padding: 30px;
-    margin: 20px 0;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  `;
+// Load product form configuration from JSON file
+async function loadProductFormConfig() {
+  if (PRODUCT_FORM_CONFIG) return PRODUCT_FORM_CONFIG;
   
-  // Category select (appears first to determine form fields)
-  const categoryContainer = document.createElement('div');
-  categoryContainer.style.marginBottom = '20px';
-  
-  const categoryLabel = document.createElement('label');
-  categoryLabel.textContent = 'Product Type';
-  categoryLabel.style.cssText = `
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: ${appState.currentTheme.colors.text};
-  `;
-  
-  const categorySelect = document.createElement('select');
-  categorySelect.id = 'product-category';
-  categorySelect.style.cssText = `
-    width: 100%;
-    padding: 12px;
-    border: 1px solid ${appState.currentTheme.colors.border};
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: 16px;
-    background: white;
-  `;
-  
-  const categories = [
-    { value: '', label: 'Select product type...' },
-    { value: 'ebook', label: '📚 E-Book' },
-    { value: 'course', label: '🎓 Course' },
-    { value: 'ticket', label: '🎫 Ticket' },
-    { value: 'shippable', label: '📦 Shippable Product' },
-    { value: 'sodoto', label: '✅ SoDoTo Course' }
-  ];
-  
-  categories.forEach(cat => {
-    const option = document.createElement('option');
-    option.value = cat.value;
-    option.textContent = cat.label;
-    if (!cat.value) option.disabled = true;
-    categorySelect.appendChild(option);
-  });
-  
-  categoryContainer.appendChild(categoryLabel);
-  categoryContainer.appendChild(categorySelect);
-  
-  // Dynamic form fields container
-  const dynamicFieldsContainer = document.createElement('div');
-  dynamicFieldsContainer.id = 'dynamic-fields';
-  
-  // Common fields (always present)
-  const commonFieldsContainer = document.createElement('div');
-  commonFieldsContainer.id = 'common-fields';
-  
-  // Price input (common to all)
-  const priceContainer = document.createElement('div');
-  priceContainer.style.cssText = `
-    display: flex;
-    align-items: center;
-    margin-bottom: 15px;
-  `;
-  
-  const priceLabel = document.createElement('span');
-  priceLabel.textContent = '$';
-  priceLabel.style.cssText = `
-    font-size: 18px;
-    font-weight: bold;
-    margin-right: 8px;
-  `;
-  
-  const priceInput = document.createElement('input');
-  priceInput.type = 'number';
-  priceInput.placeholder = '29.99';
-  priceInput.id = 'product-price';
-  priceInput.step = '0.01';
-  priceInput.min = '0';
-  priceInput.style.cssText = `
-    flex: 1;
-    padding: 12px;
-    border: 1px solid ${appState.currentTheme.colors.border};
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: 16px;
-  `;
-  
-  priceContainer.appendChild(priceLabel);
-  priceContainer.appendChild(priceInput);
-  
-  // Function to create form field based on configuration
-  function createFormField(fieldName, fieldConfig) {
-    const fieldContainer = document.createElement('div');
-    fieldContainer.style.marginBottom = '15px';
-    
-    if (fieldConfig.type !== 'hidden') {
-      const label = document.createElement('label');
-      label.textContent = fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace('_', ' ');
-      if (fieldConfig.required) label.textContent += ' *';
-      label.style.cssText = `
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-        color: ${appState.currentTheme.colors.text};
-      `;
-      fieldContainer.appendChild(label);
+  try {
+    const response = await fetch('./product-forms-config.json');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+    PRODUCT_FORM_CONFIG = await response.json();
     
-    let field;
-    
-    switch (fieldConfig.type) {
-      case 'text':
-      case 'number':
-      case 'datetime-local':
-        field = document.createElement('input');
-        field.type = fieldConfig.type;
-        field.placeholder = fieldConfig.placeholder || '';
-        if (fieldConfig.min !== undefined) field.min = fieldConfig.min;
-        if (fieldConfig.step !== undefined) field.step = fieldConfig.step;
-        if (fieldConfig.value !== undefined) field.value = fieldConfig.value;
-        field.style.cssText = `
-          width: 100%;
-          padding: 12px;
-          border: 1px solid ${appState.currentTheme.colors.border};
-          border-radius: 6px;
-          font-family: ${appState.currentTheme.typography.fontFamily};
-          font-size: 16px;
-        `;
-        break;
-        
-      case 'file':
-        field = document.createElement('input');
-        field.type = 'file';
-        if (fieldConfig.accept) field.accept = fieldConfig.accept;
-        field.style.cssText = `
-          width: 100%;
-          padding: 12px;
-          border: 1px solid ${appState.currentTheme.colors.border};
-          border-radius: 6px;
-          font-family: ${appState.currentTheme.typography.fontFamily};
-          font-size: 16px;
-          background: white;
-        `;
-        
-        // Add file description if provided
-        if (fieldConfig.label) {
-          const fileDescription = document.createElement('div');
-          fileDescription.style.cssText = `
-            font-size: 12px;
-            color: ${appState.currentTheme.colors.secondary};
-            margin-top: 5px;
-          `;
-          fileDescription.textContent = fieldConfig.placeholder || 'Select calendar file (.ics)';
-          fieldContainer.appendChild(field);
-          fieldContainer.appendChild(fileDescription);
-          return fieldContainer;
-        }
-        break;
-        
-      case 'select':
-        field = document.createElement('select');
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = '';
-        placeholderOption.textContent = fieldConfig.placeholder || 'Select...';
-        placeholderOption.disabled = true;
-        placeholderOption.selected = true;
-        field.appendChild(placeholderOption);
-        
-        fieldConfig.options.forEach(optionValue => {
-          const option = document.createElement('option');
-          option.value = optionValue.toLowerCase();
-          option.textContent = optionValue;
-          field.appendChild(option);
-        });
-        
-        field.style.cssText = `
-          width: 100%;
-          padding: 12px;
-          border: 1px solid ${appState.currentTheme.colors.border};
-          border-radius: 6px;
-          font-family: ${appState.currentTheme.typography.fontFamily};
-          font-size: 16px;
-          background: white;
-        `;
-        break;
-        
-      case 'checkbox':
-        field = document.createElement('input');
-        field.type = 'checkbox';
-        field.id = `field-${fieldName}`;
-        
-        const checkboxLabel = document.createElement('label');
-        checkboxLabel.htmlFor = `field-${fieldName}`;
-        checkboxLabel.textContent = fieldConfig.label;
-        checkboxLabel.style.cssText = `
-          margin-left: 8px;
-          cursor: pointer;
-        `;
-        
-        const checkboxContainer = document.createElement('div');
-        checkboxContainer.style.cssText = `
-          display: flex;
-          align-items: center;
-          padding: 12px 0;
-        `;
-        checkboxContainer.appendChild(field);
-        checkboxContainer.appendChild(checkboxLabel);
-        fieldContainer.appendChild(checkboxContainer);
-        return fieldContainer;
-        
-      case 'hidden':
-        field = document.createElement('input');
-        field.type = 'hidden';
-        field.value = fieldConfig.value;
-        break;
-    }
-    
-    field.name = fieldName;
-    field.id = `field-${fieldName}`;
-    if (fieldConfig.required) field.required = true;
-    
-    if (fieldConfig.type !== 'hidden') {
-      fieldContainer.appendChild(field);
-    } else {
-      fieldContainer.appendChild(field);
-      fieldContainer.style.display = 'none';
-    }
-    
-    return fieldContainer;
-  }
-  
-  // Function to update form fields based on selected category
-  function updateFormFields(category) {
-    dynamicFieldsContainer.innerHTML = '';
-    
-    if (!category || !PRODUCT_FORM_FIELDS[category]) {
-      return;
-    }
-    
-    const fields = PRODUCT_FORM_FIELDS[category];
-    Object.entries(fields).forEach(([fieldName, fieldConfig]) => {
-      if (fieldName !== 'category') { // Skip category field for now
-        const fieldElement = createFormField(fieldName, fieldConfig);
-        dynamicFieldsContainer.appendChild(fieldElement);
-      }
+    // Transform config for backward compatibility
+    PRODUCT_FORM_FIELDS = {};
+    Object.keys(PRODUCT_FORM_CONFIG.productTypes).forEach(type => {
+      PRODUCT_FORM_FIELDS[type] = PRODUCT_FORM_CONFIG.productTypes[type].fields;
     });
     
-    // Add the category hidden field
-    if (fields.category) {
-      const categoryField = createFormField('category', fields.category);
-      dynamicFieldsContainer.appendChild(categoryField);
-    }
+    console.log('✅ Product form config loaded successfully');
+    return PRODUCT_FORM_CONFIG;
+  } catch (error) {
+    console.error('❌ Failed to load product form config:', error);
     
-    // Add event listeners to new dynamic fields for validation
-    const newFields = dynamicFieldsContainer.querySelectorAll('input, select, textarea');
-    newFields.forEach(field => {
-      field.addEventListener('input', validateForm);
-      field.addEventListener('change', validateForm);
-    });
-    
-    // Re-validate form after fields update
-    validateForm();
-  }
-  
-  // Category change handler
-  categorySelect.addEventListener('change', (e) => {
-    updateFormFields(e.target.value);
-  });
-  
-  // Description textarea
-  const descriptionTextarea = document.createElement('textarea');
-  descriptionTextarea.placeholder = 'Product description and details...\n\nMarkdown supported:\n• **bold** and *italic*\n• # Headers\n• ![Image](url)\n• `code` and ```code blocks```\n• > blockquotes\n• ✅ checkboxes';
-  descriptionTextarea.id = 'product-description';
-  descriptionTextarea.rows = 12;
-  descriptionTextarea.style.cssText = `
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 15px;
-    border: 1px solid ${appState.currentTheme.colors.border};
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: ${appState.currentTheme.typography.fontSize}px;
-    line-height: ${appState.currentTheme.typography.lineHeight};
-    resize: vertical;
-  `;
-  
-  // Product Image Upload Section
-  const imageSection = document.createElement('div');
-  imageSection.style.cssText = `
-    margin-bottom: 20px;
-    text-align: center;
-  `;
-  
-  const imageSectionTitle = document.createElement('div');
-  imageSectionTitle.style.cssText = `
-    color: ${appState.currentTheme.colors.secondary};
-    margin-bottom: 15px;
-    font-weight: bold;
-  `;
-  imageSectionTitle.innerHTML = `🖼️ <strong>Product Image</strong>`;
-  
-  const imageUploadButton = document.createElement('button');
-  imageUploadButton.style.cssText = `
-    background: ${appState.currentTheme.colors.accent};
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 25px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  `;
-  imageUploadButton.innerHTML = `📷 Select Product Image`;
-  
-  imageUploadButton.addEventListener('mouseenter', () => {
-    imageUploadButton.style.backgroundColor = `${appState.currentTheme.colors.accent}dd`;
-  });
-  
-  imageUploadButton.addEventListener('mouseleave', () => {
-    imageUploadButton.style.backgroundColor = appState.currentTheme.colors.accent;
-  });
-  
-  const imageFormatsText = document.createElement('div');
-  imageFormatsText.style.cssText = `
-    font-size: 12px;
-    color: ${appState.currentTheme.colors.secondary};
-    margin-bottom: 15px;
-  `;
-  imageFormatsText.innerHTML = `<em>Supported: PNG, JPG, JPEG (recommended: 800x600px)</em>`;
-  
-  // Create hidden image input
-  const imageInput = document.createElement('input');
-  imageInput.type = 'file';
-  imageInput.accept = '.png,.jpg,.jpeg';
-  imageInput.style.display = 'none';
-  
-  // Image upload state
-  let uploadedImage = null;
-  
-  // Image preview area
-  const imagePreviewContainer = document.createElement('div');
-  imagePreviewContainer.style.cssText = `
-    margin-top: 15px;
-    padding: 15px;
-    border-radius: 8px;
-    background: ${appState.currentTheme.colors.background};
-    display: none;
-    text-align: center;
-  `;
-  
-  function updateImageDisplay() {
-    if (!uploadedImage) {
-      imagePreviewContainer.style.display = 'none';
-      return;
-    }
-    
-    imagePreviewContainer.style.display = 'block';
-    imagePreviewContainer.innerHTML = `
-      <div style="font-weight: bold; margin-bottom: 10px; color: ${appState.currentTheme.colors.text};">
-        Selected Image:
-      </div>
-      <div style="font-size: 14px; color: ${appState.currentTheme.colors.secondary};">
-        📷 ${uploadedImage.name} (${(uploadedImage.size / 1024 / 1024).toFixed(2)} MB)
-      </div>
-    `;
-    validateForm(); // Check form validation when image changes
-  }
-  
-  // Image input change handler
-  imageInput.addEventListener('change', (e) => {
-    console.log('🖼️ Image input change event triggered');
-    
-    if (e.target.files.length > 0) {
-      uploadedImage = e.target.files[0];
-      console.log('🖼️ Image selected:', uploadedImage.name);
-      updateImageDisplay();
-    }
-  });
-  
-  // Image upload button click handler
-  imageUploadButton.addEventListener('click', () => {
-    console.log('🖱️ Image upload button clicked');
-    imageInput.click();
-  });
-  
-  imageSection.appendChild(imageSectionTitle);
-  imageSection.appendChild(imageUploadButton);
-  imageSection.appendChild(imageFormatsText);
-  imageSection.appendChild(imageInput);
-  imageSection.appendChild(imagePreviewContainer);
-
-  // File Artifacts Upload Section
-  const fileSection = document.createElement('div');
-  fileSection.style.cssText = `
-    margin-bottom: 20px;
-    text-align: center;
-  `;
-  
-  const fileSectionTitle = document.createElement('div');
-  fileSectionTitle.style.cssText = `
-    color: ${appState.currentTheme.colors.secondary};
-    margin-bottom: 15px;
-    font-weight: bold;
-  `;
-  fileSectionTitle.innerHTML = `📁 <strong>Product Files</strong>`;
-  
-  const uploadButton = document.createElement('button');
-  uploadButton.style.cssText = `
-    background: ${appState.currentTheme.colors.accent};
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 15px 30px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-  `;
-  uploadButton.innerHTML = `📦 Select Product Files`;
-  
-  uploadButton.addEventListener('mouseenter', () => {
-    uploadButton.style.backgroundColor = `${appState.currentTheme.colors.accent}dd`;
-  });
-  
-  uploadButton.addEventListener('mouseleave', () => {
-    uploadButton.style.backgroundColor = appState.currentTheme.colors.accent;
-  });
-  
-  const supportedFormatsText = document.createElement('div');
-  supportedFormatsText.style.cssText = `
-    font-size: 12px;
-    color: ${appState.currentTheme.colors.secondary};
-    margin-top: 8px;
-  `;
-  supportedFormatsText.innerHTML = `<em>Supported: ZIP, PDF, MP3, MP4, EPUB, MOBI, and more</em>`;
-  
-  fileSection.appendChild(fileSectionTitle);
-  fileSection.appendChild(uploadButton);
-  fileSection.appendChild(supportedFormatsText);
-  
-  // Create hidden file input
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.multiple = true;
-  fileInput.accept = '.zip,.pdf,.mp3,.mp4,.epub,.mobi,.txt,.doc,.docx,.png,.jpg,.jpeg';
-  fileInput.style.display = 'none';
-  
-  // File upload state
-  let uploadedFiles = [];
-  
-  // Add file display area
-  const fileListContainer = document.createElement('div');
-  fileListContainer.style.cssText = `
-    margin-top: 10px;
-    padding: 10px;
-    border-radius: 4px;
-    background: ${appState.currentTheme.colors.background};
-    display: none;
-  `;
-  
-  function updateFileDisplay() {
-    if (uploadedFiles.length === 0) {
-      fileListContainer.style.display = 'none';
-    } else {
-      fileListContainer.style.display = 'block';
-      fileListContainer.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 5px; color: ${appState.currentTheme.colors.text};">
-          Selected Files (${uploadedFiles.length}):
-        </div>
-        ${uploadedFiles.map(file => `
-          <div style="font-size: 12px; color: ${appState.currentTheme.colors.secondary}; margin-bottom: 2px;">
-            📄 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)
-          </div>
-        `).join('')}
-      `;
-    }
-    validateForm(); // Check form validation when files change
-  }
-
-  // Form validation function
-  function validateForm() {
-    const category = categorySelect.value;
-    const price = parseFloat(priceInput.value);
-    const description = descriptionTextarea.value.trim();
-    
-    // Check dynamic field validation
-    let dynamicFieldsValid = true;
-    let title = '';
-    
-    if (category && PRODUCT_FORM_FIELDS[category]) {
-      const requiredFields = PRODUCT_FORM_FIELDS[category];
-      const dynamicFields = dynamicFieldsContainer.querySelectorAll('input, select, textarea');
-      
-      Object.entries(requiredFields).forEach(([fieldName, fieldConfig]) => {
-        if (fieldConfig.required) {
-          const field = Array.from(dynamicFields).find(f => f.name === fieldName);
-          if (!field || !field.value.trim()) {
-            dynamicFieldsValid = false;
-          }
-          
-          // Capture title for overall validation
-          if (fieldName === 'title') {
-            title = field ? field.value.trim() : '';
-          }
+    // Fallback to basic config if file loading fails
+    PRODUCT_FORM_CONFIG = {
+      productTypes: {
+        ebook: {
+          label: '📚 E-Book',
+          icon: '📚',
+          title: '📚 Book Details',
+          fields: {
+            title: { type: 'text', placeholder: 'E-book title...', required: true },
+            category: { type: 'hidden', value: 'ebook' }
+          },
+          displayFields: []
         }
-      });
-    }
-    
-    const isValid = (
-      category !== '' &&
-      title.length >= 3 &&
-      dynamicFieldsValid &&
-      !isNaN(price) && price > 0 &&
-      description.length > 0 &&
-      uploadedImage !== null &&
-      uploadedFiles.length > 0
-    );
-    
-    // Update submit button state
-    if (submitButton) {
-      if (isValid) {
-        submitButton.disabled = false;
-        submitButton.style.opacity = '1';
-        submitButton.style.cursor = 'pointer';
-        submitButton.style.background = appState.currentTheme.colors.accent;
-      } else {
-        submitButton.disabled = true;
-        submitButton.style.opacity = '0.5';
-        submitButton.style.cursor = 'not-allowed';
-        submitButton.style.background = appState.currentTheme.colors.secondary;
       }
-    }
+    };
     
-    return isValid;
+    PRODUCT_FORM_FIELDS = {
+      ebook: PRODUCT_FORM_CONFIG.productTypes.ebook.fields
+    };
+    
+    return PRODUCT_FORM_CONFIG;
   }
-  
-  // File input change handler
-  fileInput.addEventListener('change', (e) => {
-    console.log('📁 File input change event triggered');
-    console.log('📁 Files from input:', e.target.files);
-    
-    const files = Array.from(e.target.files);
-    console.log('📁 Files array created from input:', files);
-    console.log('📁 File names from input:', files.map(f => f.name));
-    
-    uploadedFiles = [...uploadedFiles, ...files];
-    console.log('📁 Total uploaded files after input:', uploadedFiles.length);
-    
-    updateFileDisplay();
-    validateForm(); // Check form validation when files change
-    console.log('✅ File display updated and form validated from input');
-  });
-  
-  // Click handler for upload button
-  uploadButton.addEventListener('click', () => {
-    console.log('🖱️ Upload button clicked - opening file dialog');
-    fileInput.click();
-  });
-  
-  // Store references for later event listener setup after DOM integration
-  formContainer.fileSection = fileSection;
-  // No longer using drag and drop - file selection is handled by the button click
-  formContainer.setupDragAndDrop = function() {
-    console.log('🔧 File upload button is ready - no drag and drop needed');
-  };
-  
-  // Append file input and display to file section
-  fileSection.appendChild(fileInput);
-  fileSection.appendChild(fileListContainer);
-  
-  // Tags input
-  const tagsInput = document.createElement('input');
-  tagsInput.type = 'text';
-  tagsInput.placeholder = 'Tags (comma-separated): javascript, tutorial, beginner';
-  tagsInput.id = 'product-tags';
-  tagsInput.style.cssText = `
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 20px;
-    border: 1px solid ${appState.currentTheme.colors.border};
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: 14px;
-  `;
-  
-  // Submit and Clear buttons
-  const buttonContainer = document.createElement('div');
-  buttonContainer.style.cssText = `
-    display: flex;
-    gap: 15px;
-  `;
-  
-  const submitButton = document.createElement('button');
-  submitButton.textContent = 'Upload Product';
-  submitButton.style.cssText = `
-    background: ${appState.currentTheme.colors.accent};
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    flex: 1;
-  `;
-  
-  const clearButton = document.createElement('button');
-  clearButton.textContent = 'Clear Form';
-  clearButton.style.cssText = `
-    background: ${appState.currentTheme.colors.secondary};
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 6px;
-    font-family: ${appState.currentTheme.typography.fontFamily};
-    font-size: 16px;
-    cursor: pointer;
-    flex: 1;
-  `;
-  
-  // Add event handlers
-  submitButton.addEventListener('click', async function() {
-    console.log('🔄 Submit button clicked - starting product upload');
-    
-    const category = categorySelect.value;
-    const price = parseFloat(priceInput.value);
-    const description = descriptionTextarea.value.trim();
-    const tags = tagsInput.value.trim();
-    
-    // Collect dynamic field data based on category
-    const dynamicData = {};
-    const dynamicFields = dynamicFieldsContainer.querySelectorAll('input, select, textarea');
-    dynamicFields.forEach(field => {
-      if (field.type === 'checkbox') {
-        dynamicData[field.name] = field.checked;
-      } else if (field.type === 'file') {
-        // Handle file inputs specially
-        if (field.files && field.files.length > 0) {
-          dynamicData[field.name] = {
-            name: field.files[0].name,
-            size: field.files[0].size,
-            type: field.files[0].type,
-            file: field.files[0] // Store the actual file for later processing
-          };
-        }
-      } else if (field.type !== 'hidden' || field.name === 'category') {
-        dynamicData[field.name] = field.value;
-      }
-    });
-    
-    // Title comes from the first field of dynamic data (usually 'title')
-    const title = dynamicData.title || '';
-    
-    console.log('📝 Form data collected:', {
-      title,
-      category,
-      price,
-      description: description.substring(0, 50) + '...',
-      tags,
-      dynamicData,
-      uploadedFilesCount: uploadedFiles.length,
-      hasImage: !!uploadedImage
-    });
-    
-    // Form validation is handled by the validateForm function and submit button state
-    // The button should only be enabled when all required fields are valid
-    
-    if (!validateForm()) {
-      console.log('❌ Form validation failed - submit should be disabled');
-      return;
-    }
-    
-    console.log('✅ Form validation passed - proceeding with upload');
-    
-    // Disable submit button while processing
-    submitButton.disabled = true;
-    submitButton.textContent = 'Uploading...';
-    
-    try {
-      // First try to upload to Sanora backend
-      console.log('🔄 Uploading product to Sanora...');
-      
-      const config = getEnvironmentConfig();
-      const sanoraUrl = config.sanora;
-      const priceInCents = Math.round(price * 100);
-      
-      console.log('💰 Price converted to cents:', priceInCents);
-      console.log('🌐 Connecting to Sanora URL:', sanoraUrl);
-      
-      try {
-        // Try to upload to Sanora if available
-        let uploadedToSanora = false;
-        let sanoraResult = null;
-        
-        console.log('🔍 Checking if invoke is available:', !!invoke);
-        
-        if (invoke) {
-          console.log('👤 Creating Sanora user first...');
-          try {
-            // Step 1: Create a Sanora user
-            const sanoraUser = await invoke('create_sanora_user', {
-              sanoraUrl: sanoraUrl
-            });
-            console.log('✅ Sanora user created:', sanoraUser);
-            
-            // Store user UUID for later use
-            appState.lastCreatedUserUuid = sanoraUser.uuid;
-            
-            // Step 2: Add product metadata
-            console.log('📤 Step 2: Adding product metadata...');
-            sanoraResult = await invoke('add_product', {
-              uuid: sanoraUser.uuid,
-              sanoraUrl: sanoraUrl,
-              title: title,
-              description: description,
-              price: priceInCents,
-              category: category,
-              metadata: dynamicData, // Include all type-specific fields
-              tags: tags
-            });
-            console.log('✅ Product metadata uploaded:', sanoraResult);
-            
-            // Step 3: Upload product image if available
-            if (uploadedImage) {
-              console.log('🖼️ Step 3: Uploading product image...');
-              const imageResult = await uploadImageToSanora(sanoraUser.uuid, sanoraUrl, title, uploadedImage);
-              if (imageResult.success) {
-                console.log('✅ Product image uploaded successfully');
-              } else {
-                console.log('⚠️ Product image upload skipped:', imageResult.message);
-              }
-            }
-            
-            // Step 4: Upload product artifacts (files)
-            if (uploadedFiles.length > 0) {
-              console.log('📦 Step 4: Uploading product artifacts...');
-              for (let i = 0; i < uploadedFiles.length; i++) {
-                const file = uploadedFiles[i];
-                console.log(`📄 Uploading artifact ${i + 1}/${uploadedFiles.length}: ${file.name}`);
-                const artifactResult = await uploadArtifactToSanora(sanoraUser.uuid, sanoraUrl, title, file);
-                if (artifactResult.success) {
-                  console.log(`✅ Artifact ${i + 1} uploaded successfully`);
-                } else {
-                  console.log(`⚠️ Artifact ${i + 1} upload skipped:`, artifactResult.message);
-                }
-              }
-            }
-            
-            uploadedToSanora = true;
-          } catch (sanoraError) {
-            console.warn('⚠️ Sanora upload failed:', sanoraError);
-            console.error('🔴 Sanora error details:', sanoraError);
-          }
-        } else {
-          console.warn('⚠️ invoke not available - skipping Sanora upload');
-        }
-        
-        // Calculate total file size
-        const totalFileSize = uploadedFiles.reduce((total, file) => total + file.size, 0);
-        const fileSizeMB = (totalFileSize / 1024 / 1024).toFixed(2);
-        
-        // Create product data object with type-specific data
-        const productData = {
-          id: sanoraResult?.id || Date.now().toString(),
-          title: title,
-          description: description,
-          price: priceInCents,
-          category: category,
-          author: dynamicData.author || dynamicData.instructor || dynamicData.organizer || 'You',
-          timestamp: new Date().toISOString(),
-          downloadCount: 0,
-          rating: 0,
-          tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-          featuredImage: PRODUCT_IMAGES[category] || PRODUCT_IMAGES.ebook,
-          previewContent: description,
-          fileSize: `${fileSizeMB} MB`,
-          fileType: uploadedFiles.length === 1 ? uploadedFiles[0].name.split('.').pop().toUpperCase() : 'Mixed Files',
-          fileCount: uploadedFiles.length,
-          files: uploadedFiles.map(file => ({
-            name: file.name,
-            size: file.size,
-            type: file.type || 'application/octet-stream'
-          })),
-          sanoraId: sanoraResult?.id,
-          available: true,
-          // Include all type-specific metadata
-          metadata: dynamicData
-        };
-        
-        // Save to localStorage
-        const currentProducts = JSON.parse(localStorage.getItem('ninefy-products') || '[]');
-        currentProducts.unshift(productData);
-        localStorage.setItem('ninefy-products', JSON.stringify(currentProducts));
-        
-        const message = uploadedToSanora 
-          ? '✅ Product uploaded successfully to Sanora!' 
-          : '💾 Product saved locally (backend unavailable)';
-        
-        // Better success feedback
-        submitButton.style.background = '#10b981';
-        submitButton.textContent = uploadedToSanora ? '✅ Uploaded!' : '💾 Saved Locally!';
-        
-        setTimeout(() => {
-          alert(message);
-          submitButton.style.background = appState.currentTheme.colors.accent;
-          submitButton.textContent = 'Upload Product';
-        }, 1000);
-        
-      } catch (generalError) {
-        console.error('❌ Unexpected error during product upload:', generalError);
-        
-        // Better error feedback
-        submitButton.style.background = '#ef4444';
-        submitButton.textContent = '❌ Upload Failed';
-        
-        setTimeout(() => {
-          alert(`❌ Upload failed: ${generalError.message || 'Unexpected error occurred. Please try again.'}`);
-          submitButton.style.background = appState.currentTheme.colors.accent;
-          submitButton.textContent = 'Upload Product';
-        }, 1000);
-      }
-      
-      // Clear form
-      titleInput.value = '';
-      categorySelect.value = '';
-      priceInput.value = '';
-      descriptionTextarea.value = '';
-      tagsInput.value = '';
-      uploadedFiles = [];
-      updateFileDisplay();
-      
-      // Navigate back to main screen
-      navigateToScreen('main');
-      
-    } catch (error) {
-      console.error('❌ Product upload failed:', error);
-      alert('Failed to upload product. Please try again.');
-    } finally {
-      // Re-enable submit button
-      submitButton.disabled = false;
-      submitButton.textContent = 'Upload Product';
-    }
-  });
-  
-  clearButton.addEventListener('click', function() {
-    titleInput.value = '';
-    categorySelect.value = '';
-    priceInput.value = '';
-    descriptionTextarea.value = '';
-    tagsInput.value = '';
-    uploadedFiles = [];
-    updateFileDisplay();
-  });
-  
-  buttonContainer.appendChild(submitButton);
-  buttonContainer.appendChild(clearButton);
-  
-  // Append all elements
-  // Assemble form sections
-  formContainer.appendChild(categoryContainer);
-  formContainer.appendChild(dynamicFieldsContainer); // Type-specific fields
-  formContainer.appendChild(priceContainer);
-  formContainer.appendChild(descriptionTextarea);
-  formContainer.appendChild(imageSection);
-  formContainer.appendChild(fileSection);
-  formContainer.appendChild(tagsInput);
-  formContainer.appendChild(buttonContainer);
-  
-  // Add real-time validation event listeners
-  categorySelect.addEventListener('change', validateForm);
-  priceInput.addEventListener('input', validateForm);
-  descriptionTextarea.addEventListener('input', validateForm);
-  
-  // Initialize form validation state (disabled by default)
-  validateForm();
-  
-  // Debug: Confirm fileSection is now in DOM
-  console.log('🔍 After appending to formContainer:');
-  console.log('🔍 fileSection in DOM:', document.contains(fileSection));
-  console.log('🔍 formContainer in DOM:', document.contains(formContainer));
-  console.log('🔍 fileSection parent:', fileSection.parentElement);
-  
-  return formContainer;
 }
 
-/**
- * Create Upload Screen
- */
 function createUploadScreen() {
   const screen = document.createElement('div');
   screen.id = 'upload-screen';
@@ -2689,18 +2574,31 @@ function createUploadScreen() {
     ">Share your digital goods with the Ninefy marketplace</p>
   `;
   
-  // Create form
-  const formContainer = createProductUploadForm();
+  // Create loading placeholder
+  const loadingContainer = document.createElement('div');
+  loadingContainer.style.cssText = `
+    text-align: center;
+    padding: 40px;
+    color: ${appState.currentTheme.colors.secondary};
+  `;
+  loadingContainer.innerHTML = '🔄 Loading product form...';
   
-  screen.appendChild(header);
-  screen.appendChild(formContainer);
-  
-  // Setup drag and drop after DOM integration
-  screen.setupDragAndDrop = function() {
+  // Create form asynchronously using form-widget
+  createFormWidgetUploadForm().then(formContainer => {
+    screen.removeChild(loadingContainer);
+    screen.appendChild(formContainer);
+    
+    // Setup drag and drop after form is loaded
     if (formContainer.setupDragAndDrop) {
       formContainer.setupDragAndDrop();
     }
-  };
+  }).catch(error => {
+    console.error('❌ Failed to create upload form:', error);
+    loadingContainer.innerHTML = '❌ Failed to load product form. Please refresh and try again.';
+  });
+  
+  screen.appendChild(header);
+  screen.appendChild(loadingContainer);
   
   return screen;
 }
@@ -3220,6 +3118,186 @@ function renderCurrentScreen() {
 }
 
 /**
+ * Fetch teleported content via BDO teleportation
+ */
+async function getTeleportedContent() {
+  console.log('🌐 Starting teleportation workflow...');
+  
+  try {
+    const bases = await getAvailableBases();
+    console.log('🏗️ Available bases for teleportation:', Object.keys(bases).length, bases);
+    
+    const allTeleportedContent = [];
+    
+    for (const [baseId, base] of Object.entries(bases)) {
+      if (!base.dns?.sanora || !base.dns?.bdo) {
+        console.log(`⚠️ Skipping ${base.name} - missing sanora (${!!base.dns?.sanora}) or bdo (${!!base.dns?.bdo}) DNS`);
+        continue;
+      }
+      
+      console.log(`🔍 Teleporting from ${base.name} - Sanora: ${base.dns.sanora}, BDO: ${base.dns.bdo}`);
+      
+      try {
+        // Construct the teleportable-products URL with pubKey for teleportation
+        const teleportableUrl = `${base.dns.sanora.replace(/\/$/, '')}/teleportable-products`;
+        
+        // We need to add pubKey as query parameter for teleportation
+        const pubKey = await getCorrectPubKey();
+        
+        const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+        console.log(`🚀 Teleporting from URL: ${teleportUrl}`);
+        console.log(`📡 Using BDO endpoint: ${base.dns.bdo}`);
+        
+        // Check if we're in Tauri environment
+        if (typeof invoke !== 'undefined' && invoke) {
+          console.log('🦀 Using Tauri backend for teleportation');
+          
+          const teleportedData = await invoke('teleport_content', {
+            bdoUrl: base.dns.bdo,
+            teleportUrl: teleportUrl
+          });
+          
+          console.log(`📄 Raw teleported data from ${base.name}:`, teleportedData);
+          console.log(`📄 Data type:`, typeof teleportedData, Array.isArray(teleportedData));
+          
+          // Process the teleported data
+          const processedItems = await processTeleportedData(teleportedData, baseId, base.name, base.dns.sanora);
+          
+          allTeleportedContent.push(...processedItems);
+          console.log(`📈 Total teleported items so far: ${allTeleportedContent.length}`);
+          
+        } else {
+          console.log('⚠️ Tauri not available - teleportation requires desktop app');
+        }
+        
+      } catch (teleportError) {
+        console.warn(`⚠️ Failed to teleport from ${base.name}:`, teleportError.message);
+      }
+    }
+    
+    console.log(`🌐 Final teleported content count: ${allTeleportedContent.length}`);
+    console.log('🌐 Sample teleported items:', allTeleportedContent.slice(0, 3));
+    
+    return allTeleportedContent;
+    
+  } catch (error) {
+    console.error('❌ Failed to get teleported content:', error);
+    return [];
+  }
+}
+
+/**
+ * Get the correct pubKey from the Tauri backend
+ */
+async function getCorrectPubKey() {
+  try {
+    if (typeof invoke !== 'undefined' && invoke) {
+      console.log('🔑 Getting pubKey from Tauri backend...');
+      const pubKey = await invoke('get_public_key');
+      console.log('✅ Got pubKey from backend:', pubKey);
+      return pubKey;
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to get pubKey from backend:', error);
+  }
+  
+  // Fallback pubKey (matches the default private key b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496)
+  return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+}
+
+/**
+ * Process teleported data from BDO into content format
+ */
+async function processTeleportedData(teleportedData, baseId, baseName, baseUrl) {
+  console.log('🔄 Processing teleported data:', teleportedData);
+  
+  // The teleported data should contain the actual teleported content
+  // Check if it's valid and extract the content
+  if (!teleportedData || typeof teleportedData !== 'object') {
+    console.warn('⚠️ Invalid teleported data format');
+    return [];
+  }
+  
+  // Check if teleportation was valid
+  if (teleportedData.valid === false) {
+    console.warn('⚠️ Teleportation returned invalid result');
+    return [];
+  }
+  
+  // Extract the actual content from the teleported response
+  // This will depend on the structure returned by the teleporter
+  let contentArray = [];
+  
+  if (teleportedData.content && Array.isArray(teleportedData.content)) {
+    contentArray = teleportedData.content;
+  } else if (teleportedData.products && Array.isArray(teleportedData.products)) {
+    contentArray = teleportedData.products;
+  } else if (Array.isArray(teleportedData)) {
+    contentArray = teleportedData;
+  } else {
+    // Try to extract any array-like content
+    const values = Object.values(teleportedData);
+    const arrayValues = values.filter(v => Array.isArray(v));
+    if (arrayValues.length > 0) {
+      contentArray = arrayValues[0];
+    }
+  }
+  
+  console.log(`📋 Extracted ${contentArray.length} items from teleported data`);
+  
+  // Process each item
+  const processedItems = contentArray.map(item => processTeleportableProduct(item, baseId, baseName, baseUrl));
+  
+  return processedItems;
+}
+
+/**
+ * Process a teleportable product into teleported content format
+ */
+function processTeleportableProduct(rawItem, baseId, baseName, baseUrl) {
+  console.log('🔄 Processing teleportable item:', rawItem);
+  
+  // Handle nested structure if present (similar to normalizeBaseProduct)
+  let itemData;
+  if (rawItem && typeof rawItem === 'object') {
+    const keys = Object.keys(rawItem).filter(key => !['baseId', 'baseName', 'baseUrl'].includes(key));
+    if (keys.length === 1 && typeof rawItem[keys[0]] === 'object') {
+      itemData = rawItem[keys[0]];
+      console.log('📋 Extracted nested teleportable data:', itemData);
+    } else {
+      itemData = rawItem;
+    }
+  } else {
+    itemData = rawItem;
+  }
+  
+  // Convert to teleported content format
+  const teleportedItem = {
+    id: itemData.productId || itemData.id || `teleport-${baseId}-${Date.now()}`,
+    type: 'product',
+    title: itemData.title || 'Teleported Product',
+    summary: itemData.description || itemData.summary || 'A product from another base',
+    author: itemData.author || itemData.creator || 'Unknown',
+    timestamp: itemData.timestamp || new Date().toISOString(),
+    category: itemData.category || itemData.productType || 'product',
+    price: itemData.price || 0,
+    
+    // Base information
+    baseName: baseName,
+    baseUrl: baseUrl,
+    baseId: baseId,
+    
+    // Teleportation metadata
+    teleported: true,
+    teleportedFrom: baseName,
+    teleportedAt: new Date().toISOString()
+  };
+  
+  console.log('✅ Processed teleportable item:', teleportedItem);
+  return teleportedItem;
+}
+
+/**
  * Load products and teleported content
  */
 async function loadProducts() {
@@ -3232,6 +3310,7 @@ async function loadProducts() {
     // Get products from all connected bases
     const baseProducts = await getProductsFromBases();
     console.log('🔍 Base products structure:', JSON.stringify(baseProducts.slice(0, 2), null, 2));
+    console.log('🔍 Local products structure:', JSON.stringify(localProducts.slice(0, 2), null, 2));
     
     const allProducts = [...localProducts, ...baseProducts];
     
@@ -3266,36 +3345,85 @@ async function loadProducts() {
       console.log(`🛒 Loaded ${allProducts.length} products (${localProducts.length} local + ${baseProducts.length} from bases)`);
     }
     
-    // Load teleported content
+    // Load teleported content from /teleportable-products endpoints
+    console.log('🌐 Loading teleported content...');
     const teleportedContainer = document.getElementById('teleported-container');
     if (teleportedContainer) {
       // Clear existing content
       teleportedContainer.innerHTML = '';
       
-      if (TELEPORTED_CONTENT.length === 0) {
-        // Show "no data yet" message for teleported content
-        const noDataElement = document.createElement('div');
-        noDataElement.style.cssText = `
+      // Show loading state
+      const loadingElement = document.createElement('div');
+      loadingElement.style.cssText = `
+        padding: 40px 20px;
+        text-align: center;
+        color: ${appState.currentTheme.colors.secondary};
+        font-family: ${appState.currentTheme.typography.fontFamily};
+        font-size: 18px;
+      `;
+      loadingElement.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+        <div style="font-weight: bold; margin-bottom: 8px;">Loading teleported content...</div>
+        <div style="font-size: 14px;">Fetching products from connected bases</div>
+      `;
+      teleportedContainer.appendChild(loadingElement);
+      
+      try {
+        // Fetch teleported content via BDO teleportation
+        const teleportedContent = await getTeleportedContent();
+        console.log(`🌐 Retrieved ${teleportedContent.length} teleportable items`);
+        
+        // Clear loading state
+        teleportedContainer.innerHTML = '';
+        
+        if (teleportedContent.length === 0) {
+          // Show "no data yet" message for teleported content
+          const noDataElement = document.createElement('div');
+          noDataElement.style.cssText = `
+            padding: 40px 20px;
+            text-align: center;
+            color: ${appState.currentTheme.colors.secondary};
+            font-family: ${appState.currentTheme.typography.fontFamily};
+            font-size: 18px;
+          `;
+          noDataElement.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 16px;">🌐</div>
+            <div style="font-weight: bold; margin-bottom: 8px;">No teleported content yet</div>
+            <div style="font-size: 14px;">Teleported content from other bases will appear here</div>
+          `;
+          teleportedContainer.appendChild(noDataElement);
+          console.log('🌐 No teleportable content found - showing empty state');
+        } else {
+          // Display teleported content
+          console.log('🌐 Displaying teleported content items...');
+          teleportedContent.forEach((item, index) => {
+            console.log(`🌐 Creating teleported item ${index + 1}/${teleportedContent.length}:`, item);
+            const teleportedElement = createTeleportedItem(item);
+            teleportedContainer.appendChild(teleportedElement);
+          });
+          console.log(`✅ Successfully displayed ${teleportedContent.length} teleported items`);
+        }
+        
+      } catch (teleportError) {
+        console.error('❌ Failed to load teleported content:', teleportError);
+        
+        // Show error state
+        teleportedContainer.innerHTML = '';
+        const errorElement = document.createElement('div');
+        errorElement.style.cssText = `
           padding: 40px 20px;
           text-align: center;
           color: ${appState.currentTheme.colors.secondary};
           font-family: ${appState.currentTheme.typography.fontFamily};
           font-size: 18px;
         `;
-        noDataElement.innerHTML = `
-          <div style="font-size: 48px; margin-bottom: 16px;">🌐</div>
-          <div style="font-weight: bold; margin-bottom: 8px;">No teleported content yet</div>
-          <div style="font-size: 14px;">Teleported content from other bases will appear here</div>
+        errorElement.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+          <div style="font-weight: bold; margin-bottom: 8px;">Failed to load teleported content</div>
+          <div style="font-size: 14px;">Check console for details</div>
         `;
-        teleportedContainer.appendChild(noDataElement);
-      } else {
-        TELEPORTED_CONTENT.forEach(item => {
-          const teleportedElement = createTeleportedItem(item);
-          teleportedContainer.appendChild(teleportedElement);
-        });
+        teleportedContainer.appendChild(errorElement);
       }
-      
-      console.log(`🌐 Loaded ${TELEPORTED_CONTENT.length} teleported items`);
     }
     
   } catch (error) {
@@ -3323,6 +3451,9 @@ function hideLoadingScreen() {
 async function init() {
   try {
     console.log('🛒 Initializing Ninefy...');
+    
+    // Initialize environment from Rust environment variables first
+    await initializeEnvironment();
     
     // Get the main app container
     const appContainer = document.getElementById('app');
@@ -3440,6 +3571,49 @@ window.initializePayment = async function(product, amount, currency = 'usd') {
     throw error;
   }
 };
+
+// Load product display configuration from JSON file
+async function loadProductDisplayConfig() {
+  if (PRODUCT_DISPLAY_CONFIG) return PRODUCT_DISPLAY_CONFIG;
+  
+  try {
+    const response = await fetch('./product-display-config.json');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    PRODUCT_DISPLAY_CONFIG = await response.json();
+    
+    console.log('✅ Product display config loaded successfully');
+    return PRODUCT_DISPLAY_CONFIG;
+  } catch (error) {
+    console.error('❌ Failed to load product display config:', error);
+    
+    // Fallback to hardcoded config if file loading fails
+    PRODUCT_DISPLAY_CONFIG = {
+      productTypes: {
+        ebook: {
+          cardFields: [
+            { key: 'author', label: 'Author', icon: '✍️', showInCard: true }
+          ],
+          detailFields: [
+            { key: 'author', label: 'Author', icon: '✍️' },
+            { key: 'isbn', label: 'ISBN', icon: '🔢' },
+            { key: 'pages', label: 'Pages', icon: '📄' },
+            { key: 'language', label: 'Language', icon: '🌐' }
+          ]
+        }
+      },
+      displaySettings: {
+        cardMaxFields: 2,
+        showEmptyFields: false,
+        dateFormat: 'short',
+        booleanFormat: { true: 'Yes', false: 'No' }
+      }
+    };
+    
+    return PRODUCT_DISPLAY_CONFIG;
+  }
+}
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);

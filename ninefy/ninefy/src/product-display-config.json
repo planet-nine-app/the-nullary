@@ -1,0 +1,72 @@
+{
+  "productTypes": {
+    "ebook": {
+      "cardFields": [
+        { "key": "author", "label": "Author", "icon": "✍️", "showInCard": true },
+        { "key": "language", "label": "Language", "icon": "🌐", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "author", "label": "Author", "icon": "✍️" },
+        { "key": "isbn", "label": "ISBN", "icon": "🔢" },
+        { "key": "pages", "label": "Pages", "icon": "📄" },
+        { "key": "language", "label": "Language(s)", "icon": "🌐" }
+      ]
+    },
+    "course": {
+      "cardFields": [
+        { "key": "instructor", "label": "Instructor", "icon": "👨‍🏫", "showInCard": true },
+        { "key": "duration", "label": "Duration", "icon": "⏱️", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "instructor", "label": "Instructor", "icon": "👨‍🏫" },
+        { "key": "duration", "label": "Duration", "icon": "⏱️" },
+        { "key": "courseSchedule", "label": "Schedule", "icon": "📅", "type": "textarea" },
+        { "key": "certificateIncluded", "label": "Certificate", "icon": "🏆", "type": "boolean" }
+      ]
+    },
+    "ticket": {
+      "cardFields": [
+        { "key": "organizer", "label": "Organizer", "icon": "🏢", "showInCard": true },
+        { "key": "venue", "label": "Venue", "icon": "📍", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "organizer", "label": "Organizer", "icon": "🏢" },
+        { "key": "venue", "label": "Venue", "icon": "📍" },
+        { "key": "eventDateTime", "label": "Date & Time", "icon": "📅", "type": "datetime" },
+        { "key": "maxAttendees", "label": "Max Attendees", "icon": "👥" }
+      ]
+    },
+    "shippable": {
+      "cardFields": [
+        { "key": "weight", "label": "Weight", "icon": "⚖️", "suffix": " lbs", "showInCard": true },
+        { "key": "shippingClass", "label": "Shipping", "icon": "📦", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "weight", "label": "Weight (lbs)", "icon": "⚖️", "suffix": " lbs" },
+        { "key": "dimensions", "label": "Dimensions (L x W x H)", "icon": "📏" },
+        { "key": "shippingClass", "label": "Shipping Class", "icon": "📦" },
+        { "key": "countryOfOrigin", "label": "Country of Origin", "icon": "🌍" }
+      ]
+    },
+    "sodoto": {
+      "cardFields": [
+        { "key": "instructor", "label": "Instructor", "icon": "👨‍🏫", "showInCard": true },
+        { "key": "courseSchedule", "label": "Schedule", "icon": "📅", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "instructor", "label": "Instructor", "icon": "👨‍🏫" },
+        { "key": "courseSchedule", "label": "Course Schedule", "icon": "📅", "type": "textarea" },
+        { "key": "courseMaterials", "label": "Materials", "icon": "📚", "type": "file" }
+      ]
+    }
+  },
+  "displaySettings": {
+    "cardMaxFields": 2,
+    "showEmptyFields": false,
+    "dateFormat": "short",
+    "booleanFormat": {
+      "true": "Yes",
+      "false": "No"
+    }
+  }
+}

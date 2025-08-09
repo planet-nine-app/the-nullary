@@ -67,7 +67,16 @@ const ENVIRONMENT_CONFIGS = {
  */
 function getEnvironmentConfig() {
   const env = localStorage.getItem('nullary-env') || 'dev';
+  console.log(`🔍 Looking for environment: ${env}`);
+  console.log(`🔍 Available environments:`, Object.keys(ENVIRONMENT_CONFIGS));
+  
   const config = ENVIRONMENT_CONFIGS[env] || ENVIRONMENT_CONFIGS.dev;
+  
+  if (!config) {
+    console.error(`❌ No config found for environment: ${env}`);
+    console.log(`🔍 ENVIRONMENT_CONFIGS:`, ENVIRONMENT_CONFIGS);
+    return { env: 'dev', services: {} };
+  }
   
   console.log(`🌐 Using ${env} environment: ${config.name}`);
   return {

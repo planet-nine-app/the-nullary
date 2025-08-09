@@ -1,0 +1,143 @@
+{
+  "productTypes": {
+    "ebook": {
+      "label": "📚 E-Book",
+      "icon": "📚", 
+      "title": "📚 Book Details",
+      "formConfig": {
+        "Title": {
+          "type": "text"
+        },
+        "Author": {
+          "type": "text"
+        },
+        "ISBN": {
+          "type": "text",
+          "required": false
+        },
+        "Pages": {
+          "type": "text",
+          "required": false
+        },
+        "Language(s)": {
+          "type": "text"
+        },
+        "Cover Image": {
+          "type": "image"
+        },
+        "Book File": {
+          "type": "artifact"
+        }
+      }
+    },
+    "course": {
+      "label": "🎓 Course",
+      "icon": "🎓",
+      "title": "🎓 Course Information",
+      "formConfig": {
+        "Course Title": {
+          "type": "text"
+        },
+        "Instructor": {
+          "type": "text"
+        },
+        "Duration": {
+          "type": "text",
+          "required": false
+        },
+        "Course Schedule": {
+          "type": "textarea",
+          "charLimit": 500,
+          "required": false
+        },
+        "Certificate Included": {
+          "type": "text",
+          "required": false
+        },
+        "Course Image": {
+          "type": "image"
+        },
+        "Course Materials": {
+          "type": "artifact"
+        }
+      }
+    },
+    "ticket": {
+      "label": "🎫 Ticket",
+      "icon": "🎫",
+      "title": "🎫 Event Details",
+      "formConfig": {
+        "Event Title": {
+          "type": "text"
+        },
+        "Organizer": {
+          "type": "text"
+        },
+        "Venue": {
+          "type": "text"
+        },
+        "Event Date & Time": {
+          "type": "datetime"
+        },
+        "Max Attendees": {
+          "type": "text"
+        },
+        "Event Image": {
+          "type": "image"
+        },
+        "Event Tickets": {
+          "type": "artifact"
+        }
+      }
+    },
+    "shippable": {
+      "label": "📦 Shippable Product",
+      "icon": "📦",
+      "title": "📦 Product Specifications",
+      "formConfig": {
+        "Product Title": {
+          "type": "text"
+        },
+        "Weight (lbs)": {
+          "type": "text"
+        },
+        "Dimensions (L x W x H)": {
+          "type": "text"
+        },
+        "Shipping Class": {
+          "type": "text"
+        },
+        "Country of Origin": {
+          "type": "text"
+        },
+        "Product Image": {
+          "type": "image"
+        }
+      }
+    },
+    "sodoto": {
+      "label": "✅ SoDoTo Course",
+      "icon": "✅",
+      "title": "✅ SoDoTo Course Information",
+      "formConfig": {
+        "Course Title": {
+          "type": "text"
+        },
+        "Instructor": {
+          "type": "text"
+        },
+        "Course Schedule": {
+          "type": "textarea",
+          "charLimit": 500
+        },
+        "Course Image": {
+          "type": "image"
+        },
+        "Course Materials": {
+          "type": "artifact",
+          "required": false
+        }
+      }
+    }
+  }
+}
