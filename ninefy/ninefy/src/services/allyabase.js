@@ -1,5 +1,5 @@
 /**
- * Allyabase Service Integration for Rhapsold
+ * Allyabase Service Integration for Ninefy
  * Handles connection to allyabase backend services
  */
 

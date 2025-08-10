@@ -3,72 +3,283 @@
  * A minimalist blogging platform using SVG components
  */
 
-// Environment configuration for Rhapsold
-function getEnvironmentConfig() {
-  const env = localStorage.getItem('nullary-env') || 'dev';
-  
-  const configs = {
-    dev: {
-      sanora: 'https://dev.sanora.allyabase.com/',
-      bdo: 'https://dev.bdo.allyabase.com/',
-      dolores: 'https://dev.dolores.allyabase.com/',
-      fount: 'https://dev.fount.allyabase.com/',
-      addie: 'https://dev.addie.allyabase.com/',
-      pref: 'https://dev.pref.allyabase.com/'
-    },
-    test: {
-      sanora: 'http://localhost:5121/',
-      bdo: 'http://localhost:5114/',
-      dolores: 'http://localhost:5118/',
-      fount: 'http://localhost:5117/',
-      addie: 'http://localhost:5116/',
-      pref: 'http://localhost:5113/'
-    },
-    local: {
-      sanora: 'http://localhost:7243/',
-      bdo: 'http://localhost:3003/',
-      dolores: 'http://localhost:3005/',
-      fount: 'http://localhost:3002/',
-      addie: 'http://localhost:3005/',
-      pref: 'http://localhost:3004/'
-    }
-  };
-  
-  const config = configs[env] || configs.dev;
-  return { env, services: config, name: env };
-}
-
-function getServiceUrl(serviceName) {
-  const config = getEnvironmentConfig();
-  return config.services[serviceName] || config.services.sanora;
-}
-
-// Environment switching functions for browser console
-window.rhapsoldEnv = {
-  switch: (env) => {
-    const envs = { dev: 'dev', test: 'test', local: 'local' };
-    if (!envs[env]) {
-      console.error(`❌ Unknown environment: ${env}. Available: dev, test, local`);
-      return false;
-    }
-    localStorage.setItem('nullary-env', env);
-    console.log(`🔄 Rhapsold environment switched to ${env}. Refresh app to apply changes.`);
-    console.log(`Run: location.reload() to refresh`);
-    return true;
-  },
-  current: () => {
-    const config = getEnvironmentConfig();
-    console.log(`🌐 Current environment: ${config.env}`);
-    console.log(`📍 Services:`, config.services);
-    return config;
-  },
-  list: () => {
-    console.log('🌍 Available environments for Rhapsold:');
-    console.log('• dev - https://dev.*.allyabase.com (production dev server)');
-    console.log('• test - localhost:5111-5122 (3-base test ecosystem)');
-    console.log('• local - localhost:3000-3007 (local development)');
+// Wait for environment configuration to load, then initialize app-specific controls
+document.addEventListener('DOMContentLoaded', () => {
+  // Check if shared environment functions are available
+  if (typeof window.PlanetNineEnvironment !== 'undefined') {
+    console.log('✅ Shared environment configuration loaded');
+    
+    // Use the shared environment functions
+    window.getEnvironmentConfig = window.PlanetNineEnvironment.getEnvironmentConfig;
+    window.getServiceUrl = window.PlanetNineEnvironment.getServiceUrl;
+    
+    // Initialize Rhapsold-specific environment controls
+    window.PlanetNineEnvironment.initializeEnvironmentControls('rhapsold');
+    
+  } else {
+    console.error('❌ Shared environment configuration not available');
+    
+    // Fallback basic functions
+    window.getEnvironmentConfig = () => ({
+      env: 'dev',
+      services: {
+        sanora: 'https://dev.sanora.allyabase.com/',
+        bdo: 'https://dev.bdo.allyabase.com/',
+        dolores: 'https://dev.dolores.allyabase.com/'
+      }
+    });
+    window.getServiceUrl = (service) => window.getEnvironmentConfig().services[service];
   }
-};
+  
+  console.log(`📝 Rhapsold initialized with environment: ${getEnvironmentConfig().env}`);
+  
+  // Debug: Show current environment configuration
+  const envConfig = getEnvironmentConfig();
+  console.log('🌍 Frontend Environment Config:', {
+    env: envConfig.env,
+    services: envConfig.services
+  });
+  
+  // Debug: Call backend to show backend environment info
+  if (typeof window.__TAURI__ !== 'undefined') {
+    console.log('🔧 Tauri detected, calling backend for environment info...');
+    window.__TAURI__.core.invoke('get_environment_info')
+      .then(backendInfo => {
+        console.log('🎭 Backend Environment Info:', backendInfo);
+      })
+      .catch(err => {
+        console.error('❌ Failed to get backend environment info:', err);
+      });
+    
+    // Also test a Sanora call with current environment
+    const sanoraUrl = getServiceUrl('sanora');
+    console.log(`🔗 Testing Sanora connection to: ${sanoraUrl}`);
+    
+    window.__TAURI__.core.invoke('create_sanora_user', { sanoraUrl })
+      .then(user => {
+        console.log('✅ Sanora user creation successful:', user);
+        
+        // Now try to get the user data 
+        return window.__TAURI__.core.invoke('get_sanora_user', { 
+          uuid: user.uuid, 
+          sanoraUrl 
+        });
+      })
+      .then(userData => {
+        console.log('✅ Sanora user data retrieved:', userData);
+      })
+      .catch(err => {
+        console.error('❌ Sanora connection failed:', err);
+        console.log('💡 This is expected if Sanora service is not running');
+      });
+      
+  } else {
+    console.log('🌐 Running in web mode, Tauri backend not available');
+  }
+  
+  // After environment setup, initialize the app with real data loading
+  initializeRhapsoldApp();
+});
+
+// Get home base URL based on current environment
+function getHomeBaseUrl() {
+  if (typeof getServiceUrl !== 'undefined') {
+    const bdoUrl = getServiceUrl('bdo');
+    return bdoUrl.endsWith('/') ? bdoUrl : bdoUrl + '/';
+  }
+  // Fallback to dev if environment not ready
+  return 'https://dev.bdo.allyabase.com/';
+}
+
+let basesCache = null;
+let lastBaseRefresh = 0;
+
+// Base Management Functions (adapted from ninefy pattern)
+async function connectToHomeBase() {
+  try {
+    const homeBaseUrl = getHomeBaseUrl();
+    console.log('🏠 Connecting to home base:', homeBaseUrl);
+    
+    // Create BDO user on home base
+    const bdoUser = await window.__TAURI__.core.invoke('create_bdo_user');
+    console.log('✅ BDO user created:', bdoUser);
+    
+    return {
+      name: 'DEV',
+      description: 'Development base for Rhapsold blog reader',
+      dns: {
+        bdo: homeBaseUrl,
+        sanora: getServiceUrl('sanora'),
+        dolores: getServiceUrl('dolores'),
+        addie: getServiceUrl('addie'),
+        fount: getServiceUrl('fount')
+      },
+      users: { bdo: bdoUser },
+      joined: true,
+      uuid: bdoUser.uuid || 'home-base-uuid'
+    };
+  } catch (err) {
+    console.error('❌ Failed to connect to home base:', err);
+    return null;
+  }
+}
+
+async function fetchBasesFromBDO() {
+  try {
+    const homeBase = await connectToHomeBase();
+    if (!homeBase) return {};
+    
+    const bdoUser = homeBase.users.bdo;
+    const updatedBases = await window.__TAURI__.core.invoke('get_bases', {
+      uuid: bdoUser.uuid, 
+      bdoUrl: getHomeBaseUrl()
+    });
+    
+    console.log('📡 Fetched bases from BDO:', Object.keys(updatedBases || {}).length);
+    return { [homeBase.uuid]: homeBase, ...(updatedBases || {}) };
+  } catch (err) {
+    console.error('❌ Failed to fetch bases:', err);
+    return {};
+  }
+}
+
+async function getAvailableBases() {
+  const now = new Date().getTime();
+  const CACHE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+  
+  if (basesCache && (now - lastBaseRefresh < CACHE_TIMEOUT)) {
+    console.log('📦 Using cached bases');
+    return basesCache;
+  }
+  
+  console.log('🔄 Refreshing bases cache...');
+  const bases = await fetchBasesFromBDO();
+  
+  basesCache = bases;
+  lastBaseRefresh = now;
+  
+  return bases;
+}
+
+// Initialize the main Rhapsold application with real data loading
+async function initializeRhapsoldApp() {
+  console.log('🚀 Initializing Rhapsold application...');
+  
+  if (typeof window.__TAURI__ !== 'undefined') {
+    console.log('🔗 Tauri mode: Loading real blog data from bases');
+    await loadBlogPostsFromBases();
+  } else {
+    console.log('🌐 Web mode: Using sample blog data');
+    // Initialize with sample data for web mode
+  }
+}
+
+// Load blog posts from all available bases (like ninefy's getProductsFromBases)
+async function loadBlogPostsFromBases() {
+  console.log('📚 Loading blog posts from all available bases...');
+  
+  try {
+    // Get available bases using the proper bootstrapping pattern
+    const bases = await getAvailableBases();
+    console.log('🏗️ Available bases:', Object.keys(bases).length, bases);
+    
+    if (!bases || Object.keys(bases).length === 0) {
+      console.log('⚠️ No bases available, using sample data');
+      return;
+    }
+    
+    // Load blog posts from each base
+    const allBlogPosts = [];
+    
+    for (const [baseId, base] of Object.entries(bases)) {
+      if (!base.dns?.sanora) {
+        console.log(`⚠️ Base ${base.name} has no sanora service, skipping`);
+        continue;
+      }
+      
+      try {
+        console.log(`📖 Fetching blog posts from ${base.name} at ${base.dns.sanora}`);
+        
+        // Use the new get_all_base_products function to get blog posts
+        const products = await window.__TAURI__.core.invoke('get_all_base_products', {
+          sanoraUrl: base.dns.sanora
+        });
+        
+        console.log(`📄 Raw products/blogs from ${base.name}:`, products);
+        
+        if (Array.isArray(products)) {
+          // Convert products to blog post format
+          const blogPosts = products.map(p => normalizeBlogPost(p, baseId, base.name, base.dns.sanora));
+          allBlogPosts.push(...blogPosts);
+          console.log(`✅ Added ${products.length} blog posts from ${base.name}`);
+        } else if (products && typeof products === 'object') {
+          const productArray = Object.values(products);
+          const blogPosts = productArray.map(p => normalizeBlogPost(p, baseId, base.name, base.dns.sanora));
+          allBlogPosts.push(...blogPosts);
+          console.log(`✅ Added ${productArray.length} blog posts from ${base.name}`);
+        } else {
+          console.log(`⚠️ No blog posts or unknown format from ${base.name}:`, products);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Failed to get blog posts from ${base.name}:`, err);
+      }
+    }
+    
+    console.log(`📚 Total blog posts loaded: ${allBlogPosts.length}`);
+    
+    if (allBlogPosts.length > 0) {
+      // Replace the sample data with real blog posts
+      replaceSampleBlogPosts(allBlogPosts);
+    } else {
+      console.log('📝 No blog posts found, keeping sample data');
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to load blog posts from bases:', error);
+    console.log('📝 Continuing with sample data');
+  }
+}
+
+// Convert a Sanora product to blog post format
+function normalizeBlogPost(product, baseId, baseName, baseUrl) {
+  return {
+    id: product.uuid || product.id || `${baseId}-${Date.now()}`,
+    title: product.title || 'Untitled Post',
+    excerpt: product.description ? product.description.substring(0, 200) + '...' : 'No description available',
+    description: product.description || 'No description available',
+    author: product.author || baseName,
+    date: product.created_at || product.date || new Date().toISOString(),
+    readTime: Math.max(1, Math.floor((product.description || '').length / 250)), // Estimate reading time
+    image: product.image || product.preview_image || null,
+    content: product.content || product.description || 'Content not available',
+    tags: product.tags || ['blog'],
+    published: true,
+    baseId: baseId,
+    baseName: baseName,
+    baseUrl: baseUrl,
+    originalProduct: product // Keep original for reference
+  };
+}
+
+// Replace the sample blog posts with real ones loaded from bases
+function replaceSampleBlogPosts(realBlogPosts) {
+  console.log('🔄 Replacing sample blog posts with real data...');
+  
+  // Find the sample blog posts array and replace it
+  // This is where you'd integrate with your actual blog display system
+  // For now, just log that we have the real data
+  console.log('📚 Real blog posts ready:', realBlogPosts);
+  
+  // Store in global variable for now (you'd integrate this with your UI rendering)
+  window.realBlogPosts = realBlogPosts;
+  
+  // Trigger a re-render of the main screen if it's currently showing
+  if (typeof window.appState !== 'undefined' && window.appState.currentScreen === 'main') {
+    console.log('🔄 Re-rendering main screen with real blog data');
+    // You would call your main screen render function here
+    // renderMainScreen(); 
+  }
+}
 
 // Simple SVG data URLs (URL-encoded instead of base64 to avoid btoa issues)
 const SVG_IMAGES = {

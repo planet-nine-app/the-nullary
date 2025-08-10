@@ -3139,12 +3139,14 @@ async function getTeleportedContent() {
       
       try {
         // Construct the teleportable-products URL with pubKey for teleportation
-        const teleportableUrl = `${base.dns.sanora.replace(/\/$/, '')}/teleportable-products`;
+        // Use allyabase://sanora/ protocol for container networking
+        const teleportableUrl = `allyabase://sanora/teleportable-products`;
         
         // We need to add pubKey as query parameter for teleportation
-        const pubKey = await getCorrectPubKey();
+        const pubKey = await getBasePubKeyForTeleportation(base.dns.sanora);
         
         const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+        console.log(`🔗 Using allyabase:// protocol for container networking: ${teleportUrl}`);
         console.log(`🚀 Teleporting from URL: ${teleportUrl}`);
         console.log(`📡 Using BDO endpoint: ${base.dns.bdo}`);
         
@@ -3187,21 +3189,34 @@ async function getTeleportedContent() {
 }
 
 /**
- * Get the correct pubKey from the Tauri backend
+ * Get the base pubKey from Sanora user object for teleportation
  */
-async function getCorrectPubKey() {
+async function getBasePubKeyForTeleportation(baseUrl) {
   try {
     if (typeof invoke !== 'undefined' && invoke) {
-      console.log('🔑 Getting pubKey from Tauri backend...');
+      console.log('🔑 Getting basePubKey from Sanora user...');
+      
+      // Create a Sanora user to get the base's pubKey
+      const sanoraUser = await invoke('create_sanora_user', { sanoraUrl: baseUrl });
+      console.log('🔍 Debug - Full sanoraUser object:', sanoraUser);
+      
+      // Check both possible field names due to serialization differences
+      const basePubKey = sanoraUser.basePubKey || sanoraUser.base_pub_key;
+      if (sanoraUser && basePubKey) {
+        console.log('✅ Got basePubKey from Sanora:', basePubKey);
+        return basePubKey;
+      }
+      
+      console.warn('⚠️ No basePubKey in Sanora user, falling back to direct key retrieval');
       const pubKey = await invoke('get_public_key');
-      console.log('✅ Got pubKey from backend:', pubKey);
+      console.log('✅ Got fallback pubKey from backend:', pubKey);
       return pubKey;
     }
   } catch (error) {
-    console.warn('⚠️ Failed to get pubKey from backend:', error);
+    console.warn('⚠️ Failed to get basePubKey from Sanora:', error);
   }
   
-  // Fallback pubKey (matches the default private key b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496)
+  // Fallback pubKey (matches the default private key)
   return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
 }
 
@@ -3225,10 +3240,38 @@ async function processTeleportedData(teleportedData, baseId, baseName, baseUrl) 
   }
   
   // Extract the actual content from the teleported response
-  // This will depend on the structure returned by the teleporter
   let contentArray = [];
   
-  if (teleportedData.content && Array.isArray(teleportedData.content)) {
+  // Check if we have HTML content with teleportal elements
+  if (teleportedData.html && typeof teleportedData.html === 'string') {
+    console.log('📄 Parsing teleported HTML content...');
+    
+    // Parse the HTML to extract teleportal elements
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(teleportedData.html, 'text/html');
+    const teleportals = doc.querySelectorAll('teleportal');
+    
+    console.log(`🔍 Found ${teleportals.length} teleportal elements`);
+    
+    // Convert teleportal elements to product objects
+    contentArray = Array.from(teleportals).map(portal => {
+      const product = {
+        id: portal.getAttribute('id') || `teleported-${Date.now()}`,
+        title: portal.querySelector('title')?.textContent || 'Untitled',
+        description: portal.querySelector('description')?.textContent || '',
+        price: parseInt(portal.getAttribute('price') || '0'),
+        category: portal.getAttribute('category') || 'general',
+        url: portal.querySelector('url')?.textContent || '',
+        image: portal.querySelector('img')?.textContent || portal.querySelector('image')?.textContent || '',
+        tags: (portal.querySelector('tags')?.textContent || '').split(',').filter(t => t),
+        inStock: portal.querySelector('in-stock')?.textContent === 'true',
+        rating: portal.querySelector('rating')?.textContent || '0'
+      };
+      
+      console.log('📦 Extracted product from teleportal:', product);
+      return product;
+    });
+  } else if (teleportedData.content && Array.isArray(teleportedData.content)) {
     contentArray = teleportedData.content;
   } else if (teleportedData.products && Array.isArray(teleportedData.products)) {
     contentArray = teleportedData.products;
