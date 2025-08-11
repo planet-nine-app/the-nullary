@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Tauri Teleport Backend</title>
+</head>
+<body>
+    <div id="output"></div>
+    <button onclick="testTeleportBackend()">Test Teleport Backend</button>
+    
+    <script>
+async function testTeleportBackend() {
+    const output = document.getElementById('output');
+    output.innerHTML = '<p>Testing Tauri teleport backend...</p>';
+    
+    try {
+        // Check if Tauri is available
+        if (typeof window.__TAURI__ === 'undefined') {
+            output.innerHTML += '<p>❌ Tauri not available (run via npm run tauri dev)</p>';
+            return;
+        }
+        
+        console.log('🚀 Testing teleport_content function...');
+        
+        // Test with the allyabase:// protocol pattern (like ninefy)
+        const bdoUrl = 'http://127.0.0.1:5114/';
+        const teleportUrl = 'allyabase://sanora/teleportable-products?pubKey=03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+        
+        output.innerHTML += `<p>📡 Calling teleport_content with BDO: ${bdoUrl}, URL: ${teleportUrl}</p>`;
+        
+        const result = await window.__TAURI__.core.invoke('teleport_content', {
+            bdoUrl: bdoUrl,
+            teleportUrl: teleportUrl
+        });
+        
+        console.log('✅ Teleport result:', result);
+        
+        output.innerHTML += `<h2>Teleport Result:</h2>`;
+        output.innerHTML += `<pre style="background: #f0f0f0; padding: 10px; overflow: scroll; height: 300px;">${JSON.stringify(result, null, 2)}</pre>`;
+        
+        if (result && result.valid && result.html) {
+            output.innerHTML += `<h3>HTML Content (${result.html.length} chars):</h3>`;
+            output.innerHTML += `<div style="background: #f8f8f8; padding: 10px; border: 1px solid #ccc; max-height: 200px; overflow: scroll;"><pre>${result.html}</pre></div>`;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        output.innerHTML += `<p>❌ Error: ${error}</p>`;
+    }
+}
+
+// Auto-test after 2 seconds
+setTimeout(() => {
+    if (typeof window.__TAURI__ !== 'undefined') {
+        testTeleportBackend();
+    } else {
+        document.getElementById('output').innerHTML = '<p>⚠️ Tauri not available. Run with: npm run tauri dev</p>';
+    }
+}, 2000);
+    </script>
+</body>
+</html>

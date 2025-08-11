@@ -20,6 +20,50 @@ fn dbg(log: &str) {
     dbg!(log);
 }
 
+/// Get environment configuration from RHAPSOLD_ENV variable
+#[tauri::command]
+fn get_env_config() -> String {
+    env::var("RHAPSOLD_ENV").unwrap_or_else(|_| "dev".to_string())
+}
+
+/// Get service URL based on environment and service name
+fn get_service_url(service: &str) -> String {
+    let env = env::var("RHAPSOLD_ENV").unwrap_or_else(|_| "dev".to_string());
+    
+    match (env.as_str(), service) {
+        // Test environment (127.0.0.1:5111-5122)
+        ("test", "julia") => "http://127.0.0.1:5111/".to_string(),
+        ("test", "continuebee") => "http://127.0.0.1:5112/".to_string(),
+        ("test", "pref") => "http://127.0.0.1:5113/".to_string(),
+        ("test", "bdo") => "http://127.0.0.1:5114/".to_string(),
+        ("test", "joan") => "http://127.0.0.1:5115/".to_string(),
+        ("test", "addie") => "http://127.0.0.1:5116/".to_string(),
+        ("test", "fount") => "http://127.0.0.1:5117/".to_string(),
+        ("test", "dolores") => "http://127.0.0.1:5118/".to_string(),
+        ("test", "minnie") => "http://127.0.0.1:5119/".to_string(),
+        ("test", "aretha") => "http://127.0.0.1:5120/".to_string(),
+        ("test", "sanora") => "http://127.0.0.1:5121/".to_string(),
+        ("test", "covenant") => "http://127.0.0.1:5122/".to_string(),
+        
+        // Local environment (127.0.0.1:2999-7277)
+        ("local", "julia") => "http://127.0.0.1:3000/".to_string(),
+        ("local", "continuebee") => "http://127.0.0.1:2999/".to_string(),
+        ("local", "pref") => "http://127.0.0.1:3002/".to_string(),
+        ("local", "bdo") => "http://127.0.0.1:3003/".to_string(),
+        ("local", "joan") => "http://127.0.0.1:3004/".to_string(),
+        ("local", "addie") => "http://127.0.0.1:3005/".to_string(),
+        ("local", "fount") => "http://127.0.0.1:3006/".to_string(),
+        ("local", "dolores") => "http://127.0.0.1:3007/".to_string(),
+        ("local", "aretha") => "http://127.0.0.1:7277/".to_string(),
+        ("local", "minnie") => "http://127.0.0.1:2525/".to_string(),
+        ("local", "sanora") => "http://127.0.0.1:7243/".to_string(),
+        ("local", "covenant") => "http://127.0.0.1:3011/".to_string(),
+        
+        // Dev environment (default)
+        (_, service) => format!("https://dev.{}.allyabase.com/", service),
+    }
+}
+
 /// Get current environment info for debugging
 #[tauri::command]
 fn get_environment_info() -> String {
@@ -89,10 +133,17 @@ async fn create_fount_user() -> Result<FountUser, String> {
 async fn create_bdo_user() -> Result<BDOUser, String> {
     let s = get_sessionless().await;
     let rhapsold = "rhapsold";
+    
+    // Get BDO URL based on environment
+    let bdo_url = get_service_url("bdo");
+    let env = env::var("RHAPSOLD_ENV").unwrap_or_else(|_| "dev".to_string());
+    
+    println!("🔗 Creating BDO user on: {} (env: {})", bdo_url, env);
+    
     match s {
         Ok(sessionless) => {
             let bdo = BDO::new(
-                Some("https://dev.bdo.allyabase.com/".to_string()),
+                Some(bdo_url),
                 Some(sessionless),
             );
             let _user = bdo.create_user(&rhapsold, &json!({})).await;
@@ -444,6 +495,49 @@ async fn get_all_base_products(sanora_url: &str) -> Result<Value, String> {
     }
 }
 
+/// Teleport content from a URL via BDO
+#[tauri::command]
+async fn teleport_content(bdo_url: &str, teleport_url: &str) -> Result<Value, String> {
+    println!("🌐 Teleporting content from: {} via BDO: {}", teleport_url, bdo_url);
+    
+    let s = get_sessionless().await;
+    match s {
+        Ok(sessionless) => {
+            let bdo = BDO::new(Some(bdo_url.to_string()), Some(sessionless));
+            
+            // Create/get BDO user first
+            let rhapsold = "rhapsold";
+            let bdo_user = match bdo.create_user(&rhapsold, &json!({})).await {
+                Ok(user) => {
+                    println!("✅ BDO user ready for teleportation: {}", user.uuid);
+                    user
+                }
+                Err(e) => {
+                    println!("❌ Failed to create BDO user: {:?}", e);
+                    return Err(format!("Failed to create BDO user: {}", e));
+                }
+            };
+            
+            // Now teleport the content
+            println!("🚀 Starting teleportation with uuid: {}", bdo_user.uuid);
+            match bdo.teleport(&bdo_user.uuid, &rhapsold, teleport_url).await {
+                Ok(teleported_content) => {
+                    println!("✅ Successfully teleported content: {:?}", teleported_content);
+                    Ok(teleported_content)
+                }
+                Err(e) => {
+                    println!("❌ Teleportation failed: {:?}", e);
+                    Err(format!("Teleportation failed: {}", e))
+                }
+            }
+        }
+        Err(e) => {
+            println!("❌ Failed to get sessionless instance: {}", e);
+            Err(format!("Failed to get sessionless: {}", e))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -451,6 +545,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             dbg,
+            get_env_config,
             get_environment_info,
             create_fount_user,
             create_bdo_user,
@@ -464,7 +559,8 @@ pub fn run() {
             add_order,
             add_product,
             get_sanora_user,
-            get_all_base_products
+            get_all_base_products,
+            teleport_content
         ])
         .setup(|_app| {
             println!("🎭 Rhapsold backend is starting up...");

@@ -486,6 +486,57 @@
             background: rgba(255, 255, 255, 0.3);
         }
 
+        /* Conversation header */
+        .conversation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 10px;
+        }
+
+        .partner-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .partner-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ecf0f1;
+        }
+
+        .connection-status {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .refresh-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .message-status {
+            margin-top: 5px;
+            font-size: 12px;
+            text-align: center;
+            min-height: 16px;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
             .content {
@@ -500,6 +551,14 @@
             .input-area {
                 left: 10px;
                 right: 10px;
+            }
+            
+            .conversation-header {
+                padding: 10px 15px;
+            }
+            
+            .partner-name {
+                font-size: 16px;
             }
         }
     </style>

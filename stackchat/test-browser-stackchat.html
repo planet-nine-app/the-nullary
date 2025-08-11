@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StackChat Browser Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            color: white;
+            font-weight: bold;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .nav-bar {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-button.active,
+        .nav-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .test-connections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .connection-card {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .connection-card:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .partner-name {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .connection-info {
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .connection-actions button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .messaging-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .conversation-header {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            margin-bottom: 100px;
+        }
+
+        .rpg-dialog-box {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border: 3px solid #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            max-width: 70%;
+            position: relative;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .rpg-dialog-box.sent {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            margin-left: auto;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #ecf0f1;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .sender-name {
+            font-weight: 600;
+            color: #f39c12;
+        }
+
+        .message-content {
+            color: white;
+            line-height: 1.6;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-area {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+
+        .input-dialog-box {
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            border: 3px solid #ecf0f1;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 16px;
+            color: #2c3e50;
+            outline: none;
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            align-self: flex-start;
+        }
+
+        .message-status {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 12px;
+            min-height: 16px;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 60px 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="app-header">
+            🚀 StackChat Browser Test - Instance <span id="instanceId">1</span>
+        </div>
+
+        <!-- Connections Screen -->
+        <div id="connections-screen" class="screen active">
+            <nav class="nav-bar">
+                <div class="nav-title">💬 StackChat</div>
+                <div class="nav-buttons">
+                    <button class="nav-button active" data-screen="connections">Connections</button>
+                    <button class="nav-button" data-screen="messaging">Messaging</button>
+                </div>
+            </nav>
+            <div class="content">
+                <div class="empty-state">
+                    <h3>Browser Test Mode</h3>
+                    <p>This is a browser-compatible version for testing P2P messaging</p>
+                    <button onclick="generateTestConnection()">Generate Test Connection</button>
+                    <button onclick="loadMockConnections()">Load Mock Connections</button>
+                </div>
+                <div id="connectionsList"></div>
+            </div>
+        </div>
+
+        <!-- Messaging Screen -->
+        <div id="messaging-screen" class="screen">
+            <nav class="nav-bar">
+                <div class="nav-title">💬 Conversation</div>
+                <div class="nav-buttons">
+                    <button class="nav-button" data-screen="connections">Connections</button>
+                    <button class="nav-button active" data-screen="messaging">Messaging</button>
+                </div>
+            </nav>
+            <div class="content">
+                <button class="back-button" onclick="showScreen('connections')">← Back</button>
+                <div id="conversationContent"></div>
+            </div>
+        </div>
+
+        <!-- Input area for messaging -->
+        <div class="input-area" id="inputArea" style="display: none;">
+            <div class="input-dialog-box">
+                <form class="input-form" id="messageForm">
+                    <input type="text" class="message-input" id="messageInput" placeholder="Type your message..." required maxlength="500">
+                    <button type="submit" class="send-button" id="sendButton">Send 🚀</button>
+                </form>
+                <div class="message-status" id="messageStatus"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Browser test simulation
+        const instanceId = Math.floor(Math.random() * 100);
+        document.getElementById('instanceId').textContent = instanceId;
+
+        let currentScreen = 'connections';
+        let currentConversation = null;
+        let messages = [];
+        let connections = [];
+
+        // Mock data
+        const mockConnections = [
+            {
+                uuid: 'julia-assoc-1',
+                partner_name: 'Alice Developer',
+                partner_uuid: 'user-alice',
+                partner_public_key: '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd',
+                julia_url: 'http://127.0.0.1:5111/',
+                status: 'Active',
+                created_at: new Date(Date.now() - 86400000).toISOString(),
+                last_message_at: new Date(Date.now() - 3600000).toISOString(),
+                unread_count: 2
+            },
+            {
+                uuid: 'julia-assoc-2',
+                partner_name: 'Bob Creator',
+                partner_uuid: 'user-bob',
+                partner_public_key: '02f899a8b2b75f68d6e6d4a8e5c9d8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1',
+                julia_url: 'http://127.0.0.1:5111/',
+                status: 'Active',
+                created_at: new Date(Date.now() - 172800000).toISOString(),
+                last_message_at: new Date(Date.now() - 1800000).toISOString(),
+                unread_count: 0
+            }
+        ];
+
+        const mockMessages = [
+            {
+                uuid: 'msg-1',
+                sender_name: 'Alice Developer',
+                sender_uuid: 'user-alice',
+                content: 'Hey! Testing the browser version of StackChat!',
+                timestamp: new Date(Date.now() - 300000).toISOString(),
+                association_uuid: 'julia-assoc-1',
+                read: false
+            },
+            {
+                uuid: 'msg-2',
+                sender_name: 'You',
+                sender_uuid: 'current-user',
+                content: 'This browser test is working great for development!',
+                timestamp: new Date(Date.now() - 180000).toISOString(),
+                association_uuid: 'julia-assoc-1',
+                read: true
+            }
+        ];
+
+        // Screen management
+        function showScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.nav-button').forEach(button => {
+                button.classList.remove('active');
+                if (button.dataset.screen === screenName) {
+                    button.classList.add('active');
+                }
+            });
+            
+            const screen = document.getElementById(`${screenName}-screen`);
+            if (screen) {
+                screen.classList.add('active');
+                currentScreen = screenName;
+                
+                // Show/hide input area
+                const inputArea = document.getElementById('inputArea');
+                inputArea.style.display = screenName === 'messaging' ? 'block' : 'none';
+            }
+        }
+
+        // Generate test connection URL
+        function generateTestConnection() {
+            const timestamp = Math.floor(Date.now() / 1000);
+            const publicKey = '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+            const name = `Test User ${instanceId}`;
+            const juliaUrl = 'http://127.0.0.1:5111/';
+            
+            const message = `${timestamp}:${publicKey}:${name}:${juliaUrl}`;
+            const signature = 'mock_signature_' + Math.random().toString(36).substring(7);
+            
+            const connectionUrl = `stackchat://connect?message=${encodeURIComponent(message)}&signature=${encodeURIComponent(signature)}&publicKey=${encodeURIComponent(publicKey)}&name=${encodeURIComponent(name)}&juliaUrl=${encodeURIComponent(juliaUrl)}`;
+            
+            // Show connection URL
+            const content = document.querySelector('#connections-screen .content');
+            content.innerHTML = `
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; margin: 20px 0;">
+                    <h3 style="color: white; margin-bottom: 15px;">🔗 Your Connection URL</h3>
+                    <textarea style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px;" readonly>${connectionUrl}</textarea>
+                    <div style="margin-top: 15px;">
+                        <button onclick="copyToClipboard('${connectionUrl.replace(/'/g, "\\'")}')">📋 Copy URL</button>
+                        <button onclick="loadMockConnections()">🔄 Back to Connections</button>
+                    </div>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin-top: 15px;">
+                        💡 Open this page in another browser tab and paste this URL to test P2P connection!
+                    </p>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px;">
+                    <h3 style="color: white; margin-bottom: 15px;">📥 Paste Connection URL</h3>
+                    <textarea id="partnerUrl" style="width: 100%; height: 80px; background: rgba(255,255,255,0.9); color: #333; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px;" placeholder="Paste connection URL from another instance..."></textarea>
+                    <div style="margin-top: 15px;">
+                        <button onclick="processConnectionUrl()">🤝 Create Connection</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load mock connections
+        function loadMockConnections() {
+            connections = [...mockConnections];
+            displayConnections();
+        }
+
+        function displayConnections() {
+            const content = document.querySelector('#connections-screen .content');
+            
+            if (connections.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Connections Yet</h3>
+                        <p>Start a conversation by creating a new julia connection!</p>
+                        <button onclick="generateTestConnection()">Generate Test Connection</button>
+                        <button onclick="loadMockConnections()">Load Mock Connections</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const connectionsHTML = connections.map(conn => `
+                <div class="connection-card" onclick="openConversation('${conn.uuid}')">
+                    <div class="partner-name">${conn.partner_name}</div>
+                    <div class="connection-info">
+                        Status: ${conn.status} • Created: ${formatTimeAgo(new Date(conn.created_at))}<br>
+                        Last message: ${conn.last_message_at ? formatTimeAgo(new Date(conn.last_message_at)) : 'Never'}
+                        ${conn.unread_count > 0 ? `<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 10px;">${conn.unread_count}</span>` : ''}
+                    </div>
+                    <div class="connection-actions">
+                        <button onclick="event.stopPropagation(); openConversation('${conn.uuid}')">💬 Message</button>
+                    </div>
+                </div>
+            `).join('');
+
+            content.innerHTML = `
+                <div style="margin-bottom: 20px; text-align: center;">
+                    <button onclick="generateTestConnection()">+ Create New Connection</button>
+                </div>
+                <div class="test-connections">
+                    ${connectionsHTML}
+                </div>
+            `;
+        }
+
+        // Open conversation
+        function openConversation(connectionUuid) {
+            const connection = connections.find(c => c.uuid === connectionUuid);
+            if (!connection) return;
+
+            currentConversation = connection;
+            
+            // Load messages for this conversation
+            messages = mockMessages.filter(m => m.association_uuid === connectionUuid);
+            
+            showScreen('messaging');
+            loadConversationUI(connection);
+        }
+
+        function loadConversationUI(connection) {
+            const content = document.querySelector('#messaging-screen .content');
+            
+            const messagesHTML = messages.map(msg => {
+                const isSent = msg.sender_name === 'You';
+                return `
+                    <div class="rpg-dialog-box ${isSent ? 'sent' : ''}">
+                        <div class="message-header">
+                            <div class="sender-name">${msg.sender_name}</div>
+                            <div>${formatTimeAgo(new Date(msg.timestamp))}</div>
+                        </div>
+                        <div class="message-content">${msg.content}</div>
+                    </div>
+                `;
+            }).join('');
+
+            content.innerHTML = `
+                <button class="back-button" onclick="showScreen('connections')">← Back</button>
+                <div class="conversation-header">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 600; color: #ecf0f1;">💬 ${connection.partner_name}</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.7);">Julia Association • ${connection.status}</div>
+                    </div>
+                    <button onclick="refreshMessages()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer;">🔄</button>
+                </div>
+                <div class="messaging-container">
+                    <div class="messages-area" id="messagesArea">
+                        ${messagesHTML}
+                    </div>
+                </div>
+            `;
+
+            // Scroll to bottom
+            setTimeout(() => {
+                const messagesArea = document.getElementById('messagesArea');
+                if (messagesArea) {
+                    messagesArea.scrollTop = messagesArea.scrollHeight;
+                }
+            }, 100);
+        }
+
+        // Message handling
+        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const input = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            const content = input.value.trim();
+            
+            if (!content || !currentConversation) return;
+
+            // Simulate sending
+            input.disabled = true;
+            sendButton.disabled = true;
+            sendButton.innerHTML = 'Sending... ⏳';
+            showMessageStatus('🚀 Sending message to julia...', 'info');
+
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Add message
+            const newMessage = {
+                uuid: 'msg-' + Date.now(),
+                sender_name: 'You',
+                sender_uuid: 'current-user',
+                content: content,
+                timestamp: new Date().toISOString(),
+                association_uuid: currentConversation.uuid,
+                read: true
+            };
+
+            messages.push(newMessage);
+            input.value = '';
+            input.disabled = false;
+            sendButton.disabled = false;
+            sendButton.innerHTML = 'Send 🚀';
+            
+            showMessageStatus('✅ Message sent successfully!', 'success');
+            
+            // Refresh conversation display
+            loadConversationUI(currentConversation);
+            input.focus();
+        });
+
+        // Utility functions
+        function formatTimeAgo(date) {
+            const seconds = Math.floor((Date.now() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+            if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+            return `${Math.floor(seconds / 86400)}d ago`;
+        }
+
+        function showMessageStatus(message, type) {
+            const statusDiv = document.getElementById('messageStatus');
+            if (!statusDiv) return;
+
+            const colors = { success: '#2ecc71', error: '#e74c3c', info: '#3498db' };
+            statusDiv.innerHTML = message;
+            statusDiv.style.color = colors[type] || colors.info;
+            
+            setTimeout(() => statusDiv.innerHTML = '', 3000);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('📋 Connection URL copied to clipboard!');
+            }).catch(() => {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('📋 Connection URL copied!');
+            });
+        }
+
+        function processConnectionUrl() {
+            const urlInput = document.getElementById('partnerUrl');
+            const url = urlInput.value.trim();
+            
+            if (!url.startsWith('stackchat://connect')) {
+                alert('⚠️ Invalid StackChat connection URL');
+                return;
+            }
+            
+            // Parse URL and extract info
+            const urlParts = url.split('?')[1];
+            const params = new URLSearchParams(urlParts);
+            const partnerName = params.get('name') || 'Unknown User';
+            const partnerKey = params.get('publicKey') || '';
+            
+            // Create new connection
+            const newConnection = {
+                uuid: 'julia-assoc-' + Date.now(),
+                partner_name: partnerName,
+                partner_uuid: 'user-' + Date.now(),
+                partner_public_key: partnerKey,
+                julia_url: params.get('juliaUrl') || 'http://127.0.0.1:5111/',
+                status: 'Active',
+                created_at: new Date().toISOString(),
+                last_message_at: null,
+                unread_count: 0
+            };
+            
+            connections.push(newConnection);
+            urlInput.value = '';
+            
+            alert(`✅ Connection created with ${partnerName}!`);
+            displayConnections();
+        }
+
+        function refreshMessages() {
+            showMessageStatus('🔄 Refreshing messages...', 'info');
+            setTimeout(() => {
+                showMessageStatus('✅ Messages refreshed', 'success');
+            }, 1000);
+        }
+
+        // Navigation event listeners
+        document.querySelectorAll('.nav-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const screenName = button.dataset.screen;
+                if (screenName) showScreen(screenName);
+            });
+        });
+
+        // Initialize
+        window.showScreen = showScreen;
+        loadMockConnections();
+        
+        console.log('🚀 StackChat Browser Test loaded!');
+        console.log(`📱 Instance ID: ${instanceId}`);
+        console.log('💡 Open multiple tabs to test P2P messaging');
+    </script>
+</body>
+</html>

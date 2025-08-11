@@ -4,7 +4,7 @@
  */
 
 // Wait for environment configuration to load, then initialize app-specific controls
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Check if shared environment functions are available
   if (typeof window.PlanetNineEnvironment !== 'undefined') {
     console.log('✅ Shared environment configuration loaded');
@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     window.getServiceUrl = (service) => window.getEnvironmentConfig().services[service];
   }
+  
+  // Initialize environment from backend first
+  await initializeEnvironmentFromBackend();
   
   console.log(`📝 Rhapsold initialized with environment: ${getEnvironmentConfig().env}`);
   
@@ -80,6 +83,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // After environment setup, initialize the app with real data loading
   initializeRhapsoldApp();
 });
+
+// Initialize environment from backend RHAPSOLD_ENV variable (like ninefy pattern)
+async function initializeEnvironmentFromBackend() {
+  try {
+    if (typeof window.__TAURI__ !== 'undefined') {
+      console.log('🔧 Getting environment from backend...');
+      const envFromBackend = await window.__TAURI__.core.invoke('get_env_config');
+      if (envFromBackend && ['dev', 'test', 'local'].includes(envFromBackend)) {
+        console.log(`🌍 Environment from backend: ${envFromBackend}`);
+        localStorage.setItem('nullary-env', envFromBackend);
+        return envFromBackend;
+      } else {
+        console.log(`⚠️ Unknown environment from backend: ${envFromBackend}, using default`);
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ Could not get environment from backend, using localStorage/default');
+    console.error('Backend environment error:', error);
+  }
+  
+  return localStorage.getItem('nullary-env') || 'dev';
+}
 
 // Get home base URL based on current environment
 function getHomeBaseUrl() {
@@ -232,11 +257,17 @@ async function loadBlogPostsFromBases() {
       replaceSampleBlogPosts(allBlogPosts);
     } else {
       console.log('📝 No blog posts found, keeping sample data');
+      // Still fetch teleported content even if no blogs found
+      console.log('🔄 Fetching teleported content anyway...');
+      fetchTeleportedContentFromBases();
     }
     
   } catch (error) {
     console.error('❌ Failed to load blog posts from bases:', error);
     console.log('📝 Continuing with sample data');
+    // Still try to fetch teleported content
+    console.log('🔄 Attempting teleported content fetch despite blog loading error...');
+    fetchTeleportedContentFromBases();
   }
 }
 
@@ -265,20 +296,295 @@ function normalizeBlogPost(product, baseId, baseName, baseUrl) {
 function replaceSampleBlogPosts(realBlogPosts) {
   console.log('🔄 Replacing sample blog posts with real data...');
   
-  // Find the sample blog posts array and replace it
-  // This is where you'd integrate with your actual blog display system
-  // For now, just log that we have the real data
+  // Store the real blog posts globally
+  window.realBlogPosts = realBlogPosts;
   console.log('📚 Real blog posts ready:', realBlogPosts);
   
-  // Store in global variable for now (you'd integrate this with your UI rendering)
-  window.realBlogPosts = realBlogPosts;
+  // Update the UI with real blog posts
+  updateBlogPostsInUI(realBlogPosts);
   
-  // Trigger a re-render of the main screen if it's currently showing
-  if (typeof window.appState !== 'undefined' && window.appState.currentScreen === 'main') {
-    console.log('🔄 Re-rendering main screen with real blog data');
-    // You would call your main screen render function here
-    // renderMainScreen(); 
+  // Also fetch teleported content from all bases
+  console.log('🔄 Triggering teleported content fetch...');
+  fetchTeleportedContentFromBases();
+}
+
+// Update the blog posts UI with real data
+function updateBlogPostsInUI(blogPosts) {
+  const postsContainer = document.getElementById('posts-container');
+  if (!postsContainer) return;
+  
+  console.log('🎨 Updating blog posts UI with real data...');
+  postsContainer.innerHTML = '';
+  
+  blogPosts.forEach(post => {
+    const postElement = createBlogPost(post);
+    postsContainer.appendChild(postElement);
+  });
+  
+  console.log(`✅ Updated UI with ${blogPosts.length} real blog posts`);
+}
+
+/**
+ * Get the base pubKey from Sanora user object for teleportation
+ */
+async function getBasePubKeyForTeleportation(baseUrl) {
+  try {
+    if (typeof window.__TAURI__ !== 'undefined') {
+      console.log('🔑 Getting basePubKey from Sanora user...');
+      
+      // Create a Sanora user to get the base's pubKey
+      const sanoraUser = await window.__TAURI__.core.invoke('create_sanora_user', { sanoraUrl: baseUrl });
+      console.log('🔍 Debug - Full sanoraUser object:', sanoraUser);
+      
+      // Check both possible field names due to serialization differences
+      const basePubKey = sanoraUser.basePubKey || sanoraUser.base_pub_key;
+      if (sanoraUser && basePubKey) {
+        console.log('✅ Got basePubKey from Sanora:', basePubKey);
+        return basePubKey;
+      }
+      
+      console.warn('⚠️ No basePubKey in Sanora user, falling back to direct key retrieval');
+      // Note: rhapsold doesn't have get_public_key function, so we use fallback
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to get basePubKey from Sanora:', error);
   }
+  
+  // Fallback pubKey (matches the default private key)
+  return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+}
+
+// Fetch teleported content from all available bases (following ninefy pattern)
+async function fetchTeleportedContentFromBases() {
+  console.log('🌐 Fetching teleported content from all bases...');
+  
+  try {
+    if (typeof window.__TAURI__ === 'undefined') {
+      console.log('⚠️ Tauri not available, using dummy teleported content');
+      return;
+    }
+    
+    const bases = await getAvailableBases();
+    const allTeleportedContent = [];
+    
+    for (const [baseId, base] of Object.entries(bases)) {
+      if (!base.dns?.sanora || !base.dns?.bdo) {
+        console.log(`⚠️ Skipping ${base.name} - missing sanora (${!!base.dns?.sanora}) or bdo (${!!base.dns?.bdo}) DNS`);
+        continue;
+      }
+      
+      console.log(`🔍 Teleporting from ${base.name} - Sanora: ${base.dns.sanora}, BDO: ${base.dns.bdo}`);
+      
+      try {
+        // Construct the teleportable-products URL with pubKey for teleportation
+        // Use allyabase://sanora/ protocol for container networking
+        const teleportableUrl = `allyabase://sanora/teleportable-products`;
+        
+        // We need to add pubKey as query parameter for teleportation
+        const pubKey = await getBasePubKeyForTeleportation(base.dns.sanora);
+        
+        const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+        console.log(`🔗 Using allyabase:// protocol for container networking: ${teleportUrl}`);
+        console.log(`🚀 Teleporting from URL: ${teleportUrl}`);
+        console.log(`📡 Using BDO endpoint: ${base.dns.bdo}`);
+        
+        // Check if we're in Tauri environment
+        if (typeof window.__TAURI__ !== 'undefined') {
+          console.log('🦀 Using Tauri backend for teleportation');
+          
+          const teleportedData = await window.__TAURI__.core.invoke('teleport_content', {
+            bdoUrl: base.dns.bdo,
+            teleportUrl: teleportUrl
+          });
+          
+          console.log(`📄 Raw teleported data from ${base.name}:`, teleportedData);
+          console.log(`📄 Data type:`, typeof teleportedData, Array.isArray(teleportedData));
+          
+          // Process the teleported data
+          const processedItems = await processTeleportedData(teleportedData, baseId, base.name, base.dns.sanora);
+          
+          allTeleportedContent.push(...processedItems);
+          console.log(`📈 Total teleported items so far: ${allTeleportedContent.length}`);
+          
+        } else {
+          console.log('⚠️ Tauri not available - teleportation requires desktop app');
+        }
+        
+      } catch (teleportError) {
+        console.warn(`⚠️ Failed to teleport from ${base.name}:`, teleportError.message);
+      }
+    }
+    
+    console.log(`🌐 Final teleported content count: ${allTeleportedContent.length}`);
+    console.log('🌐 Sample teleported items:', allTeleportedContent.slice(0, 3));
+    
+    if (allTeleportedContent.length > 0) {
+      updateTeleportedContentInUI(allTeleportedContent);
+    } else {
+      console.log('📄 No teleported content found, keeping placeholder data');
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to fetch teleported content:', error);
+  }
+}
+
+/**
+ * Process teleported data from BDO (following ninefy pattern)
+ */
+async function processTeleportedData(teleportedData, baseId, baseName, baseUrl) {
+  console.log('🔄 Processing teleported data:', teleportedData);
+  
+  // The teleported data should contain the actual teleported content
+  // Check if it's valid and extract the content
+  if (!teleportedData || typeof teleportedData !== 'object') {
+    console.warn('⚠️ Invalid teleported data format');
+    return [];
+  }
+  
+  // Check if teleportation was valid
+  if (teleportedData.valid === false) {
+    console.warn('⚠️ Teleportation returned invalid result');
+    return [];
+  }
+  
+  // Extract the actual content from the teleported response
+  let contentArray = [];
+  
+  // Check if we have HTML content with teleportal elements
+  if (teleportedData.html && typeof teleportedData.html === 'string') {
+    console.log('📄 Parsing teleported HTML content...');
+    
+    // Parse the HTML to extract teleportal elements
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(teleportedData.html, 'text/html');
+    const teleportals = doc.querySelectorAll('teleportal');
+    
+    console.log(`🔍 Found ${teleportals.length} teleportal elements`);
+    
+    // Convert teleportal elements to content objects (adapted for blog context)
+    contentArray = Array.from(teleportals).map(portal => {
+      const item = {
+        id: portal.getAttribute('id') || `teleported-${Date.now()}`,
+        type: portal.getAttribute('category') || 'product',
+        title: portal.querySelector('title')?.textContent || 'Untitled',
+        description: portal.querySelector('description')?.textContent || 'No description',
+        url: portal.querySelector('url')?.textContent || '#',
+        price: portal.getAttribute('price') ? `$${(parseInt(portal.getAttribute('price')) / 100).toFixed(2)}` : null,
+        image: portal.querySelector('img')?.textContent || portal.querySelector('image')?.textContent || null,
+        tags: (portal.querySelector('tags')?.textContent || '').split(',').filter(t => t.trim()),
+        inStock: portal.querySelector('in-stock')?.textContent === 'true',
+        rating: portal.querySelector('rating')?.textContent || '0',
+        source: baseName,
+        baseName: baseName,
+        baseId: baseId,
+        baseUrl: baseUrl,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('📦 Extracted item from teleportal:', item);
+      return item;
+    });
+  } else if (teleportedData.content && Array.isArray(teleportedData.content)) {
+    contentArray = teleportedData.content;
+  } else if (teleportedData.products && Array.isArray(teleportedData.products)) {
+    contentArray = teleportedData.products;
+  } else {
+    console.warn('⚠️ No recognized content format in teleported data');
+  }
+  
+  console.log(`✅ Processed ${contentArray.length} teleported items from ${baseName}`);
+  return contentArray;
+}
+
+// Parse teleportable HTML content to extract teleport items
+function parseTeleportableHTML(html, baseId, baseName) {
+  const items = [];
+  
+  try {
+    // Create a temporary DOM element to parse the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Look for teleportable elements (Sanora uses <teleportal> elements)
+    const teleportElements = tempDiv.querySelectorAll('teleportal, [data-teleport], .teleportable, teleport');
+    console.log(`🔎 Found ${teleportElements.length} teleportable elements:`, teleportElements);
+    
+    teleportElements.forEach((element, index) => {
+      let title = 'Untitled';
+      let description = 'No description';
+      let url = '#';
+      let price = null;
+      
+      // Parse <teleportal> elements (Sanora format)
+      if (element.tagName === 'TELEPORTAL') {
+        title = element.querySelector('title')?.textContent || element.dataset.title || title;
+        description = element.querySelector('description')?.textContent || element.dataset.description || description;
+        url = element.querySelector('url')?.textContent || element.dataset.url || url;
+        price = element.getAttribute('price') || element.dataset.price;
+      } else {
+        // Fallback for other formats
+        title = element.dataset.title || element.querySelector('h1, h2, h3, title')?.textContent || title;
+        description = element.dataset.description || element.querySelector('p, description')?.textContent || description;
+        url = element.dataset.url || element.querySelector('url')?.textContent || element.href || url;
+        price = element.dataset.price;
+      }
+      
+      const item = {
+        id: element.id || `${baseId}-teleport-${index}`,
+        type: element.getAttribute('category') || element.dataset.type || 'product',
+        title: title,
+        description: description,
+        url: url,
+        price: price ? `$${(parseInt(price) / 100).toFixed(2)}` : null,
+        source: baseName,
+        baseName: baseName,
+        baseId: baseId,
+        timestamp: new Date().toISOString()
+      };
+      items.push(item);
+    });
+    
+    // If no structured teleport elements found, try to extract product-like content
+    if (items.length === 0) {
+      const productElements = tempDiv.querySelectorAll('[data-product], .product, .blog-post');
+      productElements.forEach((element, index) => {
+        const item = {
+          id: `${baseId}-product-${index}`,
+          type: 'product',
+          title: element.dataset.title || element.querySelector('h1, h2, h3')?.textContent || `Content from ${baseName}`,
+          description: element.dataset.description || element.querySelector('p')?.textContent || 'Discovered content',
+          url: element.dataset.url || '#',
+          source: baseName,
+          baseName: baseName,
+          baseId: baseId,
+          timestamp: new Date().toISOString()
+        };
+        items.push(item);
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to parse teleportable HTML:', error);
+  }
+  
+  return items;
+}
+
+// Update teleported content UI with real data
+function updateTeleportedContentInUI(teleportedItems) {
+  const teleportedContainer = document.getElementById('teleported-container');
+  if (!teleportedContainer) return;
+  
+  console.log('🎨 Updating teleported content UI with real data...');
+  teleportedContainer.innerHTML = '';
+  
+  teleportedItems.forEach(item => {
+    const teleportedElement = createTeleportedItem(item);
+    teleportedContainer.appendChild(teleportedElement);
+  });
+  
+  console.log(`✅ Updated UI with ${teleportedItems.length} real teleported items`);
 }
 
 // Simple SVG data URLs (URL-encoded instead of base64 to avoid btoa issues)
@@ -543,6 +849,19 @@ function createTeleportedItem(item) {
     color: ${appState.currentTheme.colors.text};
     line-height: 1.4;
   `;
+  
+  // Price (if available)
+  let priceElement = null;
+  if (item.price) {
+    priceElement = document.createElement('div');
+    priceElement.textContent = item.price;
+    priceElement.style.cssText = `
+      font-size: 14px;
+      font-weight: bold;
+      color: ${appState.currentTheme.colors.accent};
+      margin-bottom: 8px;
+    `;
+  }
 
   // Source
   const source = document.createElement('div');
@@ -661,6 +980,9 @@ function createTeleportedItem(item) {
   container.appendChild(header);
   container.appendChild(title);
   container.appendChild(description);
+  if (priceElement) {
+    container.appendChild(priceElement);
+  }
   container.appendChild(source);
 
   return container;
@@ -1618,6 +1940,9 @@ function renderCurrentScreen() {
       // Load posts after screen is added to DOM
       setTimeout(() => {
         loadPosts();
+        // Also try to load teleported content directly 
+        console.log('🌐 Loading teleported content from main screen...');
+        fetchTeleportedContentFromBases();
       }, 10);
       break;
     case 'new-post':

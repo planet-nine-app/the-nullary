@@ -3,6 +3,24 @@
 
 
 // Environment configuration for stackchat
+let backendEnvironmentConfig = null;
+
+async function initializeEnvironmentFromBackend() {
+  try {
+    const result = await invoke('get_env_config');
+    if (result.success && result.data) {
+      backendEnvironmentConfig = result.data;
+      console.log(`🔧 Backend environment: ${result.data.env}`);
+      console.log(`🌐 Backend services:`, result.data.services);
+      
+      // Set frontend environment to match backend
+      localStorage.setItem('nullary-env', result.data.env);
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not get backend environment config:', error);
+  }
+}
+
 function getEnvironmentConfig() {
   const env = localStorage.getItem('nullary-env') || 'dev';
   
@@ -100,11 +118,20 @@ const appState = {
     connections: [],
     messages: [],
     sessionless: null,
-    loading: false
+    loading: false,
+    messageRefreshInterval: null
 };
 
 // Screen Management
 function showScreen(screenName, data = null) {
+    // Clean up messaging screen if leaving it
+    if (appState.currentScreen === 'messaging' && screenName !== 'messaging') {
+        if (appState.messageRefreshInterval) {
+            clearInterval(appState.messageRefreshInterval);
+            appState.messageRefreshInterval = null;
+        }
+    }
+    
     // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -163,7 +190,7 @@ async function loadConnections() {
         }
     } catch (error) {
         console.error('Error loading connections:', error);
-        displayConnectionsError('Failed to connect to covenant service');
+        displayConnectionsError('Failed to connect to julia service');
     } finally {
         appState.loading = false;
     }
@@ -177,7 +204,7 @@ function displayConnections() {
         content.innerHTML = `
             <div class="empty-state">
                 <h3>No Connections Yet</h3>
-                <p>Start a conversation by creating a new covenant connection!</p>
+                <p>Start a conversation by creating a new julia connection!</p>
                 <button class="form-button" onclick="createNewConnection()">Create Connection</button>
             </div>
         `;
@@ -230,11 +257,11 @@ function createConnectionCard(connection) {
     return card;
 }
 
-async function acceptConnection(covenantUuid, event) {
+async function acceptConnection(associationUuid, event) {
     if (event) event.stopPropagation();
     
     try {
-        const result = await invoke('accept_connection', { covenantUuid });
+        const result = await invoke('accept_connection', { associationUuid });
         if (result.success) {
             await loadConnections(); // Refresh connections
         } else {
@@ -246,11 +273,11 @@ async function acceptConnection(covenantUuid, event) {
     }
 }
 
-async function blockConnection(covenantUuid, event) {
+async function blockConnection(associationUuid, event) {
     if (event) event.stopPropagation();
     
     try {
-        const result = await invoke('block_connection', { covenantUuid });
+        const result = await invoke('block_connection', { associationUuid });
         if (result.success) {
             await loadConnections(); // Refresh connections
         } else {
@@ -287,9 +314,16 @@ async function loadConversation(connection) {
     const content = document.querySelector('#messaging-screen .content');
     if (!content) return;
 
-    // Set up messaging interface
+    // Set up messaging interface with conversation header
     content.innerHTML = `
         <button class="back-button" onclick="showScreen('connections')">← Back</button>
+        <div class="conversation-header">
+            <div class="partner-info">
+                <div class="partner-name">💬 ${connection.partner_name}</div>
+                <div class="connection-status">Julia Association • Active</div>
+            </div>
+            <button class="refresh-button" onclick="refreshMessages()" title="Refresh Messages">🔄</button>
+        </div>
         <div class="messaging-container">
             <div class="messages-area" id="messagesArea">
                 <div class="loading-posts">Loading conversation...</div>
@@ -298,9 +332,10 @@ async function loadConversation(connection) {
         <div class="input-area">
             <div class="input-dialog-box">
                 <form class="input-form" id="messageForm">
-                    <input type="text" class="message-input" id="messageInput" placeholder="Type your message..." required>
-                    <button type="submit" class="send-button">Send 🚀</button>
+                    <input type="text" class="message-input" id="messageInput" placeholder="Type your message..." required maxlength="500">
+                    <button type="submit" class="send-button" id="sendButton">Send 🚀</button>
                 </form>
+                <div class="message-status" id="messageStatus"></div>
             </div>
         </div>
     `;
@@ -309,22 +344,62 @@ async function loadConversation(connection) {
     document.getElementById('messageForm').addEventListener('submit', handleSendMessage);
 
     // Load conversation messages
+    await loadMessages();
+    
+    // Start auto-refresh for new messages every 10 seconds
+    if (appState.messageRefreshInterval) {
+        clearInterval(appState.messageRefreshInterval);
+    }
+    appState.messageRefreshInterval = setInterval(async () => {
+        if (appState.currentScreen === 'messaging' && appState.currentConversation) {
+            await loadMessages(true); // Silent refresh
+        }
+    }, 10000);
+}
+
+async function loadMessages(silent = false) {
+    const connection = appState.currentConversation;
+    if (!connection) return;
+
+    if (!silent) {
+        const messagesArea = document.getElementById('messagesArea');
+        if (messagesArea) {
+            messagesArea.innerHTML = '<div class="loading-posts">Loading conversation...</div>';
+        }
+    }
+
     try {
-        const result = await invoke('get_conversation', { covenantUuid: connection.uuid });
+        const result = await invoke('get_conversation', { associationUuid: connection.uuid });
         
         if (result.success && result.data) {
+            const previousMessageCount = appState.messages.length;
             appState.messages = result.data.messages;
             displayMessages();
             
+            // Show notification if new messages arrived during silent refresh
+            if (silent && result.data.messages.length > previousMessageCount) {
+                showMessageStatus('💬 New messages received', 'success');
+            }
+            
             // Mark messages as read
-            await invoke('mark_messages_read', { covenantUuid: connection.uuid });
+            await invoke('mark_messages_read', { associationUuid: connection.uuid });
         } else {
-            displayMessagesError(result.error || 'Failed to load conversation');
+            if (!silent) {
+                displayMessagesError(result.error || 'Failed to load conversation');
+            }
         }
     } catch (error) {
         console.error('Error loading conversation:', error);
-        displayMessagesError('Failed to connect to messaging service');
+        if (!silent) {
+            displayMessagesError('Failed to connect to messaging service');
+        }
     }
+}
+
+async function refreshMessages() {
+    showMessageStatus('🔄 Refreshing messages...', 'info');
+    await loadMessages();
+    showMessageStatus('✅ Messages refreshed', 'success');
 }
 
 function displayMessages() {
@@ -367,20 +442,26 @@ async function handleSendMessage(e) {
     e.preventDefault();
     
     const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
     const content = messageInput.value.trim();
     
     if (!content || !appState.currentConversation) return;
+
+    // Disable input and show sending status
+    messageInput.disabled = true;
+    sendButton.disabled = true;
+    sendButton.innerHTML = 'Sending... ⏳';
+    showMessageStatus('🚀 Sending message to julia...', 'info');
 
     // Create space flight animation
     createSpaceFlightAnimation(messageInput);
     
     // Clear input
     messageInput.value = '';
-    messageInput.disabled = true;
     
     try {
         const result = await invoke('send_message', {
-            covenantUuid: appState.currentConversation.uuid,
+            associationUuid: appState.currentConversation.uuid,
             content
         });
         
@@ -388,16 +469,45 @@ async function handleSendMessage(e) {
             // Add message to display
             appState.messages.push(result.data);
             displayMessages();
+            showMessageStatus('✅ Message sent successfully!', 'success');
         } else {
-            alert(`Failed to send message: ${result.error}`);
+            showMessageStatus(`❌ Failed to send: ${result.error}`, 'error');
+            // Restore message in input if sending failed
+            messageInput.value = content;
         }
     } catch (error) {
         console.error('Error sending message:', error);
-        alert('Failed to send message');
+        showMessageStatus('❌ Network error - message not sent', 'error');
+        // Restore message in input if sending failed
+        messageInput.value = content;
     } finally {
         messageInput.disabled = false;
+        sendButton.disabled = false;
+        sendButton.innerHTML = 'Send 🚀';
         messageInput.focus();
     }
+}
+
+function showMessageStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('messageStatus');
+    if (!statusDiv) return;
+
+    const colors = {
+        success: '#2ecc71',
+        error: '#e74c3c', 
+        info: '#3498db'
+    };
+
+    statusDiv.innerHTML = message;
+    statusDiv.style.color = colors[type] || colors.info;
+    statusDiv.style.fontSize = '12px';
+    statusDiv.style.padding = '5px 0';
+    statusDiv.style.textAlign = 'center';
+
+    // Clear status after 3 seconds
+    setTimeout(() => {
+        if (statusDiv) statusDiv.innerHTML = '';
+    }, 3000);
 }
 
 function createSpaceFlightAnimation(inputElement) {
@@ -439,24 +549,183 @@ function displayMessagesError(error) {
     `;
 }
 
+// Teleportation Functions
+async function getBasePubKeyForTeleportation(baseUrl) {
+    try {
+        console.log(`🔍 Getting base pubKey for teleportation from: ${baseUrl}`);
+        const sanoraUser = await invoke('create_sanora_user', { sanoraUrl: baseUrl });
+        
+        if (sanoraUser.success && sanoraUser.data) {
+            const basePubKey = sanoraUser.data.basePubKey || sanoraUser.data.base_pub_key;
+            console.log(`🔑 Got base pubKey: ${basePubKey}`);
+            return basePubKey || '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+        } else {
+            console.warn(`⚠️ Failed to get Sanora user:`, sanoraUser.error);
+            return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+        }
+    } catch (error) {
+        console.error(`❌ Error getting base pubKey:`, error);
+        return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+    }
+}
+
+async function fetchTeleportedContentFromBases() {
+    console.log('🔍 Starting teleported content fetch for StackChat...');
+    
+    try {
+        const config = getEnvironmentConfig();
+        console.log(`🌐 Using environment: ${config.env}`);
+        
+        // Get available bases 
+        const bases = [
+            {
+                id: 'HOME',
+                name: 'Home Base',
+                dns: {
+                    sanora: config.services.sanora,
+                    bdo: config.services.bdo
+                }
+            }
+        ];
+
+        let allItems = [];
+
+        for (const base of bases) {
+            console.log(`🔍 Teleporting from ${base.name} - Sanora: ${base.dns.sanora}, BDO: ${base.dns.bdo}`);
+            
+            try {
+                const teleportableUrl = `allyabase://sanora/teleportable-products`;
+                const pubKey = await getBasePubKeyForTeleportation(base.dns.sanora);
+                const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+                
+                console.log(`🔗 Using allyabase:// protocol for container networking: ${teleportUrl}`);
+                
+                const teleportedData = await invoke('teleport_content', {
+                    bdoUrl: base.dns.bdo,
+                    teleportUrl: teleportUrl
+                });
+                
+                console.log('📄 Parsing teleported HTML content...');
+                const processedItems = await processTeleportedData(teleportedData, base.id, base.name, base.dns.sanora);
+                allItems = allItems.concat(processedItems);
+                
+                console.log(`✅ Processed ${processedItems.length} teleported items from ${base.name}`);
+                
+            } catch (error) {
+                console.error(`❌ Error teleporting from ${base.name}:`, error);
+            }
+        }
+
+        return allItems;
+        
+    } catch (error) {
+        console.error('❌ Failed to load teleported content:', error);
+        return [];
+    }
+}
+
+async function processTeleportedData(teleportedData, baseId, baseName, baseUrl) {
+    console.log('🔍 Processing teleported data:', teleportedData);
+    
+    if (!teleportedData || !teleportedData.html) {
+        console.warn('⚠️ No HTML content in teleported data');
+        return [];
+    }
+    
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(teleportedData.html, 'text/html');
+        const teleportals = doc.querySelectorAll('teleportal');
+        
+        console.log(`🔍 Found ${teleportals.length} teleportal elements`);
+        
+        const items = [];
+        
+        teleportals.forEach((teleportal, index) => {
+            const item = {
+                id: `${baseId}-${index}`,
+                title: teleportal.getAttribute('title') || 'Untitled Product',
+                price: teleportal.getAttribute('price') || 'Free',
+                description: teleportal.getAttribute('description') || 'No description available',
+                author: teleportal.getAttribute('author') || 'Unknown Author',
+                type: teleportal.getAttribute('type') || 'product',
+                url: teleportal.getAttribute('url') || '#',
+                baseName: baseName,
+                baseUrl: baseUrl
+            };
+            items.push(item);
+        });
+        
+        return items;
+    } catch (error) {
+        console.error('❌ Error parsing teleported HTML:', error);
+        return [];
+    }
+}
+
 // Planet Nine Content
-function loadPlanetNineContent() {
+async function loadPlanetNineContent() {
     const content = document.querySelector('#planet-nine-screen .content');
     if (!content) return;
+
+    // Show loading state
+    content.innerHTML = `
+        <div style="text-align: center; padding: 60px 20px; color: white;">
+            <h1 style="font-size: 48px; font-weight: 700; margin-bottom: 30px;">🚀 StackChat</h1>
+            <p style="font-size: 18px; line-height: 1.6; max-width: 600px; margin: 0 auto 40px;">
+                Welcome to StackChat - the peer-to-peer messaging platform of the Planet Nine ecosystem. 
+                Communicate securely through julia associations with RPG-style interfaces and 
+                space-flight message animations!
+            </p>
+            <div class="loading-posts">Loading teleported content...</div>
+        </div>
+    `;
+
+    // Fetch teleported content
+    const teleportedItems = await fetchTeleportedContentFromBases();
+    
+    // Build content with teleported items
+    let teleportedContentHTML = '';
+    if (teleportedItems.length > 0) {
+        teleportedContentHTML = `
+            <div style="margin-top: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
+                <h2 style="color: white; margin-bottom: 20px; text-align: center;">🌐 Teleported from Planet Nine Ecosystem</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                    ${teleportedItems.map(item => `
+                        <div style="background: rgba(255,255,255,0.9); padding: 20px; border-radius: 12px; color: #333;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">${item.title}</h3>
+                            <p style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.8;">${item.description}</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; color: #27ae60;">${item.price}</span>
+                                <span style="font-size: 12px; opacity: 0.6;">from ${item.baseName}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } else {
+        teleportedContentHTML = `
+            <div style="margin-top: 40px; text-align: center;">
+                <p style="color: rgba(255,255,255,0.6); font-size: 16px;">🔌 No teleported content available</p>
+                <p style="color: rgba(255,255,255,0.5); font-size: 14px;">Content will appear here when bases are connected</p>
+            </div>
+        `;
+    }
 
     content.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; color: white;">
             <h1 style="font-size: 48px; font-weight: 700; margin-bottom: 30px;">🚀 StackChat</h1>
             <p style="font-size: 18px; line-height: 1.6; max-width: 600px; margin: 0 auto 40px;">
                 Welcome to StackChat - the peer-to-peer messaging platform of the Planet Nine ecosystem. 
-                Communicate securely through covenant connections with RPG-style interfaces and 
+                Communicate securely through julia associations with RPG-style interfaces and 
                 space-flight message animations!
             </p>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 800px; margin: 0 auto;">
                 <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 12px;">
                     <div style="font-size: 36px; margin-bottom: 15px;">💬</div>
                     <h3 style="margin-bottom: 10px;">P2P Messaging</h3>
-                    <p style="font-size: 14px; opacity: 0.8;">Direct communication through covenant connections</p>
+                    <p style="font-size: 14px; opacity: 0.8;">Direct communication through julia associations</p>
                 </div>
                 <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 12px;">
                     <div style="font-size: 36px; margin-bottom: 15px;">🎮</div>
@@ -469,6 +738,7 @@ function loadPlanetNineContent() {
                     <p style="font-size: 14px; opacity: 0.8;">Messages fly off to space when sent</p>
                 </div>
             </div>
+            ${teleportedContentHTML}
         </div>
     `;
 }
@@ -545,17 +815,157 @@ function createAppStructure() {
     });
 }
 
+// Connection Creation Functions
+function showConnectionModal() {
+    const modalHTML = `
+        <div id="connectionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border: 3px solid #ecf0f1; border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
+                <h3 style="color: white; margin: 0 0 20px 0; text-align: center;">🤝 Create New Connection</h3>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #f39c12; margin: 0 0 10px 0;">📤 Share Your Connection URL</h4>
+                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                        <input type="text" id="connectionUrl" readonly style="width: 100%; background: transparent; border: none; color: white; font-size: 12px;" placeholder="Generating connection URL...">
+                    </div>
+                    <button onclick="generateConnectionUrl()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Generate URL</button>
+                    <button onclick="copyConnectionUrl()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Copy URL</button>
+                </div>
+                
+                <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; margin-top: 20px;">
+                    <h4 style="color: #f39c12; margin: 0 0 10px 0;">📥 Connect via URL</h4>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="partnerUrl" placeholder="Paste connection URL from partner..." style="flex: 1; background: rgba(255,255,255,0.9); border: 2px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 10px; color: #333;">
+                        <button onclick="processPartnerUrl()" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Connect</button>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="closeConnectionModal()" style="background: #7f8c8d; color: white; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer;">Close</button>
+                </div>
+                
+                <div id="connectionStatus" style="margin-top: 15px; text-align: center; color: white;"></div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeConnectionModal() {
+    const modal = document.getElementById('connectionModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function generateConnectionUrl() {
+    const statusDiv = document.getElementById('connectionStatus');
+    const urlInput = document.getElementById('connectionUrl');
+    
+    try {
+        statusDiv.innerHTML = '🔄 Generating connection URL...';
+        
+        const result = await invoke('generate_connection_url');
+        
+        if (result.success && result.data) {
+            urlInput.value = result.data;
+            statusDiv.innerHTML = '✅ Connection URL generated! Share this with your partner.';
+            statusDiv.style.color = '#2ecc71';
+        } else {
+            statusDiv.innerHTML = '❌ Failed to generate URL: ' + (result.error || 'Unknown error');
+            statusDiv.style.color = '#e74c3c';
+        }
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Error generating URL: ' + error;
+        statusDiv.style.color = '#e74c3c';
+    }
+}
+
+function copyConnectionUrl() {
+    const urlInput = document.getElementById('connectionUrl');
+    const statusDiv = document.getElementById('connectionStatus');
+    
+    if (urlInput.value) {
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+            statusDiv.innerHTML = '📋 URL copied to clipboard!';
+            statusDiv.style.color = '#2ecc71';
+        }).catch(() => {
+            // Fallback for older browsers
+            urlInput.select();
+            document.execCommand('copy');
+            statusDiv.innerHTML = '📋 URL copied to clipboard!';
+            statusDiv.style.color = '#2ecc71';
+        });
+    } else {
+        statusDiv.innerHTML = '⚠️ Generate a URL first';
+        statusDiv.style.color = '#f39c12';
+    }
+}
+
+async function processPartnerUrl() {
+    const partnerUrlInput = document.getElementById('partnerUrl');
+    const statusDiv = document.getElementById('connectionStatus');
+    
+    const url = partnerUrlInput.value.trim();
+    if (!url) {
+        statusDiv.innerHTML = '⚠️ Please enter a connection URL';
+        statusDiv.style.color = '#f39c12';
+        return;
+    }
+    
+    if (!url.startsWith('stackchat://connect')) {
+        statusDiv.innerHTML = '⚠️ Invalid StackChat connection URL';
+        statusDiv.style.color = '#f39c12';
+        return;
+    }
+    
+    try {
+        statusDiv.innerHTML = '🔄 Processing connection...';
+        statusDiv.style.color = '#3498db';
+        
+        const result = await invoke('process_connection_url', { connectionUrl: url });
+        
+        if (result.success && result.data) {
+            statusDiv.innerHTML = '✅ Connection created! Refresh connections to see new partner.';
+            statusDiv.style.color = '#2ecc71';
+            
+            // Clear the input
+            partnerUrlInput.value = '';
+            
+            // Refresh connections after a delay
+            setTimeout(() => {
+                closeConnectionModal();
+                loadConnections();
+            }, 2000);
+        } else {
+            statusDiv.innerHTML = '❌ Failed to create connection: ' + (result.error || 'Unknown error');
+            statusDiv.style.color = '#e74c3c';
+        }
+    } catch (error) {
+        statusDiv.innerHTML = '❌ Error processing connection: ' + error;
+        statusDiv.style.color = '#e74c3c';
+    }
+}
+
 // Global functions for window object
 window.showScreen = showScreen;
 window.loadConnections = loadConnections;
 window.acceptConnection = acceptConnection;
 window.blockConnection = blockConnection;
 window.openConversation = openConversation;
-window.createNewConnection = () => alert('Create new connection feature coming soon!');
+window.createNewConnection = () => showConnectionModal();
+window.generateConnectionUrl = generateConnectionUrl;
+window.copyConnectionUrl = copyConnectionUrl;
+window.processPartnerUrl = processPartnerUrl;
+window.closeConnectionModal = closeConnectionModal;
+window.refreshMessages = refreshMessages;
 
 // Initialize the application
 async function initApp() {
     try {
+        // Initialize environment configuration from backend
+        await initializeEnvironmentFromBackend();
+        
         // Get sessionless info
         const sessionlessResult = await invoke('get_sessionless_info');
         if (sessionlessResult.success) {

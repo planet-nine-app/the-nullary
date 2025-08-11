@@ -313,6 +313,68 @@ Integration with Sanora service for blog storage:
 }
 ```
 
+## Teleportation Implementation
+
+**Overview**: Rhapsold implements the complete Planet Nine teleportation protocol for cross-base content discovery, displaying teleported content in the right column of the main screen.
+
+### Key Components
+
+**Frontend Functions**:
+- **`fetchTeleportedContentFromBases()`** - Main function that fetches teleported content from all connected bases
+- **`getBasePubKeyForTeleportation(baseUrl)`** - Gets the base's public key for signature validation
+- **`processTeleportedData(teleportedData, baseId, baseName, baseUrl)`** - Processes and parses teleported HTML content
+
+**Backend Function**:
+- **`teleport_content(bdo_url, teleport_url)`** - Rust function that uses BDO service to fetch content avoiding CORS
+
+### Protocol Flow
+
+1. **Discovery**: Get available bases from BDO with both `sanora` and `bdo` DNS entries
+2. **Public Key Retrieval**: Get base's public key from Sanora user for validation
+3. **URL Construction**: Build `allyabase://sanora/teleportable-products?pubKey={key}` URL
+4. **Teleportation**: Call Tauri backend which uses BDO to fetch and validate content
+5. **Processing**: Parse returned HTML to extract `<teleportal>` elements
+6. **Display**: Show teleported items in right column with prices, descriptions, and metadata
+
+### allyabase:// Protocol
+
+The `allyabase://` protocol enables container networking in Docker environments:
+- **Format**: `allyabase://sanora/teleportable-products`
+- **Translation**: BDO translates to actual container URLs (e.g., `http://127.0.0.1:5121/`)
+- **Benefits**: Avoids CORS, enables container networking, supports cryptographic validation
+
+### Example Code
+
+```javascript
+// Fetch teleported content using allyabase:// protocol
+const teleportableUrl = `allyabase://sanora/teleportable-products`;
+const pubKey = await getBasePubKeyForTeleportation(base.dns.sanora);
+const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+
+const teleportedData = await window.__TAURI__.core.invoke('teleport_content', {
+    bdoUrl: base.dns.bdo,
+    teleportUrl: teleportUrl
+});
+
+const processedItems = await processTeleportedData(teleportedData, baseId, base.name, base.dns.sanora);
+```
+
+### Testing Teleportation
+
+Run with test environment to see real teleported content:
+```bash
+RHAPSOLD_ENV=test npm run tauri dev
+```
+
+Expected logs:
+```
+🔍 Teleporting from DEV - Sanora: http://127.0.0.1:5121/, BDO: http://127.0.0.1:5114/
+🔗 Using allyabase:// protocol for container networking: allyabase://sanora/teleportable-products?pubKey=...
+📄 Parsing teleported HTML content...
+🔍 Found 1 teleportal elements
+✅ Processed 1 teleported items from DEV
+```
+
 ## Development Workflow
 
 ### Environment Configuration
@@ -569,6 +631,8 @@ const layeredUI = createLayeredUI({
 - ✅ Responsive design with hover effects and transitions
 - ✅ Theme system and configuration management
 - ✅ Error handling and loading states
+- ✅ **Real blog post loading from Sanora services** via `get_all_base_products()`
+- ✅ **Teleported content in right column** using Planet Nine teleportation protocol
 
 **Backend (Complete Allyabase Integration)**:
 - ✅ Full Rust backend with all allyabase crates (addie, fount, bdo, dolores, sanora)
@@ -581,6 +645,7 @@ const layeredUI = createLayeredUI({
 - ✅ Comprehensive error handling and graceful degradation
 - ✅ Development and production configuration support
 - ✅ Tauri v2.6.2 compatibility with tauri-plugin-shell and tauri-plugin-fs
+- ✅ **Teleportation function** (`teleport_content`) for cross-base content discovery via BDO
 
 ### Future Enhancements
 

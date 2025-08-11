@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StackChat Julia Connections Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        input {
+            width: 300px;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            margin: 5px;
+        }
+        .output {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            min-height: 100px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 StackChat Julia Connections Test</h1>
+        
+        <div class="test-section">
+            <h3>🔧 Mock Julia Client Functions</h3>
+            <p>Testing connection creation flow with mock julia backend</p>
+            <button onclick="testGenerateConnectionUrl()">Generate Connection URL</button>
+            <button onclick="testProcessConnectionUrl()">Process Sample Connection URL</button>
+            <div id="connectionTestOutput" class="output">Ready to test connection creation...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🤝 Interactive Connection Creation</h3>
+            <p>Test the connection modal interface</p>
+            <button onclick="showConnectionModal()">Open Connection Modal</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📝 Connection URL Format</h3>
+            <p>Understanding the julia-based connection URL format:</p>
+            <div class="output">
+Format: stackchat://connect?message=TIMESTAMP:PUBLICKEY:NAME:JULIAURL&signature=SIG&publicKey=PUB&name=NAME&juliaUrl=URL
+
+Components:
+- message: Contains timestamp, public key, name, and julia server URL
+- signature: Cryptographic signature of the message
+- publicKey: User's public key for verification
+- name: Display name for the connection
+- juliaUrl: Julia server URL for messaging
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Tauri invoke function for testing julia connections
+        window.__TAURI__ = {
+            core: {
+                invoke: async function(command, args) {
+                    console.log(`🔧 Mock Tauri invoke: ${command}`, args);
+                    
+                    if (command === 'generate_connection_url') {
+                        const timestamp = Math.floor(Date.now() / 1000);
+                        const publicKey = '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+                        const name = 'StackChat User';
+                        const juliaUrl = 'http://127.0.0.1:5111/';
+                        
+                        const message = `${timestamp}:${publicKey}:${name}:${juliaUrl}`;
+                        const signature = 'mock_signature_' + Math.random().toString(36).substring(7);
+                        
+                        const connectionUrl = `stackchat://connect?message=${encodeURIComponent(message)}&signature=${encodeURIComponent(signature)}&publicKey=${encodeURIComponent(publicKey)}&name=${encodeURIComponent(name)}&juliaUrl=${encodeURIComponent(juliaUrl)}`;
+                        
+                        return {
+                            success: true,
+                            data: connectionUrl
+                        };
+                    }
+                    
+                    if (command === 'process_connection_url') {
+                        return {
+                            success: true,
+                            data: {
+                                uuid: 'julia-assoc-' + Math.random().toString(36).substring(7),
+                                partner_uuid: 'partner-user-123',
+                                partner_name: 'Test Partner',
+                                partner_public_key: '02f899a8b2b75f68d6e6d4a8e5c9d8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1',
+                                julia_url: 'http://127.0.0.1:5111/',
+                                created_at: new Date().toISOString(),
+                                status: 'Pending'
+                            }
+                        };
+                    }
+                    
+                    return { success: false, error: 'Unknown command' };
+                }
+            }
+        };
+
+        const invoke = window.__TAURI__.core.invoke;
+
+        async function testGenerateConnectionUrl() {
+            const output = document.getElementById('connectionTestOutput');
+            
+            try {
+                output.textContent = '🔄 Generating connection URL...\n';
+                
+                const result = await invoke('generate_connection_url');
+                
+                if (result.success && result.data) {
+                    output.textContent += `✅ Generated connection URL:\n${result.data}\n\n`;
+                    output.textContent += `📋 URL Structure:\n`;
+                    
+                    // Parse the URL to show components
+                    const url = new URL(result.data.replace('stackchat:', 'http:'));
+                    const params = new URLSearchParams(url.search);
+                    
+                    output.textContent += `Message: ${params.get('message')}\n`;
+                    output.textContent += `Signature: ${params.get('signature')}\n`;
+                    output.textContent += `Public Key: ${params.get('publicKey')}\n`;
+                    output.textContent += `Name: ${params.get('name')}\n`;
+                    output.textContent += `Julia URL: ${params.get('juliaUrl')}\n`;
+                } else {
+                    output.textContent += `❌ Failed: ${result.error || 'Unknown error'}\n`;
+                }
+            } catch (error) {
+                output.textContent += `❌ Error: ${error}\n`;
+            }
+        }
+
+        async function testProcessConnectionUrl() {
+            const output = document.getElementById('connectionTestOutput');
+            
+            try {
+                // First generate a URL to process
+                const urlResult = await invoke('generate_connection_url');
+                if (!urlResult.success) {
+                    output.textContent = '❌ Failed to generate test URL\n';
+                    return;
+                }
+                
+                output.textContent = '🔄 Processing connection URL...\n';
+                output.textContent += `📥 Input URL: ${urlResult.data}\n\n`;
+                
+                const result = await invoke('process_connection_url', { connectionUrl: urlResult.data });
+                
+                if (result.success && result.data) {
+                    output.textContent += `✅ Successfully created julia association!\n\n`;
+                    output.textContent += `📝 Connection Details:\n`;
+                    output.textContent += `UUID: ${result.data.uuid}\n`;
+                    output.textContent += `Partner Name: ${result.data.partner_name}\n`;
+                    output.textContent += `Partner UUID: ${result.data.partner_uuid}\n`;
+                    output.textContent += `Partner Public Key: ${result.data.partner_public_key}\n`;
+                    output.textContent += `Julia URL: ${result.data.julia_url}\n`;
+                    output.textContent += `Status: ${result.data.status}\n`;
+                    output.textContent += `Created: ${result.data.created_at}\n`;
+                } else {
+                    output.textContent += `❌ Failed to process: ${result.error || 'Unknown error'}\n`;
+                }
+            } catch (error) {
+                output.textContent += `❌ Error: ${error}\n`;
+            }
+        }
+
+        // Copy the connection modal functions from main.js
+        function showConnectionModal() {
+            const modalHTML = \`
+                <div id="connectionModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); border: 3px solid #ecf0f1; border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
+                        <h3 style="color: white; margin: 0 0 20px 0; text-align: center;">🤝 Create New Connection</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="color: #f39c12; margin: 0 0 10px 0;">📤 Share Your Connection URL</h4>
+                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                                <input type="text" id="connectionUrl" readonly style="width: 100%; background: transparent; border: none; color: white; font-size: 12px;" placeholder="Generating connection URL...">
+                            </div>
+                            <button onclick="generateConnectionUrl()" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-right: 10px;">Generate URL</button>
+                            <button onclick="copyConnectionUrl()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Copy URL</button>
+                        </div>
+                        
+                        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px; margin-top: 20px;">
+                            <h4 style="color: #f39c12; margin: 0 0 10px 0;">📥 Connect via URL</h4>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="partnerUrl" placeholder="Paste connection URL from partner..." style="flex: 1; background: rgba(255,255,255,0.9); border: 2px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 10px; color: #333;">
+                                <button onclick="processPartnerUrl()" style="background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Connect</button>
+                            </div>
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button onclick="closeConnectionModal()" style="background: #7f8c8d; color: white; border: none; padding: 10px 30px; border-radius: 6px; cursor: pointer;">Close</button>
+                        </div>
+                        
+                        <div id="connectionStatus" style="margin-top: 15px; text-align: center; color: white;"></div>
+                    </div>
+                </div>
+            \`;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function closeConnectionModal() {
+            const modal = document.getElementById('connectionModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function generateConnectionUrl() {
+            const statusDiv = document.getElementById('connectionStatus');
+            const urlInput = document.getElementById('connectionUrl');
+            
+            try {
+                statusDiv.innerHTML = '🔄 Generating connection URL...';
+                
+                const result = await invoke('generate_connection_url');
+                
+                if (result.success && result.data) {
+                    urlInput.value = result.data;
+                    statusDiv.innerHTML = '✅ Connection URL generated! Share this with your partner.';
+                    statusDiv.style.color = '#2ecc71';
+                } else {
+                    statusDiv.innerHTML = '❌ Failed to generate URL: ' + (result.error || 'Unknown error');
+                    statusDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Error generating URL: ' + error;
+                statusDiv.style.color = '#e74c3c';
+            }
+        }
+
+        function copyConnectionUrl() {
+            const urlInput = document.getElementById('connectionUrl');
+            const statusDiv = document.getElementById('connectionStatus');
+            
+            if (urlInput.value) {
+                navigator.clipboard.writeText(urlInput.value).then(() => {
+                    statusDiv.innerHTML = '📋 URL copied to clipboard!';
+                    statusDiv.style.color = '#2ecc71';
+                }).catch(() => {
+                    // Fallback for older browsers
+                    urlInput.select();
+                    document.execCommand('copy');
+                    statusDiv.innerHTML = '📋 URL copied to clipboard!';
+                    statusDiv.style.color = '#2ecc71';
+                });
+            } else {
+                statusDiv.innerHTML = '⚠️ Generate a URL first';
+                statusDiv.style.color = '#f39c12';
+            }
+        }
+
+        async function processPartnerUrl() {
+            const partnerUrlInput = document.getElementById('partnerUrl');
+            const statusDiv = document.getElementById('connectionStatus');
+            
+            const url = partnerUrlInput.value.trim();
+            if (!url) {
+                statusDiv.innerHTML = '⚠️ Please enter a connection URL';
+                statusDiv.style.color = '#f39c12';
+                return;
+            }
+            
+            if (!url.startsWith('stackchat://connect')) {
+                statusDiv.innerHTML = '⚠️ Invalid StackChat connection URL';
+                statusDiv.style.color = '#f39c12';
+                return;
+            }
+            
+            try {
+                statusDiv.innerHTML = '🔄 Processing connection...';
+                statusDiv.style.color = '#3498db';
+                
+                const result = await invoke('process_connection_url', { connectionUrl: url });
+                
+                if (result.success && result.data) {
+                    statusDiv.innerHTML = '✅ Connection created! Check console for details.';
+                    statusDiv.style.color = '#2ecc71';
+                    console.log('New connection:', result.data);
+                    
+                    // Clear the input
+                    partnerUrlInput.value = '';
+                } else {
+                    statusDiv.innerHTML = '❌ Failed to create connection: ' + (result.error || 'Unknown error');
+                    statusDiv.style.color = '#e74c3c';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Error processing connection: ' + error;
+                statusDiv.style.color = '#e74c3c';
+            }
+        }
+
+        console.log('🚀 StackChat Julia Connections Test loaded!');
+        console.log('📋 Available test functions:', ['testGenerateConnectionUrl', 'testProcessConnectionUrl', 'showConnectionModal']);
+    </script>
+</body>
+</html>

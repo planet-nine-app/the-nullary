@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StackChat Teleportation Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+        .loading-posts {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+        }
+        #content {
+            min-height: 400px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .test-results {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 StackChat Teleportation Test</h1>
+        
+        <div class="test-results">
+            <h3>🧪 Frontend Function Tests</h3>
+            <button onclick="testEnvironmentConfig()">Test Environment Config</button>
+            <button onclick="testTeleportationFlow()">Test Teleportation Flow</button>
+            <button onclick="testHTMLParsing()">Test HTML Parsing</button>
+            <div id="testOutput"></div>
+        </div>
+
+        <div id="content">
+            <div class="loading-posts">Click "Test Teleportation Flow" to see the frontend implementation</div>
+        </div>
+    </div>
+
+    <script>
+        // Mock Tauri invoke function for testing
+        window.__TAURI__ = {
+            core: {
+                invoke: async function(command, args) {
+                    console.log(`🔧 Mock Tauri invoke: ${command}`, args);
+                    
+                    if (command === 'create_sanora_user') {
+                        return {
+                            success: true,
+                            data: {
+                                uuid: 'test-user-123',
+                                basePubKey: '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd'
+                            }
+                        };
+                    }
+                    
+                    if (command === 'teleport_content') {
+                        return {
+                            html: `
+                                <h1>Teleported Products</h1>
+                                <teleportal 
+                                    title="Premium Messaging Pack" 
+                                    price="$9.99"
+                                    description="Enhanced messaging features for StackChat"
+                                    author="Planet Nine Team"
+                                    type="software"
+                                    url="/messaging-pack">
+                                </teleportal>
+                                <teleportal 
+                                    title="RPG Themes Collection" 
+                                    price="Free"
+                                    description="Beautiful RPG-style themes for your chat interface"
+                                    author="Theme Studio"
+                                    type="theme"
+                                    url="/rpg-themes">
+                                </teleportal>
+                                <teleportal 
+                                    title="Space Animation Pack" 
+                                    price="$4.99"
+                                    description="Extra space-flight animations and effects"
+                                    author="Animation Works"
+                                    type="animation"
+                                    url="/space-animations">
+                                </teleportal>
+                            `,
+                            valid: true
+                        };
+                    }
+                    
+                    return { success: false, error: 'Unknown command' };
+                }
+            }
+        };
+
+        // Copy the actual functions from main.js
+        function getEnvironmentConfig() {
+            const env = localStorage.getItem('nullary-env') || 'dev';
+            
+            const configs = {
+                dev: {
+                    sanora: 'https://dev.sanora.allyabase.com/',
+                    bdo: 'https://dev.bdo.allyabase.com/',
+                    julia: 'https://dev.julia.allyabase.com/'
+                },
+                test: {
+                    sanora: 'http://localhost:5121/',
+                    bdo: 'http://localhost:5114/',
+                    julia: 'http://localhost:5111/'
+                },
+                local: {
+                    sanora: 'http://localhost:7243/',
+                    bdo: 'http://localhost:3003/',
+                    julia: 'http://localhost:3000/'
+                }
+            };
+            
+            const config = configs[env] || configs.dev;
+            return { env, services: config, name: env };
+        }
+
+        // Mock invoke function
+        const invoke = window.__TAURI__.core.invoke;
+
+        // Copy teleportation functions
+        async function getBasePubKeyForTeleportation(baseUrl) {
+            try {
+                console.log(`🔍 Getting base pubKey for teleportation from: ${baseUrl}`);
+                const sanoraUser = await invoke('create_sanora_user', { sanoraUrl: baseUrl });
+                
+                if (sanoraUser.success && sanoraUser.data) {
+                    const basePubKey = sanoraUser.data.basePubKey || sanoraUser.data.base_pub_key;
+                    console.log(`🔑 Got base pubKey: ${basePubKey}`);
+                    return basePubKey || '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+                } else {
+                    console.warn(`⚠️ Failed to get Sanora user:`, sanoraUser.error);
+                    return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+                }
+            } catch (error) {
+                console.error(`❌ Error getting base pubKey:`, error);
+                return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+            }
+        }
+
+        async function processTeleportedData(teleportedData, baseId, baseName, baseUrl) {
+            console.log('🔍 Processing teleported data:', teleportedData);
+            
+            if (!teleportedData || !teleportedData.html) {
+                console.warn('⚠️ No HTML content in teleported data');
+                return [];
+            }
+            
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(teleportedData.html, 'text/html');
+                const teleportals = doc.querySelectorAll('teleportal');
+                
+                console.log(`🔍 Found ${teleportals.length} teleportal elements`);
+                
+                const items = [];
+                
+                teleportals.forEach((teleportal, index) => {
+                    const item = {
+                        id: `${baseId}-${index}`,
+                        title: teleportal.getAttribute('title') || 'Untitled Product',
+                        price: teleportal.getAttribute('price') || 'Free',
+                        description: teleportal.getAttribute('description') || 'No description available',
+                        author: teleportal.getAttribute('author') || 'Unknown Author',
+                        type: teleportal.getAttribute('type') || 'product',
+                        url: teleportal.getAttribute('url') || '#',
+                        baseName: baseName,
+                        baseUrl: baseUrl
+                    };
+                    items.push(item);
+                });
+                
+                return items;
+            } catch (error) {
+                console.error('❌ Error parsing teleported HTML:', error);
+                return [];
+            }
+        }
+
+        async function fetchTeleportedContentFromBases() {
+            console.log('🔍 Starting teleported content fetch for StackChat...');
+            
+            try {
+                const config = getEnvironmentConfig();
+                console.log(`🌐 Using environment: ${config.env}`);
+                
+                const bases = [
+                    {
+                        id: 'HOME',
+                        name: 'Home Base',
+                        dns: {
+                            sanora: config.services.sanora,
+                            bdo: config.services.bdo
+                        }
+                    }
+                ];
+
+                let allItems = [];
+
+                for (const base of bases) {
+                    console.log(`🔍 Teleporting from ${base.name} - Sanora: ${base.dns.sanora}, BDO: ${base.dns.bdo}`);
+                    
+                    try {
+                        const teleportableUrl = `allyabase://sanora/teleportable-products`;
+                        const pubKey = await getBasePubKeyForTeleportation(base.dns.sanora);
+                        const teleportUrl = `${teleportableUrl}?pubKey=${pubKey}`;
+                        
+                        console.log(`🔗 Using allyabase:// protocol: ${teleportUrl}`);
+                        
+                        const teleportedData = await invoke('teleport_content', {
+                            bdoUrl: base.dns.bdo,
+                            teleportUrl: teleportUrl
+                        });
+                        
+                        console.log('📄 Parsing teleported HTML content...');
+                        const processedItems = await processTeleportedData(teleportedData, base.id, base.name, base.dns.sanora);
+                        allItems = allItems.concat(processedItems);
+                        
+                        console.log(`✅ Processed ${processedItems.length} teleported items from ${base.name}`);
+                        
+                    } catch (error) {
+                        console.error(`❌ Error teleporting from ${base.name}:`, error);
+                    }
+                }
+
+                return allItems;
+                
+            } catch (error) {
+                console.error('❌ Failed to load teleported content:', error);
+                return [];
+            }
+        }
+
+        // Test functions
+        async function testEnvironmentConfig() {
+            const output = document.getElementById('testOutput');
+            const config = getEnvironmentConfig();
+            
+            output.innerHTML = `
+                <h4>✅ Environment Configuration Test</h4>
+                <pre style="color: #2ecc71; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+Environment: ${config.env}
+Sanora URL: ${config.services.sanora}  
+BDO URL: ${config.services.bdo}
+Julia URL: ${config.services.julia}
+                </pre>
+            `;
+        }
+
+        async function testTeleportationFlow() {
+            const output = document.getElementById('testOutput');
+            const content = document.getElementById('content');
+            
+            output.innerHTML = '<h4>🔄 Running Teleportation Flow Test...</h4>';
+            content.innerHTML = '<div class="loading-posts">Loading teleported content...</div>';
+            
+            try {
+                const teleportedItems = await fetchTeleportedContentFromBases();
+                
+                let teleportedContentHTML = '';
+                if (teleportedItems.length > 0) {
+                    teleportedContentHTML = `
+                        <div style="margin-top: 40px; max-width: 800px; margin: 0 auto;">
+                            <h2 style="color: white; margin-bottom: 20px; text-align: center;">🌐 Teleported from Planet Nine Ecosystem</h2>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                                ${teleportedItems.map(item => `
+                                    <div style="background: rgba(255,255,255,0.9); padding: 20px; border-radius: 12px; color: #333;">
+                                        <h3 style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">${item.title}</h3>
+                                        <p style="margin: 0 0 10px 0; font-size: 14px; opacity: 0.8;">${item.description}</p>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-weight: 600; color: #27ae60;">${item.price}</span>
+                                            <span style="font-size: 12px; opacity: 0.6;">from ${item.baseName}</span>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    teleportedContentHTML = `
+                        <div style="margin-top: 40px; text-align: center;">
+                            <p style="color: rgba(255,255,255,0.6); font-size: 16px;">🔌 No teleported content available</p>
+                        </div>
+                    `;
+                }
+                
+                content.innerHTML = teleportedContentHTML;
+                
+                output.innerHTML = `
+                    <h4>✅ Teleportation Flow Test Complete</h4>
+                    <pre style="color: #2ecc71; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+Found ${teleportedItems.length} teleported items
+Check browser console for detailed logs
+Items displayed above ⬆️
+                    </pre>
+                `;
+                
+            } catch (error) {
+                output.innerHTML = `
+                    <h4>❌ Teleportation Flow Test Failed</h4>
+                    <pre style="color: #e74c3c; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+Error: ${error.message}
+                    </pre>
+                `;
+            }
+        }
+
+        async function testHTMLParsing() {
+            const output = document.getElementById('testOutput');
+            
+            const testHTML = `
+                <teleportal title="Test Product" price="$19.99" description="Test description" author="Test Author"></teleportal>
+            `;
+            
+            const items = await processTeleportedData({ html: testHTML }, 'TEST', 'Test Base', 'http://test.com');
+            
+            output.innerHTML = `
+                <h4>✅ HTML Parsing Test</h4>
+                <pre style="color: #2ecc71; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+Parsed ${items.length} items from test HTML
+First item: ${JSON.stringify(items[0], null, 2)}
+                </pre>
+            `;
+        }
+
+        console.log('🚀 StackChat Teleportation Test loaded!');
+        console.log('📋 Available test functions:', ['testEnvironmentConfig', 'testTeleportationFlow', 'testHTMLParsing']);
+    </script>
+</body>
+</html>
