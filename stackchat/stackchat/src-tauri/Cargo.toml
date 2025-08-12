@@ -11,7 +11,7 @@ edition = "2021"
 tauri-build = { version = "2.0", features = [] }
 
 [dependencies]
-tauri = { version = "2.0", features = ["shell-open"] }
+tauri = { version = "2.6.2", features = [] }
 tauri-plugin-shell = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -19,13 +19,27 @@ tokio = { version = "1.0", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 urlencoding = "2.1.3"
-hex = "0.4.3"
+reqwest = { version = "0.12.4", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+sessionless = "0.1.1"
 
-# Planet Nine service clients
-sessionless = { path = "../../../../sessionless/src/rust/crate" }
-bdo-rs = { path = "../../../../bdo/src/client/rust/bdo-rs" }
-sanora-rs = { path = "../../../../sanora/src/client/rust/sanora-rs" }
-julia-rs = { path = "../../../../julia/src/client/rust/julia-rs" }
+# Planet Nine service clients - same paths as ninefy
+[dependencies.addie-rs]
+path = "../../../../addie/src/client/rust/addie-rs"
+
+[dependencies.bdo-rs]
+path = "../../../../bdo/src/client/rust/bdo-rs"
+
+[dependencies.dolores-rs]
+path = "../../../../dolores/src/client/rust/dolores-rs"
+
+[dependencies.fount-rs]
+path = "../../../../fount/src/client/rust/fount-rs"
+
+[dependencies.sanora-rs]
+path = "../../../../sanora/src/client/rust/sanora-rs"
+
+[dependencies.julia-rs]
+path = "../../../../julia/src/client/rust/julia-rs"
 
 [features]
 default = ["custom-protocol"]

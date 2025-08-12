@@ -7,18 +7,31 @@ let backendEnvironmentConfig = null;
 
 async function initializeEnvironmentFromBackend() {
   try {
-    const result = await invoke('get_env_config');
-    if (result.success && result.data) {
-      backendEnvironmentConfig = result.data;
-      console.log(`🔧 Backend environment: ${result.data.env}`);
-      console.log(`🌐 Backend services:`, result.data.services);
-      
-      // Set frontend environment to match backend
-      localStorage.setItem('nullary-env', result.data.env);
+    const backendEnv = await invoke('get_env_config');
+    console.log(`🔧 Backend environment: ${backendEnv}`);
+    
+    // Set frontend environment to match backend
+    const currentFrontendEnv = localStorage.getItem('nullary-env') || 'dev';
+    if (backendEnv !== currentFrontendEnv) {
+      console.log(`🔄 Syncing frontend environment from ${currentFrontendEnv} to ${backendEnv}`);
+      localStorage.setItem('nullary-env', backendEnv);
     }
   } catch (error) {
     console.warn('⚠️ Could not get backend environment config:', error);
   }
+}
+
+async function getBackendEnvironment() {
+  if (window.__TAURI__) {
+    try {
+      const { invoke } = window.__TAURI__.core;
+      return await invoke('get_env_config');
+    } catch (e) {
+      console.warn('Could not get backend environment:', e);
+      return null;
+    }
+  }
+  return null;
 }
 
 function getEnvironmentConfig() {
@@ -180,17 +193,16 @@ async function loadConnections() {
     appState.loading = true;
 
     try {
-        const result = await invoke('get_connections');
+        const connections = await invoke('get_connections');
+        console.log('📋 Loaded connections:', connections);
         
-        if (result.success && result.data) {
-            appState.connections = result.data;
-            displayConnections();
-        } else {
-            displayConnectionsError(result.error || 'Failed to load connections');
-        }
+        // Rust returns array directly, not wrapped in success/data
+        appState.connections = connections || [];
+        displayConnections();
     } catch (error) {
         console.error('Error loading connections:', error);
-        displayConnectionsError('Failed to connect to julia service');
+        appState.connections = [];
+        displayConnections(); // Show empty state with Create Connection button
     } finally {
         appState.loading = false;
     }
@@ -200,12 +212,21 @@ function displayConnections() {
     const content = document.querySelector('#connections-screen .content');
     if (!content) return;
 
+    // Always show the Create Connection button at the top
+    content.innerHTML = `
+        <div style="margin-bottom: 20px; text-align: center;">
+            <button class="form-button" onclick="createNewConnection()" style="background: #27ae60; color: white; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; border: none;">
+                🤝 Create New Connection
+            </button>
+        </div>
+    `;
+
     if (appState.connections.length === 0) {
-        content.innerHTML = `
+        content.innerHTML += `
             <div class="empty-state">
                 <h3>No Connections Yet</h3>
                 <p>Start a conversation by creating a new julia connection!</p>
-                <button class="form-button" onclick="createNewConnection()">Create Connection</button>
+                <p style="color: rgba(255,255,255,0.6); font-size: 14px;">Click "Create New Connection" above to generate a connection URL or process one from a partner.</p>
             </div>
         `;
         return;
@@ -219,7 +240,7 @@ function displayConnections() {
         connectionsContainer.appendChild(connectionCard);
     });
 
-    content.innerHTML = '';
+    const buttonDiv = content.querySelector('div');
     content.appendChild(connectionsContainer);
 }
 
@@ -555,17 +576,18 @@ async function getBasePubKeyForTeleportation(baseUrl) {
         console.log(`🔍 Getting base pubKey for teleportation from: ${baseUrl}`);
         const sanoraUser = await invoke('create_sanora_user', { sanoraUrl: baseUrl });
         
-        if (sanoraUser.success && sanoraUser.data) {
-            const basePubKey = sanoraUser.data.basePubKey || sanoraUser.data.base_pub_key;
+        // Rust function returns direct JSON object
+        if (sanoraUser && (sanoraUser.basePubKey || sanoraUser.base_pub_key)) {
+            const basePubKey = sanoraUser.basePubKey || sanoraUser.base_pub_key;
             console.log(`🔑 Got base pubKey: ${basePubKey}`);
-            return basePubKey || '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+            return basePubKey;
         } else {
-            console.warn(`⚠️ Failed to get Sanora user:`, sanoraUser.error);
-            return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+            console.warn(`⚠️ Failed to get basePubKey from Sanora user:`, sanoraUser);
+            throw new Error('No basePubKey found in Sanora user response');
         }
     } catch (error) {
-        console.error(`❌ Error getting base pubKey:`, error);
-        return '03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd';
+        console.error(`❌ Error getting base pubKey from ${baseUrl}:`, error);
+        throw error; // Don't use fallback, let caller handle error
     }
 }
 
@@ -865,17 +887,20 @@ async function generateConnectionUrl() {
     try {
         statusDiv.innerHTML = '🔄 Generating connection URL...';
         
-        const result = await invoke('generate_connection_url');
+        // Rust returns the URL string directly
+        const connectionUrl = await invoke('generate_connection_url');
+        console.log('📋 Generated connection URL:', connectionUrl);
         
-        if (result.success && result.data) {
-            urlInput.value = result.data;
+        if (connectionUrl) {
+            urlInput.value = connectionUrl;
             statusDiv.innerHTML = '✅ Connection URL generated! Share this with your partner.';
             statusDiv.style.color = '#2ecc71';
         } else {
-            statusDiv.innerHTML = '❌ Failed to generate URL: ' + (result.error || 'Unknown error');
+            statusDiv.innerHTML = '❌ Failed to generate URL: No URL returned';
             statusDiv.style.color = '#e74c3c';
         }
     } catch (error) {
+        console.error('Error generating connection URL:', error);
         statusDiv.innerHTML = '❌ Error generating URL: ' + error;
         statusDiv.style.color = '#e74c3c';
     }
@@ -923,14 +948,19 @@ async function processPartnerUrl() {
         statusDiv.innerHTML = '🔄 Processing connection...';
         statusDiv.style.color = '#3498db';
         
-        const result = await invoke('process_connection_url', { connectionUrl: url });
+        // Rust returns the JuliaConnection directly
+        const connection = await invoke('process_connection_url', { connectionUrl: url });
+        console.log('📋 Processed connection:', connection);
         
-        if (result.success && result.data) {
+        if (connection) {
             statusDiv.innerHTML = '✅ Connection created! Refresh connections to see new partner.';
             statusDiv.style.color = '#2ecc71';
             
             // Clear the input
             partnerUrlInput.value = '';
+            
+            // Add the new connection to our state
+            appState.connections.push(connection);
             
             // Refresh connections after a delay
             setTimeout(() => {
@@ -938,10 +968,11 @@ async function processPartnerUrl() {
                 loadConnections();
             }, 2000);
         } else {
-            statusDiv.innerHTML = '❌ Failed to create connection: ' + (result.error || 'Unknown error');
+            statusDiv.innerHTML = '❌ Failed to create connection: No connection returned';
             statusDiv.style.color = '#e74c3c';
         }
     } catch (error) {
+        console.error('Error processing connection URL:', error);
         statusDiv.innerHTML = '❌ Error processing connection: ' + error;
         statusDiv.style.color = '#e74c3c';
     }

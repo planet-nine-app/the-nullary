@@ -1,0 +1,50 @@
+{
+  "name": "stackchat",
+  "private": true,
+  "version": "0.0.1",
+  "description": "A minimalist messaging platform built on The Nullary ecosystem",
+  "author": "planetnineisaspaceship",
+  "license": "MIT",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "npm run dev:local",
+    "dev:dev": "NINEFY_ENV=dev npm run tauri:dev",
+    "dev:test": "NINEFY_ENV=test npm run tauri:dev", 
+    "dev:local": "NINEFY_ENV=local npm run tauri:dev",
+    "build": "npm run tauri:build",
+    "build:dev": "NINEFY_ENV=dev npm run tauri:build",
+    "build:test": "NINEFY_ENV=test npm run tauri:build",
+    "build:local": "NINEFY_ENV=local npm run tauri:build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js",
+    "format": "prettier --write src/**/*.{js,html,css}"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.7.1",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
+    "vite": "^4.4.0"
+  },
+  "keywords": [
+    "marketplace",
+    "messaging",
+    "tauri",
+    "svg",
+    "allyabase",
+    "nullary",
+    "planet-nine"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/planet-nine-app/planet-nine",
+    "directory": "the-nullary/stackchat/stackchat"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
