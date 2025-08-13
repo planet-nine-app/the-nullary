@@ -2,7 +2,125 @@
 
 ## Overview
 
-StackChat is a peer-to-peer messaging application built on the Planet Nine ecosystem, featuring RPG-style dialog interfaces and space-flight message animations. It leverages the covenant service to establish joint BDO (Big Dumb Object) storage between users, enabling secure, decentralized messaging without central servers. The app combines classic RPG aesthetics with modern P2P communication technology.
+StackChat is a peer-to-peer messaging application built on the Planet Nine ecosystem, featuring RPG-style dialog interfaces and space-flight message animations. It leverages the julia service for establishing P2P connections between users, enabling secure, decentralized messaging without central servers. The app combines classic RPG aesthetics with modern P2P communication technology.
+
+## Current Status (January 2025)
+
+### ✅ Completed
+- **Julia Integration**: Full integration with julia service for user management
+- **Unique Key Generation**: Each app instance generates unique sessionless keys (process-ID based)
+- **Environment Support**: Proper environment switching (dev/test/local) via `STACKCHAT_ENV`
+- **Connection Storage**: Local storage of connections with real julia UUIDs
+- **UI Components**: Complete RPG-style messaging interface with animations
+- **No Mock Data**: All production code, no mock data or test stubs
+
+### 🚧 In Progress: Julia Association Flow
+
+The julia association flow requires careful implementation of a multi-step process:
+
+#### Current Implementation Status
+1. **User Creation**: ✅ Working - creates julia users with unique keys
+2. **Connection URL Generation**: ✅ Partially working - generates URL with prompt data
+3. **Association Process**: ❌ Needs refinement - the exact flow needs verification
+
+#### Julia Association Flow (VERIFIED)
+
+After reviewing the julia server implementation, the correct flow is:
+
+**Correct Flow - Three-Step Process**
+```
+App 1 → GET /user/:uuid/associate/prompt → Gets prompt with promptId
+App 1 → POST /user/:uuid/associate/signedPrompt → Signs the prompt for themselves
+App 1 → Shares connection URL with: promptId + signed prompt data
+App 2 → POST /user/:uuid/associate → Associates using App 1's signed prompt
+```
+
+**Key Implementation Details (from julia server code)**:
+1. **GET prompt**: Returns user with `pendingPrompts` containing the promptId
+2. **POST signedPrompt**: App 1 signs their own prompt first 
+3. **POST associate**: App 2 uses signed prompt to create association
+
+**Critical Requirements**:
+- The `/user/:uuid/associate` endpoint validates that the prompt exists in `foundUser.pendingPrompts[prompt]`
+- The prompt must match: `prompter === foundUser.uuid` and `newUUID === newUUID` 
+- Both signatures are verified using `sessionless.associate()`
+- The association is bidirectional - julia automatically associates both users
+
+#### Current Implementation Issues
+1. **Wrong Flow**: Current code calls `sign_prompt` in App 1, but it should call `POST /user/:uuid/associate/signedPrompt` first
+2. **Missing Step**: App 1 needs to sign the prompt for themselves before sharing
+3. **Parameter Format**: The associate endpoint expects specific parameter names that match server validation
+
+### 📁 Key Files Modified
+
+#### `/src-tauri/src/julia_integration.rs`
+- Complete julia service integration
+- Handles user creation, connection management, and messaging
+- Contains association logic that needs refinement
+
+#### `/src-tauri/src/lib.rs`
+- Environment-aware sessionless key generation
+- Process-ID based unique keys to prevent conflicts
+- Proper environment variable handling
+
+#### `/julia/src/client/rust/julia-rs/src/lib.rs`
+- Enhanced error handling for julia API responses
+- Debug logging for association troubleshooting
+- Needs verification of association endpoint behavior
+
+### 🔧 Environment Configuration
+
+```bash
+# Run with test environment (local julia at 127.0.0.1:5111)
+STACKCHAT_ENV=test npm run tauri dev
+
+# Run second instance with different key
+PRIVATE_KEY=1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef \
+STACKCHAT_ENV=test npm run tauri dev
+```
+
+### 🐛 Current Blockers
+
+1. **Julia Association Flow Implementation**: The current flow is incorrect
+   - **ISSUE**: App 1 calls `sign_prompt()` instead of `POST /user/:uuid/associate/signedPrompt`
+   - **ISSUE**: App 2 expects the prompt to exist in App 1's `pendingPrompts` but App 1 never called `signedPrompt`
+   - **ISSUE**: Parameter mapping doesn't match julia server expectations
+   
+2. **Specific Technical Fixes Needed**:
+   - Fix `generate_connection_url()` to call `POST /user/:uuid/associate/signedPrompt` after getting prompt
+   - Update URL parameters to include the actual prompt text (not just promptId)
+   - Fix `process_connection_url()` to use correct parameter names for `POST /user/:uuid/associate`
+   - Ensure the prompt validation logic matches julia server requirements (lines 206-216 in julia.js)
+
+### 📋 Next Steps
+
+1. **Fix Julia Association Implementation** (HIGH PRIORITY)
+   - **Update `generate_connection_url()`**: Add `POST /user/:uuid/associate/signedPrompt` call after getting prompt
+   - **Update `process_connection_url()`**: Use correct parameter names for julia associate endpoint
+   - **Fix Parameter Mapping**: Ensure `newUUID`, `newPubKey`, `prompt`, `newSignature` match server expectations
+
+2. **Technical Implementation Changes**
+   - In `generate_connection_url()`: Call `julia.sign_prompt()` but using the correct endpoint (`POST signedPrompt`)
+   - In `process_connection_url()`: Remove the manual prompt creation and use the actual prompt from URL
+   - Verify prompt validation matches julia server logic (prompter must equal user UUID)
+
+3. **Test Updated Flow**
+   - Run two StackChat instances with corrected julia association flow
+   - Verify both users appear in each other's `interactingKeys` via julia API
+   - Test end-to-end messaging with proper associations
+
+### 🔍 Debugging Commands
+
+```bash
+# Check julia user creation
+curl http://127.0.0.1:5111/user/{uuid}
+
+# Verify associations
+curl http://127.0.0.1:5111/user/{uuid} | jq .keys.interactingKeys
+
+# Test message sending
+curl -X POST http://127.0.0.1:5111/message -d '{...}'
+```
 
 ## Architecture
 

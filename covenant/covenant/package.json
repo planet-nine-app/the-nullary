@@ -1,0 +1,25 @@
+{
+  "name": "covenant-gui",
+  "private": true,
+  "version": "0.1.0",
+  "description": "GUI application for magical covenant contract management",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "dev:dev": "cross-env COVENANT_ENV=dev tauri dev",
+    "dev:test": "cross-env COVENANT_ENV=test tauri dev", 
+    "dev:local": "cross-env COVENANT_ENV=local tauri dev",
+    "build": "tauri build",
+    "build:dev": "cross-env COVENANT_ENV=dev tauri build",
+    "build:test": "cross-env COVENANT_ENV=test tauri build",
+    "build:local": "cross-env COVENANT_ENV=local tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "cross-env": "^7.0.3"
+  }
+}

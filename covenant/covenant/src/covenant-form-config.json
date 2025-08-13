@@ -1,0 +1,26 @@
+{
+  "covenant": {
+    "label": "🏛️ Covenant Contract",
+    "icon": "🏛️",
+    "title": "🏛️ Create Magical Covenant",
+    "formConfig": {
+      "Contract Title": {
+        "type": "text"
+      },
+      "Description": {
+        "type": "textarea",
+        "charLimit": 1000
+      },
+      "Participants": {
+        "type": "textarea",
+        "charLimit": 2000,
+        "placeholder": "Enter participant UUIDs, one per line. Click 'Copy My UUID' button above to start.\nExample:\n6b6ceafd-d87e-4b9a-a4d9-79c6e8ff9696\n9a4a5019-fc4f-4735-ac85-68c184755514\n\nTips:\n• Click 'Copy My UUID' to get your own UUID\n• Ask other participants to share their UUIDs with you\n• Use the Connection screen to generate shareable URLs\n• Each participant needs their own unique UUID"
+      },
+      "Contract Steps": {
+        "type": "textarea", 
+        "charLimit": 2000,
+        "placeholder": "Enter contract steps, one per line. Each step can be signed individually by participants.\n\nExample:\nProposal and scope agreement\nInitial payment (50%)\nDevelopment phase begins\nCode review and testing\nFinal delivery and documentation\nFinal payment (50%)\nProject completion\n\nTips:\n• Each line becomes a separate step\n• Steps are executed in the order you list them\n• Participants can sign each step when it's completed\n• Empty lines are ignored\n• Be specific - each step should be a clear milestone"
+      }
+    }
+  }
+}

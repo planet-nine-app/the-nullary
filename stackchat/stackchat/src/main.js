@@ -193,7 +193,7 @@ async function loadConnections() {
     appState.loading = true;
 
     try {
-        const connections = await invoke('get_connections');
+        const connections = await window.juliaIntegration.getConnections();
         console.log('📋 Loaded connections:', connections);
         
         // Rust returns array directly, not wrapped in success/data
@@ -282,15 +282,17 @@ async function acceptConnection(associationUuid, event) {
     if (event) event.stopPropagation();
     
     try {
-        const result = await invoke('accept_connection', { associationUuid });
-        if (result.success) {
+        // Rust returns boolean directly, not wrapped in {success, error}
+        const result = await window.juliaIntegration.acceptConnection(associationUuid);
+        if (result) {
+            console.log('✅ Connection accepted successfully');
             await loadConnections(); // Refresh connections
         } else {
-            alert(`Failed to accept connection: ${result.error}`);
+            alert('Failed to accept connection');
         }
     } catch (error) {
         console.error('Error accepting connection:', error);
-        alert('Failed to accept connection');
+        alert('Failed to accept connection: ' + error);
     }
 }
 
@@ -298,15 +300,17 @@ async function blockConnection(associationUuid, event) {
     if (event) event.stopPropagation();
     
     try {
-        const result = await invoke('block_connection', { associationUuid });
-        if (result.success) {
+        // Rust returns boolean directly, not wrapped in {success, error}
+        const result = await window.juliaIntegration.blockConnection(associationUuid);
+        if (result) {
+            console.log('🚫 Connection blocked successfully');
             await loadConnections(); // Refresh connections
         } else {
-            alert(`Failed to block connection: ${result.error}`);
+            alert('Failed to block connection');
         }
     } catch (error) {
         console.error('Error blocking connection:', error);
-        alert('Failed to block connection');
+        alert('Failed to block connection: ' + error);
     }
 }
 
@@ -390,20 +394,20 @@ async function loadMessages(silent = false) {
     }
 
     try {
-        const result = await invoke('get_conversation', { associationUuid: connection.uuid });
+        const result = await window.juliaIntegration.getConversation(connection.uuid);
         
-        if (result.success && result.data) {
+        if (result) {
             const previousMessageCount = appState.messages.length;
-            appState.messages = result.data.messages;
+            appState.messages = result.messages || [];
             displayMessages();
             
             // Show notification if new messages arrived during silent refresh
-            if (silent && result.data.messages.length > previousMessageCount) {
+            if (silent && result.messages && result.messages.length > previousMessageCount) {
                 showMessageStatus('💬 New messages received', 'success');
             }
             
             // Mark messages as read
-            await invoke('mark_messages_read', { associationUuid: connection.uuid });
+            await window.juliaIntegration.markMessagesRead(connection.uuid);
         } else {
             if (!silent) {
                 displayMessagesError(result.error || 'Failed to load conversation');
@@ -481,18 +485,18 @@ async function handleSendMessage(e) {
     messageInput.value = '';
     
     try {
-        const result = await invoke('send_message', {
-            associationUuid: appState.currentConversation.uuid,
+        const result = await window.juliaIntegration.sendMessage(
+            appState.currentConversation.uuid,
             content
-        });
+        );
         
-        if (result.success && result.data) {
+        if (result) {
             // Add message to display
-            appState.messages.push(result.data);
+            appState.messages.push(result);
             displayMessages();
             showMessageStatus('✅ Message sent successfully!', 'success');
         } else {
-            showMessageStatus(`❌ Failed to send: ${result.error}`, 'error');
+            showMessageStatus('❌ Failed to send message', 'error');
             // Restore message in input if sending failed
             messageInput.value = content;
         }
@@ -888,7 +892,7 @@ async function generateConnectionUrl() {
         statusDiv.innerHTML = '🔄 Generating connection URL...';
         
         // Rust returns the URL string directly
-        const connectionUrl = await invoke('generate_connection_url');
+        const connectionUrl = await window.juliaIntegration.generateConnectionUrl();
         console.log('📋 Generated connection URL:', connectionUrl);
         
         if (connectionUrl) {
@@ -949,7 +953,7 @@ async function processPartnerUrl() {
         statusDiv.style.color = '#3498db';
         
         // Rust returns the JuliaConnection directly
-        const connection = await invoke('process_connection_url', { connectionUrl: url });
+        const connection = await window.juliaIntegration.processConnectionUrl(url);
         console.log('📋 Processed connection:', connection);
         
         if (connection) {

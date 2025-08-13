@@ -1,0 +1,23 @@
+{
+  "name": "covenant-viewer",
+  "version": "1.0.0",
+  "description": "Public web interface for viewing covenant contract states",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "cross-env COVENANT_ENV=dev node server.js",
+    "dev:dev": "cross-env COVENANT_ENV=dev node server.js",
+    "dev:test": "cross-env COVENANT_ENV=test node server.js", 
+    "dev:local": "cross-env COVENANT_ENV=local node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
+  },
+  "keywords": ["covenant", "planet-nine", "contracts", "svg", "blockchain"],
+  "author": "Planet Nine",
+  "license": "MIT"
+}

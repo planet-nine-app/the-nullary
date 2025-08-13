@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "Covenant GUI",
+  "version": "0.1.0",
+  "identifier": "app.planetnine.covenant-gui",
+  "app": {
+    "windows": [
+      {
+        "title": "Covenant - Magical Contract Management",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  },
+  "build": {
+    "frontendDist": "../src"
+  }
+}

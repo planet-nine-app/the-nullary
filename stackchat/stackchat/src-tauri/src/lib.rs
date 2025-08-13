@@ -6,16 +6,11 @@ use sessionless::hex::FromHex;
 use sessionless::hex::IntoHex;
 use sessionless::{PrivateKey, Sessionless};
 use std::env;
-use std::sync::{Mutex, LazyLock};
-use std::collections::HashMap;
-// use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
-// Global connection storage
-static CONNECTIONS: LazyLock<Mutex<HashMap<String, JuliaConnection>>> = LazyLock::new(|| {
-    Mutex::new(HashMap::new())
-});
+mod julia_integration;
+use julia_integration::{JuliaConnection, Message, Conversation};
 
 /// Debug logging command for development
 #[tauri::command]
@@ -76,13 +71,31 @@ fn get_service_url(service: &str) -> String {
     url
 }
 
-/// Get or create sessionless instance using environment variable or default key
+/// Get or create sessionless instance using environment variable or unique generated key
 async fn get_sessionless() -> Result<Sessionless, String> {
-    let private_key = env::var("PRIVATE_KEY").unwrap_or_else(|_| {
-        String::from("b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496")
-    });
+    // Check for environment variable first
+    match env::var("PRIVATE_KEY") {
+        Ok(env_key) => {
+            println!("🔑 Using PRIVATE_KEY from environment: {}...", &env_key[..16]);
+            let sessionless = Sessionless::from_private_key(PrivateKey::from_hex(env_key).expect("private key"));
+            println!("🔑 Public key (from env): {}", sessionless.public_key().to_hex());
+            return Ok(sessionless);
+        }
+        Err(_) => {
+            println!("🔑 No PRIVATE_KEY environment variable found, generating unique key");
+        }
+    }
+    
+    // Generate unique key per app instance to avoid conflicts
+    // In production, this should be stored persistently per user
+    let unique_id = std::process::id();
+    let base_key = "b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496";
+    let private_key = format!("{}{:08x}", &base_key[..56], unique_id); // Mix in process ID for uniqueness
+    
+    println!("🔑 Generated private key (process {}): {}...", unique_id, &private_key[..16]);
     let sessionless =
         Sessionless::from_private_key(PrivateKey::from_hex(private_key).expect("private key"));
+    println!("🔑 Public key: {}", sessionless.public_key().to_hex());
     Ok(sessionless)
 }
 
@@ -93,142 +106,41 @@ async fn sign_message(message: String) -> Result<String, String> {
     Ok(signature.into_hex())
 }
 
-// Data structures for julia-based connections
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct JuliaConnection {
-    pub uuid: String,
-    pub partner_uuid: String,
-    pub partner_name: String,
-    pub partner_public_key: String,
-    pub julia_url: String,
-    pub created_at: DateTime<Utc>,
-    pub last_message_at: Option<DateTime<Utc>>,
-    pub unread_count: usize,
-    pub status: String,
-}
+// ============================================================================
+// JULIA INTEGRATION COMMANDS - All delegated to julia_integration module
+// ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Message {
-    pub uuid: String,
-    pub sender_uuid: String,
-    pub sender_name: String,
-    pub recipient_uuid: String,
-    pub content: String,
-    pub timestamp: DateTime<Utc>,
-    pub association_uuid: String,
-    pub read: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Conversation {
-    pub connection: JuliaConnection,
-    pub messages: Vec<Message>,
-    pub total_count: usize,
-}
-
-/// Get julia connections (real implementation)
+/// Get julia connections (delegates to julia_integration module)
 #[tauri::command]
 async fn get_connections() -> Result<Vec<JuliaConnection>, String> {
-    println!("🔍 Getting real julia connections...");
-    
-    // Get connections from storage
-    let connections_map = CONNECTIONS.lock().map_err(|e| format!("Failed to lock connections: {}", e))?;
-    let connections: Vec<JuliaConnection> = connections_map.values().cloned().collect();
-    
-    println!("📋 Found {} julia connections", connections.len());
-    for conn in &connections {
-        println!("  - {} ({}): {}", conn.partner_name, conn.status, conn.uuid);
-    }
-    
-    Ok(connections)
+    julia_integration::get_connections().await
 }
 
 /// Get conversation messages for a julia association
 #[tauri::command]
 async fn get_conversation(association_uuid: String) -> Result<Conversation, String> {
-    // Get connections to find the right one
-    let connections = get_connections().await?;
+    println!("💬 Getting conversation for association: {}", association_uuid);
+    
+    let connections = julia_integration::get_connections().await?;
     let connection = connections.into_iter()
         .find(|c| c.uuid == association_uuid)
         .ok_or_else(|| format!("Connection {} not found", association_uuid))?;
     
-    // Create mock messages for this conversation
-    let sessionless = get_sessionless().await?;
-    let messages = vec![
-        Message {
-            uuid: "msg-1".to_string(),
-            sender_uuid: "user-alice".to_string(),
-            sender_name: "Alice Developer".to_string(),
-            recipient_uuid: sessionless.public_key().to_hex().to_string(),
-            content: "Hey! How's the StackChat development going? I heard you switched to julia!".to_string(),
-            timestamp: Utc::now() - chrono::Duration::hours(2),
-            association_uuid: association_uuid.clone(),
-            read: false,
-        },
-        Message {
-            uuid: "msg-2".to_string(),
-            sender_uuid: sessionless.public_key().to_hex().to_string(),
-            sender_name: "You".to_string(),
-            recipient_uuid: "user-alice".to_string(),
-            content: "Yes! Just replaced covenant with julia for P2P messaging. Much cleaner!".to_string(),
-            timestamp: Utc::now() - chrono::Duration::hours(1),
-            association_uuid: association_uuid.clone(),
-            read: true,
-        },
-        Message {
-            uuid: "msg-3".to_string(),
-            sender_uuid: "user-alice".to_string(),
-            sender_name: "Alice Developer".to_string(),
-            recipient_uuid: sessionless.public_key().to_hex().to_string(),
-            content: "That sounds awesome! Julia associations are perfect for P2P messaging.".to_string(),
-            timestamp: Utc::now() - chrono::Duration::minutes(30),
-            association_uuid: association_uuid.clone(),
-            read: false,
-        },
-        Message {
-            uuid: "msg-4".to_string(),
-            sender_uuid: sessionless.public_key().to_hex().to_string(),
-            sender_name: "You".to_string(),
-            recipient_uuid: "user-alice".to_string(),
-            content: "And the space-flight animation still works perfectly! 🚀".to_string(),
-            timestamp: Utc::now() - chrono::Duration::minutes(15),
-            association_uuid: association_uuid.clone(),
-            read: true,
-        },
-    ];
-    
+    // No mock data - return empty conversation until real julia message retrieval is implemented
     let conversation = Conversation {
         connection,
-        messages,
-        total_count: 4,
+        messages: vec![], // Empty - no mock data!
+        total_count: 0,
     };
     
+    println!("📋 Retrieved conversation with {} real messages", conversation.messages.len());
     Ok(conversation)
 }
 
 /// Send a message in a julia association
 #[tauri::command]
 async fn send_message(association_uuid: String, content: String) -> Result<Message, String> {
-    println!("📤 Sending message to julia association: {}", association_uuid);
-    
-    let sessionless = get_sessionless().await?;
-    
-    // Create new message
-    let message = Message {
-        uuid: format!("msg-{}", uuid::Uuid::new_v4()),
-        sender_uuid: sessionless.public_key().to_hex().to_string(),
-        sender_name: "You".to_string(),
-        recipient_uuid: "partner-user".to_string(), // Would be from connection
-        content: content.clone(),
-        timestamp: Utc::now(),
-        association_uuid: association_uuid.clone(),
-        read: true,
-    };
-    
-    // TODO: Send to real julia service when julia-rs client is available
-    println!("✅ Message ready for julia service: {}", content);
-    
-    Ok(message)
+    julia_integration::send_message(association_uuid, content).await
 }
 
 /// Mark messages as read for a julia association
@@ -241,117 +153,54 @@ async fn mark_messages_read(association_uuid: String) -> Result<bool, String> {
 /// Accept a julia connection
 #[tauri::command]
 async fn accept_connection(association_uuid: String) -> Result<bool, String> {
-    println!("Accepted julia association: {}", association_uuid);
-    Ok(true)
+    julia_integration::accept_connection(association_uuid).await
 }
 
 /// Block a julia connection
 #[tauri::command]
 async fn block_connection(association_uuid: String) -> Result<bool, String> {
-    println!("Blocked julia association: {}", association_uuid);
-    Ok(true)
+    julia_integration::block_connection(association_uuid).await
 }
 
 /// Generate a julia-based connection URL
 #[tauri::command]
 async fn generate_connection_url() -> Result<String, String> {
-    let sessionless = get_sessionless().await?;
+    julia_integration::generate_connection_url().await
+}
+
+/// Create a reciprocal connection for testing (simulates julia service behavior)
+#[tauri::command]
+async fn create_reciprocal_connection(partner_public_key: String, partner_name: String) -> Result<JuliaConnection, String> {
+    println!("🔄 Creating reciprocal connection for testing");
+    
     let julia_url = get_service_url("julia");
     
-    // Create connection info: timestamp|publicKey|name|juliaServerURL
-    // Using | as delimiter to avoid conflicts with : in URLs
-    let timestamp = Utc::now().timestamp();
-    let name = "StackChat User"; // Could be made configurable
-    let message = format!("{}|{}|{}|{}", timestamp, sessionless.public_key().to_hex(), name, julia_url);
+    // Create the reciprocal connection
+    let connection = JuliaConnection {
+        uuid: format!("julia-reciprocal-{}", uuid::Uuid::new_v4()),
+        partner_uuid: format!("user-{}", uuid::Uuid::new_v4()),
+        partner_name: partner_name.clone(),
+        partner_public_key: partner_public_key.clone(),
+        julia_url: julia_url.clone(),
+        created_at: Utc::now(),
+        last_message_at: None,
+        unread_count: 0,
+        status: "Active".to_string(), // Already accepted
+    };
     
-    // Sign the message
-    let signature = sign_message(message.clone()).await?;
-    
-    // Create URL with all needed info for julia association
-    let connection_url = format!(
-        "stackchat://connect?message={}&signature={}&publicKey={}&name={}&juliaUrl={}",
-        urlencoding::encode(&message),
-        urlencoding::encode(&signature),
-        urlencoding::encode(&sessionless.public_key().to_hex()),
-        urlencoding::encode(name),
-        urlencoding::encode(&julia_url)
-    );
-    
-    Ok(connection_url)
+    println!("✅ Created reciprocal connection: {}", connection.uuid);
+    Ok(connection)
 }
 
 /// Process a julia-based connection URL
 #[tauri::command]
 async fn process_connection_url(connection_url: String) -> Result<JuliaConnection, String> {
-    // Parse URL to extract connection parameters
-    let url_parts: Vec<&str> = connection_url.split('?').collect();
-    if url_parts.len() != 2 {
-        return Err("Invalid connection URL format".to_string());
-    }
-    
-    let query_params: std::collections::HashMap<String, String> = url_parts[1]
-        .split('&')
-        .filter_map(|param| {
-            let parts: Vec<&str> = param.split('=').collect();
-            if parts.len() == 2 {
-                Some((
-                    parts[0].to_string(),
-                    urlencoding::decode(parts[1]).unwrap_or_default().to_string()
-                ))
-            } else {
-                None
-            }
-        })
-        .collect();
-    
-    let message = query_params.get("message")
-        .ok_or("Missing message parameter")?;
-    let partner_name = query_params.get("name")
-        .ok_or("Missing name parameter")?;
-    let julia_url = query_params.get("juliaUrl")
-        .ok_or("Missing juliaUrl parameter")?;
-    let public_key_a = query_params.get("publicKey")
-        .ok_or("Missing publicKey parameter")?;
-    
-    // Validate timestamp (check if not expired - 5 minute window)
-    let message_parts: Vec<&str> = message.split('|').collect();
-    if message_parts.len() != 4 {
-        return Err(format!("Invalid message format - should be timestamp|publicKey|name|juliaUrl, got {} parts: {:?}", message_parts.len(), message_parts));
-    }
-    
-    let timestamp: i64 = message_parts[0].parse()
-        .map_err(|_| "Invalid timestamp in message")?;
-    let current_timestamp = Utc::now().timestamp();
-    
-    if current_timestamp - timestamp > 300 { // 5 minutes expiration
-        return Err("Connection URL has expired".to_string());
-    }
-    
-    // Create julia association
-    let connection = JuliaConnection {
-        uuid: format!("julia-assoc-{}", uuid::Uuid::new_v4()),
-        partner_uuid: format!("user-{}", uuid::Uuid::new_v4()),
-        partner_name: partner_name.clone(),
-        partner_public_key: public_key_a.clone(),
-        julia_url: julia_url.clone(),
-        created_at: Utc::now(),
-        last_message_at: None,
-        unread_count: 0,
-        status: "Pending".to_string(), // Pending until partner accepts
-    };
-    
-    println!("✅ Created julia association: {:?}", connection);
-    
-    // Store the connection
-    {
-        let mut connections_map = CONNECTIONS.lock().map_err(|e| format!("Failed to lock connections: {}", e))?;
-        connections_map.insert(connection.uuid.clone(), connection.clone());
-        println!("💾 Stored connection with UUID: {}", connection.uuid);
-        println!("📊 Total connections in storage: {}", connections_map.len());
-    }
-    
-    Ok(connection)
+    julia_integration::process_connection_url(connection_url).await
 }
+
+// ============================================================================
+// NON-JULIA COMMANDS (sessionless, health, teleportation)
+// ============================================================================
 
 /// Get sessionless info for the frontend
 #[tauri::command]
@@ -470,6 +319,7 @@ pub fn run() {
             block_connection,
             generate_connection_url,
             process_connection_url,
+            create_reciprocal_connection,
             get_sessionless_info,
             health_check,
             create_sanora_user,

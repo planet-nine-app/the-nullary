@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Covenant Viewer - Public Contract Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 0;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #64b5f6, #81c784);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #b0bec5;
+            margin-bottom: 20px;
+        }
+
+        .search-section {
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            border: 1px solid #64b5f6;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 15px;
+            border: 2px solid #64b5f6;
+            border-radius: 8px;
+            background: rgba(26, 26, 46, 0.8);
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #81c784;
+            box-shadow: 0 0 10px rgba(129, 199, 132, 0.3);
+        }
+
+        .search-btn {
+            padding: 15px 25px;
+            background: linear-gradient(45deg, #64b5f6, #81c784);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(100, 181, 246, 0.4);
+        }
+
+        .theme-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .theme-btn {
+            padding: 10px 15px;
+            background: rgba(255, 183, 77, 0.2);
+            border: 1px solid #ffb74d;
+            border-radius: 6px;
+            color: #ffb74d;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-btn.active {
+            background: #ffb74d;
+            color: #1a1a2e;
+        }
+
+        .theme-btn:hover {
+            background: rgba(255, 183, 77, 0.3);
+        }
+
+        .contract-display {
+            background: rgba(22, 33, 62, 0.8);
+            border-radius: 12px;
+            padding: 30px;
+            border: 1px solid #64b5f6;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            font-size: 18px;
+            color: #64b5f6;
+        }
+
+        .loading::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #64b5f6;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid #f44336;
+            border-radius: 8px;
+            padding: 20px;
+            color: #f44336;
+            margin: 20px 0;
+        }
+
+        .contract-info {
+            background: rgba(26, 26, 46, 0.6);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .contract-info h3 {
+            color: #64b5f6;
+            margin-bottom: 10px;
+        }
+
+        .contract-info p {
+            margin: 5px 0;
+            color: #b0bec5;
+        }
+
+        .svg-container {
+            margin: 20px 0;
+            text-align: center;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .contracts-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .contract-card {
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid #64b5f6;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .contract-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(100, 181, 246, 0.3);
+            border-color: #81c784;
+        }
+
+        .contract-card h4 {
+            color: #64b5f6;
+            margin-bottom: 10px;
+        }
+
+        .contract-card p {
+            color: #b0bec5;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #64b5f6, #81c784);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .examples {
+            background: rgba(22, 33, 62, 0.6);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .examples h4 {
+            color: #64b5f6;
+            margin-bottom: 15px;
+        }
+
+        .example-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .example-link {
+            background: rgba(100, 181, 246, 0.2);
+            border: 1px solid #64b5f6;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #64b5f6;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .example-link:hover {
+            background: rgba(100, 181, 246, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            border-top: 1px solid rgba(100, 181, 246, 0.3);
+            color: #b0bec5;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .search-form {
+                flex-direction: column;
+            }
+            
+            .search-input {
+                min-width: 100%;
+            }
+            
+            .theme-controls {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Covenant Viewer</h1>
+            <p>Public interface for viewing Planet Nine covenant contracts</p>
+            <p><em>Enter a contract UUID to view its magical visualization</em></p>
+        </div>
+
+        <div class="search-section">
+            <div class="search-form">
+                <input 
+                    type="text" 
+                    id="contractUuid" 
+                    class="search-input" 
+                    placeholder="Enter contract UUID (e.g., 12345678-1234-5678-9012-123456789abc)"
+                >
+                <button id="searchBtn" class="search-btn">🔍 View Contract</button>
+                
+                <div class="theme-controls">
+                    <span style="color: #b0bec5; margin-right: 10px;">Theme:</span>
+                    <button class="theme-btn active" data-theme="light">☀️ Light</button>
+                    <button class="theme-btn" data-theme="dark">🌙 Dark</button>
+                </div>
+            </div>
+            
+            <div class="examples">
+                <h4>📋 Available Contracts</h4>
+                <div id="contractsList" class="example-links">
+                    <span style="color: #b0bec5;">Loading contracts...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="contract-display">
+            <div id="loading" class="loading">Loading contract visualization...</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="contractInfo" class="contract-info" style="display: none;"></div>
+            <div id="svgContainer" class="svg-container" style="display: none;"></div>
+            
+            <div id="welcomeMessage" style="color: #b0bec5; font-size: 18px;">
+                <p>🎨 Welcome to the Covenant Viewer!</p>
+                <p style="margin-top: 15px;">Enter a contract UUID above to view its beautiful SVG visualization,<br>
+                or browse available contracts below.</p>
+                <p style="margin-top: 15px; font-size: 14px;">
+                    This interface provides public access to covenant contract states<br>
+                    stored in the Planet Nine ecosystem's BDO storage system.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>⚡ Powered by <strong>Planet Nine Ecosystem</strong> • 🔗 <a href="https://github.com/planet-nine-app/planet-nine" style="color: #64b5f6;">GitHub</a></p>
+        <p style="margin-top: 10px; font-size: 14px;">
+            Covenant contracts are stored in decentralized BDO storage and visualized with beautiful SVG themes
+        </p>
+    </div>
+
+    <script>
+        let currentTheme = 'light';
+        
+        // Environment detection and API base URL
+        const API_BASE = window.location.origin;
+        
+        // Environment configuration for browser console
+        const ENVIRONMENTS = {
+            dev: {
+                name: 'Development Server',
+                covenant: 'https://dev.covenant.allyabase.com',
+                description: 'Production dev server environment'
+            },
+            test: {
+                name: '3-Base Test Ecosystem', 
+                covenant: 'http://127.0.0.1:5122',
+                description: 'Local 3-base test ecosystem (ports 5111-5122)'
+            },
+            local: {
+                name: 'Local Development',
+                covenant: 'http://127.0.0.1:3011',
+                description: 'Standard local development environment'
+            }
+        };
+        
+        // Browser console environment helpers
+        window.covenantViewerEnv = {
+            switch: (env) => {
+                if (!ENVIRONMENTS[env]) {
+                    console.error(`❌ Unknown environment: ${env}`);
+                    return false;
+                }
+                console.log(`🌍 Environment switch to ${env} requested`);
+                console.log(`📍 To switch server environment, restart with: npm run dev:${env}`);
+                console.log(`📍 Current server environment is set by COVENANT_ENV variable`);
+                return true;
+            },
+            current: () => {
+                console.log('🌍 Web viewer environment determined by server COVENANT_ENV variable');
+                console.log('📍 Available environments: dev, test, local');
+                console.log('📊 Server API base:', API_BASE);
+                return { serverApi: API_BASE };
+            },
+            list: () => {
+                console.log('🌍 Available environments:');
+                Object.keys(ENVIRONMENTS).forEach(key => {
+                    const env = ENVIRONMENTS[key];
+                    console.log(`  ${key}: ${env.name} - ${env.description}`);
+                });
+                console.log('💡 Use npm run dev:ENV to start server in specific environment');
+                return Object.keys(ENVIRONMENTS);
+            }
+        };
+        
+        // DOM elements
+        const contractUuidInput = document.getElementById('contractUuid');
+        const searchBtn = document.getElementById('searchBtn');
+        const loadingDiv = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+        const contractInfoDiv = document.getElementById('contractInfo');
+        const svgContainer = document.getElementById('svgContainer');
+        const welcomeMessage = document.getElementById('welcomeMessage');
+        const contractsList = document.getElementById('contractsList');
+        
+        // Theme switching
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTheme = btn.dataset.theme;
+                
+                // Re-fetch current contract if one is displayed
+                const uuid = contractUuidInput.value.trim();
+                if (uuid && svgContainer.style.display !== 'none') {
+                    loadContract(uuid);
+                }
+            });
+        });
+        
+        // Search functionality
+        searchBtn.addEventListener('click', () => {
+            const uuid = contractUuidInput.value.trim();
+            if (uuid) {
+                loadContract(uuid);
+                // Update URL without page reload
+                const newUrl = `${window.location.origin}/contract/${uuid}`;
+                window.history.pushState({contractId: uuid}, '', newUrl);
+            } else {
+                showError('Please enter a contract UUID');
+            }
+        });
+        
+        // Enter key support
+        contractUuidInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+        
+        // Load contract function
+        async function loadContract(uuid) {
+            showLoading();
+            
+            try {
+                // Fetch contract info and SVG in parallel
+                const [contractResponse, svgResponse] = await Promise.all([
+                    fetch(`${API_BASE}/api/contract/${uuid}`),
+                    fetch(`${API_BASE}/api/contract/${uuid}/svg?theme=${currentTheme}&width=800&height=600`)
+                ]);
+                
+                if (!contractResponse.ok) {
+                    throw new Error(`Contract not found (${contractResponse.status})`);
+                }
+                
+                if (!svgResponse.ok) {
+                    throw new Error(`Failed to load visualization (${svgResponse.status})`);
+                }
+                
+                const contract = await contractResponse.json();
+                const svg = await svgResponse.text();
+                
+                displayContract(contract, svg);
+                
+            } catch (error) {
+                console.error('Error loading contract:', error);
+                showError(`Failed to load contract: ${error.message}`);
+            }
+        }
+        
+        // Display contract info and SVG
+        function displayContract(contract, svg) {
+            hideLoading();
+            
+            // Calculate progress
+            const completedSteps = contract.steps ? contract.steps.filter(step => step.completed).length : 0;
+            const totalSteps = contract.steps ? contract.steps.length : 0;
+            const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+            
+            // Display contract info
+            contractInfoDiv.innerHTML = `
+                <h3>📜 ${contract.title}</h3>
+                <p><strong>UUID:</strong> ${contract.uuid}</p>
+                <p><strong>Description:</strong> ${contract.description || 'No description'}</p>
+                <p><strong>Status:</strong> <span style="color: ${contract.status === 'active' ? '#81c784' : '#ffb74d'}">${contract.status.toUpperCase()}</span></p>
+                <p><strong>Participants:</strong> ${contract.participants ? contract.participants.length : 0} parties</p>
+                <p><strong>Progress:</strong> ${completedSteps}/${totalSteps} steps completed (${Math.round(progress)}%)</p>
+                <p><strong>Created:</strong> ${new Date(contract.created_at).toLocaleDateString()}</p>
+            `;
+            contractInfoDiv.style.display = 'block';
+            
+            // Display SVG
+            svgContainer.innerHTML = svg;
+            svgContainer.style.display = 'block';
+            
+            // Hide welcome message
+            welcomeMessage.style.display = 'none';
+        }
+        
+        // Load available contracts
+        async function loadAvailableContracts() {
+            try {
+                const response = await fetch(`${API_BASE}/api/contracts`);
+                if (!response.ok) {
+                    throw new Error('Failed to load contracts');
+                }
+                
+                let contracts = await response.json();
+                
+                // Handle different response formats
+                if (contracts.data && Array.isArray(contracts.data)) {
+                    contracts = contracts.data;
+                } else if (!Array.isArray(contracts)) {
+                    contracts = [];
+                }
+                
+                if (contracts.length === 0) {
+                    contractsList.innerHTML = '<span style="color: #b0bec5;">No public contracts available</span>';
+                    return;
+                }
+                
+                contractsList.innerHTML = contracts.slice(0, 10).map(contract => 
+                    `<a href="#" class="example-link" onclick="loadContractFromList('${contract.uuid}'); return false;">
+                        ${contract.title || contract.uuid.substring(0, 8)}...
+                    </a>`
+                ).join('');
+                
+            } catch (error) {
+                console.error('Error loading contracts:', error);
+                contractsList.innerHTML = '<span style="color: #f44336;">Failed to load contracts</span>';
+            }
+        }
+        
+        // Load contract from list
+        window.loadContractFromList = function(uuid) {
+            contractUuidInput.value = uuid;
+            loadContract(uuid);
+            
+            // Update URL
+            const newUrl = `${window.location.origin}/contract/${uuid}`;
+            window.history.pushState({contractId: uuid}, '', newUrl);
+        };
+        
+        // Utility functions
+        function showLoading() {
+            loadingDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            contractInfoDiv.style.display = 'none';
+            svgContainer.style.display = 'none';
+            welcomeMessage.style.display = 'none';
+        }
+        
+        function hideLoading() {
+            loadingDiv.style.display = 'none';
+        }
+        
+        function showError(message) {
+            hideLoading();
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            contractInfoDiv.style.display = 'none';
+            svgContainer.style.display = 'none';
+            welcomeMessage.style.display = 'none';
+        }
+        
+        // Handle browser back/forward
+        window.addEventListener('popstate', (event) => {
+            if (event.state && event.state.contractId) {
+                contractUuidInput.value = event.state.contractId;
+                loadContract(event.state.contractId);
+            } else {
+                // Return to home state
+                contractUuidInput.value = '';
+                hideLoading();
+                errorDiv.style.display = 'none';
+                contractInfoDiv.style.display = 'none';
+                svgContainer.style.display = 'none';
+                welcomeMessage.style.display = 'block';
+            }
+        });
+        
+        // Check URL for contract UUID on page load
+        window.addEventListener('load', () => {
+            const path = window.location.pathname;
+            const contractMatch = path.match(/\/contract\/([a-f0-9-]+)/);
+            
+            if (contractMatch) {
+                const uuid = contractMatch[1];
+                contractUuidInput.value = uuid;
+                loadContract(uuid);
+            }
+            
+            // Load available contracts
+            loadAvailableContracts();
+        });
+        
+        // Auto-refresh contracts list every 30 seconds
+        setInterval(loadAvailableContracts, 30000);
+        
+        console.log('🎯 Covenant Viewer initialized');
+        console.log('📍 API Base:', API_BASE);
+        console.log('💡 Environment controls: covenantViewerEnv.switch("test"), covenantViewerEnv.current(), covenantViewerEnv.list()');
+    </script>
+</body>
+</html>
