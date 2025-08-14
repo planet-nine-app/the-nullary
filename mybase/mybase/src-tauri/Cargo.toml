@@ -1,31 +1,38 @@
 [package]
 name = "mybase"
-version = "0.0.1"
+version = "0.1.0"
 description = "MyBase - Social networking platform for Planet Nine ecosystem"
-authors = ["planetnineisaspaceship"]
+authors = ["Planet Nine"]
 license = "MIT"
-repository = "https://github.com/planet-nine-app/the-nullary"
+repository = "https://github.com/planet-nine-app/planet-nine"
 edition = "2021"
 
+[lib]
+name = "mybase"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
-tauri-build = { version = "2.0", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "2.0", features = ["shell-open"] }
+tauri = { version = "2.6.2", features = [] }
 tauri-plugin-shell = "2.0"
+tauri-plugin-fs = "2.2.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12.4", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
+sessionless = "0.1.1"
 
 # Planet Nine service clients
-prof-rs = { path = "../../../../prof/src/client/rust/prof-rs" }
-addie-rs = { path = "../../../../addie/src/client/rust/addie-rs" }
-fount-rs = { path = "../../../../fount/src/client/rust/fount-rs" }
-bdo-rs = { path = "../../../../bdo/src/client/rust/bdo-rs" }
-dolores-rs = { path = "../../../../dolores/src/client/rust/dolores-rs" }
-sessionless = { path = "../../../../sessionless/rust/sessionless" }
+[dependencies.bdo-rs]
+path = "../../../../bdo/src/client/rust/bdo-rs"
 
-# Additional dependencies
-tokio = { version = "1.0", features = ["full"] }
-uuid = { version = "1.0", features = ["v4"] }
-base64 = "0.21"
-chrono = { version = "0.4", features = ["serde"] }
+[dependencies.dolores-rs]
+path = "../../../../dolores/src/client/rust/dolores-rs"
+
+[dependencies.sanora-rs]
+path = "../../../../sanora/src/client/rust/sanora-rs"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

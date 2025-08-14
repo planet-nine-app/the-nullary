@@ -435,4 +435,19 @@ getEnvironmentConfig()
 - **Shared Components**: Can leverage shared Nullary components when needed
 - **Cross-App Integration**: Can reference contracts from other Nullary applications
 
+## Important Tauri v2 Configuration
+
+**CRITICAL**: For Tauri v2 apps, you MUST include `"withGlobalTauri": true` in the `app` object of `tauri.conf.json`:
+
+```json
+{
+  "app": {
+    "withGlobalTauri": true,  // Required for window.__TAURI__ API access
+    "windows": [...]
+  }
+}
+```
+
+Without this setting, the Tauri API will not be injected into `window.__TAURI__`, causing all `invoke` calls to fail with "invoke is not a function" errors.
+
 Covenant GUI represents a complete implementation of the covenant service interface, providing users with an intuitive way to create, manage, and visualize magical contracts while maintaining the cryptographic security and decentralized principles of the Planet Nine ecosystem.

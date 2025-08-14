@@ -1,8 +1,18 @@
 {
   "name": "mybase",
-  "private": true,
   "version": "0.0.1",
+  "private": true,
+  "description": "A place for all your bases to belong to you",
+  "keywords": [
+    "planet-nine",
+    "magic",
+    "teleportation",
+    "allyabase"
+  ],
+  "license": "MIT",
+  "author": "planetnineisaspaceship",
   "type": "module",
+  "main": "index.js",
   "scripts": {
     "tauri": "tauri",
     "tauri:dev": "tauri dev",

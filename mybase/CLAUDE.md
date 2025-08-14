@@ -425,7 +425,6 @@ pub struct BaseStats {
 ## Future Enhancements
 
 ### Immediate Roadmap
-- **Real Service Integration**: Replace mock data with actual prof/dolores calls
 - **Enhanced Profile Editing**: Full profile update interface with image upload
 - **Post Interactions**: Implement like, comment, and share functionality
 - **Search and Discovery**: Find profiles and content across bases
@@ -472,7 +471,7 @@ Testing follows Planet Nine patterns:
 - **Backend Logic**: Rust unit tests for service integration
 - **Frontend Testing**: Tauri development environment testing
 - **Integration Testing**: Against development prof/dolores services
-- **Social Features**: Mock social interactions and content creation
+- **Social Features**: Real social interactions and content creation
 - **Capacity Testing**: Base limit enforcement and edge cases
 
 ## Accessibility

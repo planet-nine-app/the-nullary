@@ -67,8 +67,8 @@ nexus/
 - `GET /api/ping` - Health check
 - `GET /api/services/status` - All service health monitoring  
 - `GET /api/bases/status` - Connected base status
-- `GET /api/content/feed` - Mock aggregated content
-- `GET /api/shopping/products` - Mock product catalog
+- `GET /api/content/feed` - Real aggregated content from connected bases
+- `GET /api/shopping/products` - Real product catalog from Ninefy marketplace
 
 ### Development Commands
 ```bash
@@ -147,7 +147,7 @@ curl http://127.0.0.1:3333/api/ping
 The portal serves as a comprehensive showcase:
 - **Real-time service monitoring** with health percentages
 - **Interactive SVG portals** with hover effects and animations  
-- **Mock data integration** demonstrating cross-base content aggregation
+- **Real data integration** demonstrating cross-base content aggregation
 - **Professional interface** ready for stakeholder presentations
 - **Browser automation** for automated screenshot capture
 

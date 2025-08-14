@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tauri API Test</title>
+</head>
+<body>
+    <h1>Tauri API Test</h1>
+    <button id="testBtn">Test Tauri Invoke</button>
+    <div id="output"></div>
+    
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            const output = document.getElementById('output');
+            
+            // Log Tauri API structure
+            console.log('window.__TAURI__:', window.__TAURI__);
+            
+            if (window.__TAURI__) {
+                output.innerHTML += '<p>✅ __TAURI__ object found</p>';
+                
+                // Try to find invoke function
+                let invoke;
+                if (window.__TAURI__.core && window.__TAURI__.core.invoke) {
+                    invoke = window.__TAURI__.core.invoke;
+                    output.innerHTML += '<p>✅ Found invoke at __TAURI__.core.invoke</p>';
+                } else if (window.__TAURI__.invoke) {
+                    invoke = window.__TAURI__.invoke;
+                    output.innerHTML += '<p>✅ Found invoke at __TAURI__.invoke</p>';
+                } else if (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke) {
+                    invoke = window.__TAURI__.tauri.invoke;
+                    output.innerHTML += '<p>✅ Found invoke at __TAURI__.tauri.invoke</p>';
+                } else if (window.__TAURI__.primitives && window.__TAURI__.primitives.invoke) {
+                    invoke = window.__TAURI__.primitives.invoke;
+                    output.innerHTML += '<p>✅ Found invoke at __TAURI__.primitives.invoke</p>';
+                } else {
+                    output.innerHTML += '<p>❌ Could not find invoke function</p>';
+                    output.innerHTML += '<p>Available keys: ' + Object.keys(window.__TAURI__).join(', ') + '</p>';
+                }
+                
+                document.getElementById('testBtn').addEventListener('click', async () => {
+                    if (invoke) {
+                        try {
+                            const result = await invoke('get_user_info');
+                            output.innerHTML += '<p>✅ get_user_info result: ' + JSON.stringify(result) + '</p>';
+                        } catch (error) {
+                            output.innerHTML += '<p>❌ Error calling get_user_info: ' + error + '</p>';
+                        }
+                    } else {
+                        output.innerHTML += '<p>❌ No invoke function available</p>';
+                    }
+                });
+            } else {
+                output.innerHTML += '<p>❌ __TAURI__ object not found</p>';
+            }
+        });
+    </script>
+</body>
+</html>

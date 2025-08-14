@@ -270,6 +270,6 @@ Testing follows Planet Nine patterns:
 - Backend logic tested via Rust unit tests
 - Frontend tested via Tauri development environment
 - Integration tested against development allyabase services
-- Mock data provided for offline development
+- Real service integration with graceful offline fallbacks
 
 Photary demonstrates the power of The Nullary's shared component architecture while providing a focused, high-quality photo browsing experience within the Planet Nine ecosystem.

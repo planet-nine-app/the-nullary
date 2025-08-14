@@ -4,6 +4,7 @@ use sessionless::hex::{FromHex, IntoHex};
 use std::env;
 use std::sync::{Mutex, LazyLock};
 use std::collections::HashMap;
+use tauri_plugin_clipboard_manager::ClipboardExt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CovenantConnection {
@@ -15,6 +16,10 @@ pub struct CovenantConnection {
     pub status: String,
     pub created_at: String,
     pub progress: f32,
+    #[serde(rename = "bdoUuid")]
+    pub bdo_uuid: Option<String>, // BDO UUID for accessing contract data
+    #[serde(rename = "pubKey")]
+    pub pub_key: Option<String>, // Public key for BDO authentication
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -277,30 +282,48 @@ async fn get_contracts() -> Result<Vec<CovenantConnection>, String> {
             
             if let Some(contracts) = contracts_array {
                 let connections: Vec<CovenantConnection> = contracts.iter().filter_map(|contract| {
-                    // Extract contract fields
+                    // Extract contract fields (make only uuid and title required)
                     let uuid = contract.get("uuid")?.as_str()?.to_string();
                     let title = contract.get("title")?.as_str()?.to_string();
                     let description = contract.get("description").and_then(|d| d.as_str()).unwrap_or("").to_string();
-                    let participants = contract.get("participants")?
-                        .as_array()?
-                        .iter()
-                        .filter_map(|p| p.as_str().map(|s| s.to_string()))
-                        .collect();
-                    let creator = contract.get("creator")?.as_str()?.to_string();
-                    let status = contract.get("status")?.as_str()?.to_string();
-                    let created_at = contract.get("created_at")?.as_str()?.to_string();
+                    let participants = contract.get("participants")
+                        .and_then(|p| p.as_array())
+                        .map(|arr| arr.iter().filter_map(|p| p.as_str().map(|s| s.to_string())).collect())
+                        .unwrap_or_default();
+                    let creator = contract.get("creator").and_then(|c| c.as_str()).unwrap_or("unknown").to_string();
+                    let status = contract.get("status").and_then(|s| s.as_str()).unwrap_or("active").to_string();
+                    let created_at = contract.get("createdAt")
+                        .or_else(|| contract.get("created_at"))
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("0").to_string();
                     
-                    // Calculate progress
-                    let steps = contract.get("steps").and_then(|s| s.as_array())?;
-                    let completed_steps = steps.iter().filter(|step| {
-                        step.get("completed").and_then(|c| c.as_bool()).unwrap_or(false)
-                    }).count();
-                    let total_steps = steps.len();
-                    let progress = if total_steps > 0 { 
-                        (completed_steps as f32 / total_steps as f32) * 100.0 
-                    } else { 
-                        0.0 
+                    // Calculate progress - handle both old format (steps array) and new format (stepCount/completedSteps)
+                    let progress = if let (Some(step_count), Some(completed_steps)) = (
+                        contract.get("stepCount").and_then(|s| s.as_u64()),
+                        contract.get("completedSteps").and_then(|c| c.as_u64())
+                    ) {
+                        if step_count > 0 {
+                            (completed_steps as f32 / step_count as f32) * 100.0
+                        } else {
+                            0.0
+                        }
+                    } else if let Some(steps) = contract.get("steps").and_then(|s| s.as_array()) {
+                        let completed_steps = steps.iter().filter(|step| {
+                            step.get("completed").and_then(|c| c.as_bool()).unwrap_or(false)
+                        }).count();
+                        let total_steps = steps.len();
+                        if total_steps > 0 { 
+                            (completed_steps as f32 / total_steps as f32) * 100.0 
+                        } else { 
+                            0.0 
+                        }
+                    } else {
+                        0.0
                     };
+                    
+                    // Extract BDO UUID and pubKey if available
+                    let bdo_uuid = contract.get("bdoUuid").and_then(|b| b.as_str()).map(|s| s.to_string());
+                    let pub_key = contract.get("pubKey").and_then(|p| p.as_str()).map(|s| s.to_string());
                     
                     Some(CovenantConnection {
                         uuid,
@@ -311,6 +334,8 @@ async fn get_contracts() -> Result<Vec<CovenantConnection>, String> {
                         status,
                         created_at,
                         progress,
+                        bdo_uuid,
+                        pub_key,
                     })
                 }).collect();
                 
@@ -461,6 +486,20 @@ async fn get_user_info() -> Result<(String, String), String> {
     Ok((user_uuid, pub_key))
 }
 
+/// Copy user UUID to clipboard
+#[tauri::command]
+async fn copy_user_uuid_to_clipboard(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let user_uuid = get_user_uuid().await?;
+    
+    // Use the clipboard plugin to copy the UUID
+    app_handle.clipboard()
+        .write_text(&user_uuid)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+    
+    println!("📋 UUID copied to clipboard: {}", user_uuid);
+    Ok(user_uuid)
+}
+
 /// Initialize sessionless and generate connection URL for other instances
 #[tauri::command]
 async fn generate_connection_url() -> Result<String, String> {
@@ -528,6 +567,7 @@ async fn process_connection_url(connection_url: String) -> Result<String, String
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             create_contract,
             get_contracts,
@@ -535,6 +575,7 @@ pub fn run() {
             sign_step,
             get_contract_svg,
             get_user_info,
+            copy_user_uuid_to_clipboard,
             generate_connection_url,
             process_connection_url
         ])

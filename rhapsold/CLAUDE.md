@@ -139,7 +139,7 @@ rhapsold/
 - **`SanoraClient`** - Complete API client with sessionless authentication
 - **File Upload Pipeline**: Images and content files to Sanora service
 - **Blog Product Creation**: Transform blog posts into sellable Sanora products
-- **Mock Client**: Development/testing support with sample data
+- **Development Client**: Testing support with real service integration
 - **Error Handling**: Comprehensive error handling and retry logic
 
 ### Layered UI System
@@ -266,7 +266,7 @@ All backend functions include comprehensive error handling:
 - Uses hardcoded development private key
 - Connects to local allyabase services (localhost:7243, etc.)
 - Debug logging enabled
-- Mock data support
+- Real data integration with graceful fallbacks
 
 **Production Mode**:
 - Environment variable-based private key (`PRIVATE_KEY`)
@@ -521,7 +521,7 @@ The `test-workflow.html` provides a development interface for testing:
 - Component loading verification
 - Form creation and submission testing
 - Post conversion workflow testing
-- Mock Sanora integration testing
+- Real Sanora integration testing
 
 ### Key Development Patterns
 

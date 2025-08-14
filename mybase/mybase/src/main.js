@@ -566,19 +566,36 @@ async function handleCreateProfile(e) {
     }
 }
 
+// Import base command for real base discovery
+// Note: This would normally be an import in a module system
+// For now, we'll use the window.baseCommand object set by base-command.js
+
 // Base Management Functions
 async function loadBases() {
     const content = document.querySelector('#bases-screen .content');
     if (!content) return;
 
     try {
-        const result = await invoke('get_bases');
-        
-        if (result.success && result.data) {
-            appState.bases = result.data;
-            displayBases();
+        // Use real BDO-based base discovery
+        if (window.baseCommand) {
+            const bases = await window.baseCommand.getBases();
+            if (bases) {
+                // Convert to array format expected by MyBase
+                appState.bases = Object.values(bases);
+                displayBases();
+            } else {
+                displayBasesError('No bases discovered');
+            }
         } else {
-            displayBasesError(result.error || 'Failed to load bases');
+            // Fallback to old method if base-command not loaded
+            const result = await invoke('get_bases');
+            
+            if (result.success && result.data) {
+                appState.bases = result.data;
+                displayBases();
+            } else {
+                displayBasesError(result.error || 'Failed to load bases');
+            }
         }
     } catch (error) {
         console.error('Error loading bases:', error);
@@ -647,12 +664,22 @@ function displayBasesError(error) {
 
 async function joinBase(baseName) {
     try {
-        const result = await invoke('join_base', { baseName });
-        if (result.success) {
+        let success = false;
+        
+        // Use real base command if available
+        if (window.baseCommand) {
+            success = await window.baseCommand.joinBase(baseName);
+        } else {
+            // Fallback to direct invoke
+            const result = await invoke('join_base', { baseName });
+            success = result.success;
+        }
+        
+        if (success) {
             await loadBases(); // Refresh the bases list
             await loadSocialFeed(); // Refresh the feed with new base content
         } else {
-            alert(`Failed to join base: ${result.error}`);
+            alert(`Failed to join base: ${baseName}`);
         }
     } catch (error) {
         console.error('Error joining base:', error);
@@ -662,12 +689,22 @@ async function joinBase(baseName) {
 
 async function leaveBase(baseName) {
     try {
-        const result = await invoke('leave_base', { baseName });
-        if (result.success) {
+        let success = false;
+        
+        // Use real base command if available
+        if (window.baseCommand) {
+            success = await window.baseCommand.leaveBase(baseName);
+        } else {
+            // Fallback to direct invoke
+            const result = await invoke('leave_base', { baseName });
+            success = result.success;
+        }
+        
+        if (success) {
             await loadBases(); // Refresh the bases list
             await loadSocialFeed(); // Refresh the feed
         } else {
-            alert(`Failed to leave base: ${result.error}`);
+            alert(`Failed to leave base: ${baseName}`);
         }
     } catch (error) {
         console.error('Error leaving base:', error);

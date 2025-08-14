@@ -234,14 +234,21 @@ const theme = {
 /**
  * Create SVG container with standard settings
  */
-function createSVGContainer(width = '100%', height = 'auto', viewHeight = 600) {
+function createSVGContainer(width = '100%', height = '100%', viewHeight = 600) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('width', width);
-    svg.setAttribute('height', height);
+    // If height is 'auto', convert to percentage for SVG compatibility
+    if (height === 'auto') {
+        svg.setAttribute('height', '100%');
+        svg.style.height = 'auto';  // Use CSS for auto height behavior
+    } else {
+        svg.setAttribute('height', height);
+    }
     svg.setAttribute('viewBox', `0 0 800 ${viewHeight}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMin meet');
     svg.style.background = theme.colors.background;
     svg.style.minHeight = '100vh';
+    svg.style.height = viewHeight + 'px';  // Set explicit height to ensure scrolling works
     svg.style.display = 'block';
     return svg;
 }
@@ -520,7 +527,7 @@ function createContractsScreen() {
     
     // Show My UUID button
     const myUuidBtn = createSVGButton(
-        '🆔 My UUID', 500, 100, 120, 40,
+        '🆔 Copy My UUID', 500, 100, 140, 40,
         showMyUUID, {
             fill: theme.colors.accent,
             hoverFill: theme.colors.warning
@@ -530,7 +537,7 @@ function createContractsScreen() {
     
     // Add helper text for UUID management
     const uuidHelper = createSVGText(
-        '💡 Click "My UUID" to copy your UUID for sharing with other participants',
+        '💡 Click "Copy My UUID" to copy your UUID for sharing with other participants',
         50, 160, {
             fontSize: theme.typography.smallSize,
             color: theme.colors.textSecondary
@@ -579,7 +586,8 @@ function createContractsScreen() {
  * Create contract creation screen
  */
 function createContractCreationScreen() {
-    const svg = createSVGContainer('100%', 'auto', 800);
+    // Increase viewHeight to ensure submit button is visible
+    const svg = createSVGContainer('100%', 'auto', 900);
     
     // Header
     const title = createSVGText('✨ Create New Covenant', 50, 50, {
@@ -617,11 +625,15 @@ function createContractCreationScreen() {
             await showMyUUID();
             // Auto-insert into participants field if it exists and is empty
             const participantsField = document.querySelector('textarea[placeholder*="participant"]');
-            if (participantsField && !participantsField.value.trim()) {
-                const [userUuid] = await invoke('get_user_info');
-                participantsField.value = userUuid + '\n';
-                participantsField.dispatchEvent(new Event('input'));
-                console.log('✅ Auto-inserted your UUID into Participants field');
+            if (participantsField && !participantsField.value.trim() && invoke) {
+                try {
+                    const [userUuid] = await invoke('get_user_info');
+                    participantsField.value = userUuid + '\n';
+                    participantsField.dispatchEvent(new Event('input'));
+                    console.log('✅ Auto-inserted your UUID into Participants field');
+                } catch (error) {
+                    console.warn('⚠️ Could not auto-insert UUID:', error);
+                }
             }
         }, {
             fill: theme.colors.accent,
@@ -630,12 +642,12 @@ function createContractCreationScreen() {
     );
     svg.appendChild(myUuidBtnCreate);
     
-    // Create form widget container
+    // Create form widget container - increased height to show submit button
     const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
     foreignObject.setAttribute('x', '50');
     foreignObject.setAttribute('y', '150');
     foreignObject.setAttribute('width', '700');
-    foreignObject.setAttribute('height', '600');
+    foreignObject.setAttribute('height', '700');
     
     const formContainer = document.createElement('div');
     formContainer.id = 'covenantFormContainer';
@@ -685,6 +697,21 @@ async function loadCovenantForm() {
     // Clear container and add form
     container.innerHTML = '';
     container.appendChild(form);
+    
+    // The form widget creates an SVG submit button at y=730
+    // Just log that we expect it to be there
+    setTimeout(() => {
+        const svgForm = container.querySelector('svg');
+        if (svgForm) {
+            const submitRect = svgForm.querySelector('#submitButton');
+            if (submitRect) {
+                console.log('✅ Form has SVG submit button at y=' + submitRect.getAttribute('y'));
+                console.log('💡 Tip: Fill all fields to enable the submit button');
+            } else {
+                console.log('⚠️ No submit button found in SVG form');
+            }
+        }
+    }, 100);
     
     console.log('✅ Covenant form rendered');
 }
@@ -800,6 +827,155 @@ function createConnectionScreen() {
 }
 
 /**
+ * Create contract view screen to display SVG
+ */
+function createContractViewScreen() {
+    const svg = createSVGContainer('100%', '100%', 900);
+    
+    if (!appState.currentContract) {
+        // No contract selected, show error
+        const errorText = createSVGText('❌ No contract selected', 50, 300, {
+            fontSize: theme.typography.titleSize,
+            color: theme.colors.error
+        });
+        
+        const backBtn = createSVGButton(
+            '← Back to Contracts', 50, 350, 200, 40,
+            () => switchToScreen('contracts'), {
+                fill: theme.colors.primary
+            }
+        );
+        
+        svg.appendChild(errorText);
+        svg.appendChild(backBtn);
+        return svg;
+    }
+    
+    // Header with contract info
+    const title = createSVGText(`📜 ${appState.currentContract.title}`, 50, 50, {
+        fontSize: theme.typography.titleSize,
+        fontWeight: 'bold',
+        color: theme.colors.primary
+    });
+    
+    const subtitle = createSVGText(
+        `UUID: ${appState.currentContract.uuid}`,
+        50, 80, {
+            fontSize: theme.typography.smallSize,
+            color: theme.colors.textSecondary
+        }
+    );
+    
+    svg.appendChild(title);
+    svg.appendChild(subtitle);
+    
+    // Back button
+    const backBtn = createSVGButton(
+        '← Back', 50, 100, 80, 30,
+        () => switchToScreen('contracts'), {
+            fill: theme.colors.textSecondary,
+            fontSize: theme.typography.smallSize
+        }
+    );
+    svg.appendChild(backBtn);
+    
+    // Loading container for SVG
+    const loadingText = createSVGText('⏳ Loading contract visualization...', 50, 200, {
+        fontSize: theme.typography.bodySize,
+        color: theme.colors.textSecondary
+    });
+    svg.appendChild(loadingText);
+    
+    // Load and display the contract SVG
+    setTimeout(async () => {
+        try {
+            if (!invoke) {
+                throw new Error('Tauri API not available');
+            }
+            
+            console.log('🎨 Loading SVG for contract:', appState.currentContract.uuid);
+            const contractSvg = await invoke('get_contract_svg', {
+                contractUuid: appState.currentContract.uuid,
+                theme: 'dark'
+            });
+            
+            // Remove loading text
+            svg.removeChild(loadingText);
+            
+            // Create foreignObject to embed the contract SVG with proper centering
+            const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+            foreignObject.setAttribute('x', '20');
+            foreignObject.setAttribute('y', '140');
+            foreignObject.setAttribute('width', '760');
+            foreignObject.setAttribute('height', '600');
+            
+            const svgContainer = document.createElement('div');
+            svgContainer.style.cssText = `
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+                box-sizing: border-box;
+                background: rgba(255, 255, 255, 0.02);
+                border-radius: 8px;
+                border: 1px solid ${theme.colors.primary}40;
+            `;
+            
+            // Parse and fix the SVG directly
+            svgContainer.innerHTML = contractSvg;
+            
+            // Fix SVG dimensions to be responsive
+            const embeddedSvg = svgContainer.querySelector('svg');
+            if (embeddedSvg) {
+                // Remove hardcoded width/height and use viewBox for scaling
+                const width = embeddedSvg.getAttribute('width');
+                const height = embeddedSvg.getAttribute('height');
+                
+                if (width && height) {
+                    // Set viewBox if not already present
+                    if (!embeddedSvg.getAttribute('viewBox')) {
+                        embeddedSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+                    }
+                }
+                
+                // Make SVG responsive and properly sized
+                embeddedSvg.setAttribute('width', '100%');
+                embeddedSvg.setAttribute('height', 'auto');
+                embeddedSvg.style.cssText = `
+                    max-width: 100%;
+                    max-height: 100%;
+                    width: auto;
+                    height: auto;
+                `;
+            }
+            
+            foreignObject.appendChild(svgContainer);
+            svg.appendChild(foreignObject);
+            
+            console.log('✅ Contract SVG loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Failed to load contract SVG:', error);
+            
+            // Remove loading text and show error
+            if (svg.contains(loadingText)) {
+                svg.removeChild(loadingText);
+            }
+            
+            const errorText = createSVGText(`❌ Failed to load contract: ${error}`, 50, 200, {
+                fontSize: theme.typography.bodySize,
+                color: theme.colors.error
+            });
+            svg.appendChild(errorText);
+        }
+    }, 100);
+    
+    return svg;
+}
+
+/**
  * Switch between screens
  */
 function switchToScreen(screenName) {
@@ -824,6 +1000,9 @@ function renderCurrentScreen() {
             break;
         case 'connect':
             screen = createConnectionScreen();
+            break;
+        case 'view':
+            screen = createContractViewScreen();
             break;
         default:
             screen = createContractsScreen();
@@ -863,26 +1042,43 @@ async function loadContracts() {
  */
 async function showMyUUID() {
     if (!invoke) {
-        alert('Tauri API not available');
+        console.error('❌ Invoke function not available. Tauri API status:', {
+            tauriAvailable: !!window.__TAURI__,
+            invokeFunction: invoke,
+            tauriObject: window.__TAURI__
+        });
+        alert('Tauri API not available. Please ensure the app is running in Tauri environment.');
         return;
     }
     
     try {
+        // First get the user info
         const [userUuid, pubKey] = await invoke('get_user_info');
         
-        // Create a nice display with copy functionality
+        // Then copy UUID to clipboard using Tauri command
+        try {
+            await invoke('copy_user_uuid_to_clipboard');
+            console.log('✅ UUID copied to clipboard via Tauri: ' + userUuid);
+        } catch (clipboardError) {
+            // Fallback to browser clipboard if Tauri clipboard fails
+            console.warn('⚠️ Tauri clipboard failed, trying browser clipboard:', clipboardError);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(userUuid);
+                    console.log('✅ UUID copied to clipboard via browser API: ' + userUuid);
+                } catch (browserError) {
+                    console.error('❌ Browser clipboard also failed:', browserError);
+                }
+            }
+        }
+        
+        // Create a nice display
         const message = `🔑 Your Covenant User Information\n\n` +
                        `UUID: ${userUuid}\n` +
                        `(Share this with others to be added as a participant)\n\n` +
                        `Public Key: ${pubKey.substring(0, 20)}...${pubKey.substring(pubKey.length - 20)}\n\n` +
                        `💡 UUID has been copied to your clipboard!\n` +
                        `📋 You can paste this directly into the Participants field`;
-        
-        // Copy UUID to clipboard first
-        if (navigator.clipboard) {
-            await navigator.clipboard.writeText(userUuid);
-            console.log('✅ UUID copied to clipboard: ' + userUuid);
-        }
         
         alert(message);
         
@@ -895,22 +1091,22 @@ async function showMyUUID() {
 /**
  * Handle covenant form submission from form-widget
  */
-async function handleCovenantFormSubmit() {
+async function handleCovenantFormSubmit(formData) {
     if (!invoke) {
         console.error('❌ Tauri API not available');
+        showStatusMessage('❌ Tauri API not available', 'error');
         return;
     }
     
-    console.log('📝 Form submitted, collecting data...');
+    console.log('📝 Form submitted, processing data directly from form widget...');
+    console.log('📊 Received form data:', formData);
     
-    // Collect form data using form-widget function
-    if (typeof window.collectFormData !== 'function') {
-        console.error('❌ Form widget collectFormData function not available');
+    // Validate that we have form data
+    if (!formData || typeof formData !== 'object') {
+        console.error('❌ No form data received');
+        showStatusMessage('❌ No form data received', 'error');
         return;
     }
-    
-    const formData = window.collectFormData();
-    console.log('📊 Collected form data:', formData);
     
     // Extract and validate data
     const title = formData['Contract Title'] || '';
@@ -920,7 +1116,9 @@ async function handleCovenantFormSubmit() {
     
     // Validation
     if (!title.trim() || !description.trim() || !participantsText.trim() || !stepsText.trim()) {
-        console.error('❌ Please fill in all required fields');
+        const errorMsg = '❌ Please fill in all required fields';
+        console.error(errorMsg);
+        showStatusMessage(errorMsg, 'error');
         return;
     }
     
@@ -934,12 +1132,15 @@ async function handleCovenantFormSubmit() {
         .filter(s => s.length > 0);
     
     if (participants.length === 0 || steps.length === 0) {
-        console.error('❌ Please provide at least one participant and one step');
+        const errorMsg = '❌ Please provide at least one participant and one step';
+        console.error(errorMsg);
+        showStatusMessage(errorMsg, 'error');
         return;
     }
     
     try {
         console.log('⏳ Creating contract...');
+        showStatusMessage('⏳ Creating contract...', 'info');
         
         const result = await invoke('create_contract', {
             title: title.trim(),
@@ -949,15 +1150,18 @@ async function handleCovenantFormSubmit() {
         });
         
         console.log('✅ Contract created successfully!', result);
+        showStatusMessage('✅ Contract created successfully!', 'success');
         
         // Switch back to contracts screen and reload
         setTimeout(() => {
             switchToScreen('contracts');
             loadContracts();
-        }, 1000);
+        }, 1500);
         
     } catch (error) {
-        console.error('❌ Failed to create contract:', error);
+        const errorMsg = '❌ Failed to create contract: ' + error;
+        console.error(errorMsg);
+        showStatusMessage(errorMsg, 'error');
     }
 }
 
@@ -1050,22 +1254,93 @@ function updateGeneratedUrl(message, color) {
 }
 
 /**
+ * Show status message to user
+ */
+function showStatusMessage(message, type = 'info') {
+    console.log('📢 Status:', message, type);
+    
+    // Create or update status message element
+    let statusDiv = document.getElementById('statusMessage');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'statusMessage';
+        statusDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 10000;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(statusDiv);
+    }
+    
+    // Set colors based on type
+    const colors = {
+        success: { bg: 'rgba(76, 175, 80, 0.9)', text: '#ffffff' },
+        error: { bg: 'rgba(244, 67, 54, 0.9)', text: '#ffffff' },
+        info: { bg: 'rgba(33, 150, 243, 0.9)', text: '#ffffff' },
+        warning: { bg: 'rgba(255, 193, 7, 0.9)', text: '#333333' }
+    };
+    
+    const colorScheme = colors[type] || colors.info;
+    statusDiv.style.background = colorScheme.bg;
+    statusDiv.style.color = colorScheme.text;
+    statusDiv.textContent = message;
+    statusDiv.style.opacity = '1';
+    
+    // Auto-hide after 5 seconds for success/info, 8 seconds for errors
+    const hideDelay = type === 'error' ? 8000 : 5000;
+    setTimeout(() => {
+        if (statusDiv) {
+            statusDiv.style.opacity = '0';
+            setTimeout(() => {
+                if (statusDiv && statusDiv.parentNode) {
+                    statusDiv.parentNode.removeChild(statusDiv);
+                }
+            }, 300);
+        }
+    }, hideDelay);
+}
+
+/**
  * Initialize the application
  */
 async function initializeApp() {
     // Check if we're in Tauri environment
     if (window.__TAURI__) {
         try {
-            // Get invoke function from Tauri
-            invoke = window.__TAURI__.core.invoke;
-            console.log('🎯 Tauri environment detected');
+            // Try different ways to get invoke function based on Tauri version
+            if (window.__TAURI__.core && window.__TAURI__.core.invoke) {
+                invoke = window.__TAURI__.core.invoke;
+            } else if (window.__TAURI__.invoke) {
+                invoke = window.__TAURI__.invoke;
+            } else if (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke) {
+                invoke = window.__TAURI__.tauri.invoke;
+            } else if (window.__TAURI__.primitives && window.__TAURI__.primitives.invoke) {
+                invoke = window.__TAURI__.primitives.invoke;
+            }
             
-            // Load user info
-            try {
-                appState.userInfo = await invoke('get_user_info');
-                console.log('👤 User info loaded:', appState.userInfo);
-            } catch (error) {
-                console.warn('⚠️ Failed to load user info:', error);
+            if (invoke) {
+                console.log('🎯 Tauri environment detected, invoke function found');
+                
+                // Load user info
+                try {
+                    appState.userInfo = await invoke('get_user_info');
+                    console.log('👤 User info loaded:', appState.userInfo);
+                } catch (error) {
+                    console.warn('⚠️ Failed to load user info:', error);
+                }
+            } else {
+                console.error('❌ Could not find invoke function in Tauri API');
+                console.log('Available Tauri API structure:', window.__TAURI__);
             }
             
         } catch (error) {
@@ -1095,9 +1370,25 @@ window.handleCreateContract = handleCreateContract;
 window.processConnectionURL = processConnectionURL;
 window.generateConnectionURL = generateConnectionURL;
 
+// Wait for Tauri API to be available
+async function waitForTauri(retries = 20) {
+    for (let i = 0; i < retries; i++) {
+        if (window.__TAURI__) {
+            console.log(`✅ Tauri API found after ${i * 100}ms`);
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    console.warn('⚠️ Tauri API not found after', retries * 100, 'ms');
+    return false;
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    document.addEventListener('DOMContentLoaded', async () => {
+        await waitForTauri();
+        initializeApp();
+    });
 } else {
-    initializeApp();
+    waitForTauri().then(() => initializeApp());
 }

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "identifier": "app.planetnine.covenant-gui",
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Covenant - Magical Contract Management",

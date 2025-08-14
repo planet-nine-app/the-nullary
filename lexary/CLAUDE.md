@@ -330,7 +330,7 @@ Testing follows Planet Nine patterns:
 - **Backend Logic**: Rust unit tests for service integration
 - **Frontend Testing**: Tauri development environment testing
 - **Integration Testing**: Against development allyabase services
-- **Content Testing**: Mock text posts with various formatting scenarios
+- **Content Testing**: Real text posts with various formatting scenarios
 
 ## Accessibility
 

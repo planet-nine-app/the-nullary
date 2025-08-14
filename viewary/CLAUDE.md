@@ -434,7 +434,7 @@ Testing follows Planet Nine patterns:
 - **Backend Logic**: Rust unit tests for service integration
 - **Frontend Testing**: Tauri development environment testing
 - **Integration Testing**: Against development allyabase services
-- **Video Testing**: Mock video posts with various formats and qualities
+- **Video Testing**: Real video posts with various formats and qualities
 - **Performance Testing**: Load testing with large video feeds
 
 ## Accessibility

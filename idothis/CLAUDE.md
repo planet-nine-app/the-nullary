@@ -387,7 +387,6 @@ User Profile (prof) → Product Creation (sanora) → Discovery Feed (tags) → 
 ## Future Enhancements
 
 ### Immediate Roadmap
-- **Real Sanora Integration**: Replace mock data with actual Sanora queries
 - **Enhanced Search**: Advanced filtering by price, category, location
 - **User Interactions**: Follow users, save favorites, direct messaging
 - **Payment Integration**: Complete purchase flow with MAGIC/Addie
