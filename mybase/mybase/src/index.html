@@ -675,7 +675,15 @@
         </div>
     </div>
 
+    <!-- Environment Configuration (loaded first, like Ninefy) -->
     <script src="environment-config.js"></script>
+    <script>
+        // Initialize environment controls for MyBase
+        if (window.PlanetNineEnvironment) {
+            window.PlanetNineEnvironment.initializeEnvironmentControls('mybase');
+        }
+    </script>
+    <script src="form-widget.js"></script>
     <script type="module" src="base-command.js"></script>
     <script type="module" src="main.js"></script>
 </body>

@@ -33,6 +33,9 @@ path = "../../../../dolores/src/client/rust/dolores-rs"
 [dependencies.sanora-rs]
 path = "../../../../sanora/src/client/rust/sanora-rs"
 
+[dependencies.prof-rs]
+path = "../../../../prof/src/client/rust/prof-rs"
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

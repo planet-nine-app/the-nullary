@@ -18,13 +18,13 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "dev": "npm run dev:local",
-    "dev:dev": "NULLARY_ENV=dev npm run tauri dev",
-    "dev:test": "NULLARY_ENV=test npm run tauri dev",
-    "dev:local": "NULLARY_ENV=local npm run tauri dev",
-    "build": "npm run tauri build",
-    "build:dev": "NULLARY_ENV=dev npm run tauri build",
-    "build:test": "NULLARY_ENV=test npm run tauri build",
-    "build:local": "NULLARY_ENV=local npm run tauri build"
+    "dev:dev": "MYBASE_ENV=dev npm run tauri:dev",
+    "dev:test": "MYBASE_ENV=test npm run tauri:dev",
+    "dev:local": "MYBASE_ENV=local npm run tauri:dev",
+    "build": "npm run tauri:build",
+    "build:dev": "MYBASE_ENV=dev npm run tauri:build",
+    "build:test": "MYBASE_ENV=test npm run tauri:build",
+    "build:local": "MYBASE_ENV=local npm run tauri:build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

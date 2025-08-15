@@ -1,95 +1,24 @@
 // MyBase - Social Networking Platform
 // No-modules approach for Tauri compatibility
 
-
-// Environment configuration for mybase
+// Use the global environment configuration from environment-config.js
 function getEnvironmentConfig() {
-  const env = localStorage.getItem('nullary-env') || 'dev';
-  
-  const configs = {
-    dev: {
-      sanora: 'https://dev.sanora.allyabase.com/',
-      bdo: 'https://dev.bdo.allyabase.com/',
-      dolores: 'https://dev.dolores.allyabase.com/',
-      fount: 'https://dev.fount.allyabase.com/',
-      addie: 'https://dev.addie.allyabase.com/',
-      pref: 'https://dev.pref.allyabase.com/',
-      julia: 'https://dev.julia.allyabase.com/',
-      continuebee: 'https://dev.continuebee.allyabase.com/',
-      joan: 'https://dev.joan.allyabase.com/',
-      aretha: 'https://dev.aretha.allyabase.com/',
-      minnie: 'https://dev.minnie.allyabase.com/',
-      covenant: 'https://dev.covenant.allyabase.com/'
-    },
-    test: {
-      sanora: 'http://localhost:5121/',
-      bdo: 'http://localhost:5114/',
-      dolores: 'http://localhost:5118/',
-      fount: 'http://localhost:5117/',
-      addie: 'http://localhost:5116/',
-      pref: 'http://localhost:5113/',
-      julia: 'http://localhost:5111/',
-      continuebee: 'http://localhost:5112/',
-      joan: 'http://localhost:5115/',
-      aretha: 'http://localhost:5120/',
-      minnie: 'http://localhost:5119/',
-      covenant: 'http://localhost:5122/'
-    },
-    local: {
-      sanora: 'http://localhost:7243/',
-      bdo: 'http://localhost:3003/',
-      dolores: 'http://localhost:3005/',
-      fount: 'http://localhost:3002/',
-      addie: 'http://localhost:3005/',
-      pref: 'http://localhost:3004/',
-      julia: 'http://localhost:3000/',
-      continuebee: 'http://localhost:2999/',
-      joan: 'http://localhost:3004/',
-      aretha: 'http://localhost:7277/',
-      minnie: 'http://localhost:2525/',
-      covenant: 'http://localhost:3011/'
-    }
-  };
-  
-  const config = configs[env] || configs.dev;
-  return { env, services: config, name: env };
+  if (window.PlanetNineEnvironment) {
+    return window.PlanetNineEnvironment.getEnvironmentConfig();
+  }
+  // This shouldn't happen if environment-config.js loads properly
+  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
+  return { env: 'dev', services: {}, name: 'dev' };
 }
 
 function getServiceUrl(serviceName) {
-  const config = getEnvironmentConfig();
-  return config.services[serviceName] || config.services.sanora;
-}
-
-// Environment switching functions for browser console
-window.mybaseEnv = {
-  switch: (env) => {
-    const envs = { dev: 'dev', test: 'test', local: 'local' };
-    if (!envs[env]) {
-      console.error(`❌ Unknown environment: ${env}. Available: dev, test, local`);
-      return false;
-    }
-    localStorage.setItem('nullary-env', env);
-    console.log(`🔄 mybase environment switched to ${env}. Refresh app to apply changes.`);
-    console.log(`Run: location.reload() to refresh`);
-    return true;
-  },
-  current: () => {
-    const config = getEnvironmentConfig();
-    console.log(`🌐 Current environment: ${config.env}`);
-    console.log(`📍 Services:`, config.services);
-    return config;
-  },
-  list: () => {
-    console.log('🌍 Available environments for mybase:');
-    console.log('• dev - https://dev.*.allyabase.com (production dev server)');
-    console.log('• test - localhost:5111-5122 (3-base test ecosystem)');
-    console.log('• local - localhost:3000-3007 (local development)');
+  if (window.PlanetNineEnvironment) {
+    return window.PlanetNineEnvironment.getServiceUrl(serviceName);
   }
-};
-
-// Make functions globally available
-window.getEnvironmentConfig = getEnvironmentConfig;
-window.getServiceUrl = getServiceUrl;
+  // This shouldn't happen if environment-config.js loads properly
+  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
+  return 'https://dev.sanora.allyabase.com/';
+}
 
 const { invoke } = window.__TAURI__.core;
 
@@ -170,7 +99,8 @@ async function loadSocialFeed() {
         }
     } catch (error) {
         console.error('Error loading social feed:', error);
-        displaySocialFeedError('Failed to connect to social feed service');
+        const currentEnv = window.mybaseEnv ? window.mybaseEnv.current() : 'unknown';
+        displaySocialFeedError(`Failed to connect to social feed service (${currentEnv} environment). Try switching environments: mybaseEnv.switch('dev')`);
     } finally {
         appState.loading = false;
     }
@@ -432,19 +362,19 @@ async function loadProfileData() {
     const content = document.querySelector('#profile-screen .content');
     if (!content) return;
 
+    // Show loading state
+    content.innerHTML = '<div class="loading-posts">Loading profile...</div>';
+
     try {
-        const sessionlessResult = await invoke('get_sessionless_info');
-        if (sessionlessResult.success) {
-            const profileResult = await invoke('get_profile', { 
-                uuid: sessionlessResult.data.uuid 
-            });
-            
-            if (profileResult.success && profileResult.data) {
-                appState.currentProfile = profileResult.data;
-                displayProfile();
-            } else {
-                displayCreateProfileForm();
-            }
+        const profileResult = await invoke('get_profile');
+        
+        if (profileResult.success && profileResult.profile) {
+            appState.currentProfile = profileResult.profile;
+            displayProfile();
+        } else if (profileResult.error === 'profile_not_found') {
+            displayCreateProfileForm();
+        } else {
+            displayProfileError(profileResult.message || 'Failed to load profile');
         }
     } catch (error) {
         console.error('Error loading profile:', error);
@@ -458,6 +388,16 @@ function displayProfile() {
 
     const profile = appState.currentProfile;
     
+    // Parse interests if it's a string
+    let interests = [];
+    if (profile.interests) {
+        if (typeof profile.interests === 'string') {
+            interests = profile.interests.split(',').map(i => i.trim()).filter(i => i);
+        } else if (Array.isArray(profile.interests)) {
+            interests = profile.interests;
+        }
+    }
+    
     content.innerHTML = `
         <div class="profile-card">
             <div class="profile-avatar-large">
@@ -469,19 +409,18 @@ function displayProfile() {
             ${profile.bio ? `<div class="profile-bio">${profile.bio}</div>` : ''}
             
             <div class="profile-details">
-                ${profile.email ? `<div class="profile-detail">📧 ${profile.email}</div>` : ''}
-                ${profile.location ? `<div class="profile-detail">📍 ${profile.location}</div>` : ''}
-                ${profile.website ? `<div class="profile-detail">🌐 <a href="${profile.website}" target="_blank">${profile.website}</a></div>` : ''}
+                ${profile.homepage ? `<div class="profile-detail">🌐 <a href="${profile.homepage}" target="_blank">${profile.homepage}</a></div>` : ''}
             </div>
             
-            ${profile.skills && profile.skills.length > 0 ? `
+            ${interests.length > 0 ? `
                 <div class="profile-skills">
-                    ${profile.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                    <div style="margin-bottom: 10px; font-weight: 500; color: #666;">Interests:</div>
+                    ${interests.map(interest => `<span class="skill-tag">${interest}</span>`).join('')}
                 </div>
             ` : ''}
             
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button class="form-button" onclick="editProfile()">Edit Profile</button>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button class="form-button" onclick="showEditProfileForm()">Edit Profile</button>
                 <button class="form-button secondary" onclick="viewMyPosts()">My Posts</button>
             </div>
         </div>
@@ -492,77 +431,197 @@ function displayCreateProfileForm() {
     const content = document.querySelector('#profile-screen .content');
     if (!content) return;
 
-    content.innerHTML = `
-        <div class="profile-card">
-            <h2 style="margin-bottom: 20px;">Create Your Profile</h2>
-            <form id="createProfileForm">
-                <div class="form-group">
-                    <label class="form-label">Name *</label>
-                    <input type="text" class="form-input" id="profileName" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Email *</label>
-                    <input type="email" class="form-input" id="profileEmail" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Bio</label>
-                    <textarea class="form-input form-textarea" id="profileBio" placeholder="Tell us about yourself..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Skills (comma-separated)</label>
-                    <input type="text" class="form-input" id="profileSkills" placeholder="JavaScript, Design, Photography">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Website</label>
-                    <input type="url" class="form-input" id="profileWebsite" placeholder="https://yourwebsite.com">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-input" id="profileLocation" placeholder="City, Country">
-                </div>
-                
-                <button type="submit" class="form-button">Create Profile</button>
-            </form>
-        </div>
-    `;
-
-    // Add form submission handler
-    document.getElementById('createProfileForm').addEventListener('submit', handleCreateProfile);
-}
-
-async function handleCreateProfile(e) {
-    e.preventDefault();
-    
-    const profileData = {
-        name: document.getElementById('profileName').value,
-        email: document.getElementById('profileEmail').value,
-        bio: document.getElementById('profileBio').value || null,
-        skills: document.getElementById('profileSkills').value ? 
-            document.getElementById('profileSkills').value.split(',').map(s => s.trim()) : null,
-        website: document.getElementById('profileWebsite').value || null,
-        location: document.getElementById('profileLocation').value || null,
+    // Create profile form using form widget
+    const profileFormConfig = {
+        'Name': { 
+            type: 'text', 
+            required: true, 
+            placeholder: 'Enter your full name' 
+        },
+        'About Me': { 
+            type: 'textarea', 
+            required: false, 
+            charLimit: 500, 
+            placeholder: 'Tell us about yourself...' 
+        },
+        'Interests': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'Technology, Music, Photography (comma-separated)' 
+        },
+        'Profile Image URL': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'https://example.com/image.jpg' 
+        },
+        'Homepage': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'https://yourwebsite.com' 
+        },
+        form: {
+            submitText: 'CREATE PROFILE'
+        }
     };
 
+    // Clear content and add the form widget
+    content.innerHTML = '<div style="max-width: 600px; margin: 0 auto;"></div>';
+    const formContainer = content.querySelector('div');
+
+    // Create the form using the widget
+    const formWidget = window.getForm(profileFormConfig, handleCreateProfile, 'CREATE YOUR PROFILE');
+    formContainer.appendChild(formWidget);
+}
+
+function showEditProfileForm() {
+    if (!appState.currentProfile) return;
+    
+    const content = document.querySelector('#profile-screen .content');
+    if (!content) return;
+    
+    const profile = appState.currentProfile;
+    
+    // Parse interests if it's a string
+    let interestsStr = '';
+    if (profile.interests) {
+        if (typeof profile.interests === 'string') {
+            interestsStr = profile.interests;
+        } else if (Array.isArray(profile.interests)) {
+            interestsStr = profile.interests.join(', ');
+        }
+    }
+
+    // Create edit profile form using form widget
+    const editFormConfig = {
+        'Name': { 
+            type: 'text', 
+            required: true, 
+            placeholder: 'Enter your full name' 
+        },
+        'About Me': { 
+            type: 'textarea', 
+            required: false, 
+            charLimit: 500, 
+            placeholder: 'Tell us about yourself...' 
+        },
+        'Interests': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'Technology, Music, Photography (comma-separated)' 
+        },
+        'Profile Image URL': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'https://example.com/image.jpg' 
+        },
+        'Homepage': { 
+            type: 'text', 
+            required: false, 
+            placeholder: 'https://yourwebsite.com' 
+        },
+        form: {
+            submitText: 'UPDATE PROFILE'
+        }
+    };
+
+    // Clear content and add the form widget
+    content.innerHTML = '<div style="max-width: 600px; margin: 0 auto;"></div>';
+    const formContainer = content.querySelector('div');
+
+    // Create the form using the widget
+    const formWidget = window.getForm(editFormConfig, handleUpdateProfile, 'EDIT YOUR PROFILE');
+    formContainer.appendChild(formWidget);
+
+    // Pre-populate the form fields
+    setTimeout(() => {
+        const nameInput = document.getElementById('NameInput');
+        const bioTextarea = document.getElementById('AboutMeTextarea');
+        const interestsInput = document.getElementById('InterestsInput');
+        const imageUrlInput = document.getElementById('ProfileImageURLInput');
+        const homepageInput = document.getElementById('HomepageInput');
+
+        if (nameInput) nameInput.value = profile.name || '';
+        if (bioTextarea) bioTextarea.value = profile.bio || '';
+        if (interestsInput) interestsInput.value = interestsStr;
+        if (imageUrlInput) imageUrlInput.value = profile.image_url || '';
+        if (homepageInput) homepageInput.value = profile.homepage || '';
+
+        // Trigger validation to update button state
+        if (window.validateFormAndUpdateSubmit && window.currentFormJSON) {
+            window.validateFormAndUpdateSubmit(window.currentFormJSON);
+        }
+    }, 300);
+
+    // Add cancel button below the form
+    setTimeout(() => {
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'form-button secondary';
+        cancelButton.style.width = '100%';
+        cancelButton.style.marginTop = '10px';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.onclick = displayProfile;
+        formContainer.appendChild(cancelButton);
+    }, 100);
+}
+
+function displayProfileError(error) {
+    const content = document.querySelector('#profile-screen .content');
+    if (!content) return;
+
+    content.innerHTML = `
+        <div class="empty-state">
+            <h3>Error Loading Profile</h3>
+            <p>${error}</p>
+            <button class="form-button" onclick="loadProfileData()">Retry</button>
+        </div>
+    `;
+}
+
+async function handleCreateProfile(formData) {
+    console.log('Creating profile with form data:', formData);
+    
     try {
         const result = await invoke('create_profile', { 
-            profileData: profileData,
-            imageData: null 
+            name: formData.Name,
+            bio: formData['About Me'] || null,
+            interests: formData.Interests || null,
+            homepage: formData.Homepage || null,
+            image_url: formData['Profile Image URL'] || null
         });
         
         if (result.success) {
-            appState.currentProfile = result.data;
+            appState.currentProfile = result.profile;
             displayProfile();
         } else {
-            alert(`Failed to create profile: ${result.error}`);
+            alert(`Failed to create profile: ${result.error || 'Unknown error'}`);
         }
     } catch (error) {
         console.error('Error creating profile:', error);
         alert('Failed to create profile');
+    }
+}
+
+async function handleUpdateProfile(formData) {
+    console.log('Updating profile with form data:', formData);
+    
+    try {
+        const result = await invoke('update_profile', { 
+            name: formData.Name,
+            bio: formData['About Me'] || null,
+            interests: formData.Interests || null,
+            homepage: formData.Homepage || null,
+            image_url: formData['Profile Image URL'] || null
+        });
+        
+        if (result.success) {
+            appState.currentProfile = result.profile;
+            displayProfile();
+        } else {
+            alert(`Failed to update profile: ${result.error || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Failed to update profile');
     }
 }
 
@@ -587,19 +646,21 @@ async function loadBases() {
                 displayBasesError('No bases discovered');
             }
         } else {
-            // Fallback to old method if base-command not loaded
-            const result = await invoke('get_bases');
+            // Fallback to simple get_bases function
+            const result = await invoke('get_bases_simple');
             
-            if (result.success && result.data) {
-                appState.bases = result.data;
+            if (result) {
+                // Convert to array format expected by MyBase
+                appState.bases = Object.values(result);
                 displayBases();
             } else {
-                displayBasesError(result.error || 'Failed to load bases');
+                displayBasesError('Failed to load bases');
             }
         }
     } catch (error) {
         console.error('Error loading bases:', error);
-        displayBasesError('Failed to connect to base service');
+        const currentEnv = window.mybaseEnv ? window.mybaseEnv.current() : 'unknown';
+        displayBasesError(`Failed to connect to base service (${currentEnv} environment). Try switching environments: mybaseEnv.switch('dev')`);
     }
 }
 
@@ -954,7 +1015,7 @@ window.joinBase = joinBase;
 window.leaveBase = leaveBase;
 window.openCreatePostModal = openCreatePostModal;
 window.closeCreatePostModal = closeCreatePostModal;
-window.editProfile = () => alert('Edit profile feature coming soon!');
+window.showEditProfileForm = showEditProfileForm;
 window.viewMyPosts = () => alert('View my posts feature coming soon!');
 window.viewBaseProfiles = (baseName) => alert(`View profiles for ${baseName} coming soon!`);
 

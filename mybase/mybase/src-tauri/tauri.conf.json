@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "MyBase",
   "version": "0.0.1",
   "identifier": "com.planetnine.mybase",
