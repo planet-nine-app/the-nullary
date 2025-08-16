@@ -125,7 +125,7 @@ function displaySocialFeed() {
     feedContainer.className = 'social-feed';
     
     appState.socialPosts.forEach(post => {
-        const postElement = createSocialPostElement(post);
+        const postElement = createPostWidgetElement(post);
         feedContainer.appendChild(postElement);
     });
 
@@ -778,92 +778,149 @@ function openCreatePostModal() {
     const modal = document.getElementById('createPostModal');
     modal.classList.add('active');
     
-    // Reset form
-    document.getElementById('createPostForm').reset();
-    switchPostType('text');
-    
-    // Add post type selector handlers
-    document.querySelectorAll('.post-type-button').forEach(button => {
-        button.addEventListener('click', () => {
-            const postType = button.dataset.type;
-            switchPostType(postType);
-        });
-    });
-    
-    // Add form submission handler
-    document.getElementById('createPostForm').addEventListener('submit', handleCreatePost);
+    // Initialize the Sanora form widget for post creation
+    initializePostCreationWidget();
 }
 
 function closeCreatePostModal() {
     const modal = document.getElementById('createPostModal');
     modal.classList.remove('active');
+    
+    // Clean up the form widget
+    const container = document.getElementById('postFormContainer');
+    if (container) {
+        container.innerHTML = '';
+    }
 }
 
-function switchPostType(type) {
-    appState.currentPostType = type;
+// Widget Integration Functions
+function initializePostCreationWidget() {
+    const container = document.getElementById('postFormContainer');
+    if (!container) {
+        console.error('Post form container not found');
+        return;
+    }
     
-    // Update active button
-    document.querySelectorAll('.post-type-button').forEach(button => {
-        button.classList.remove('active');
-        if (button.dataset.type === type) {
-            button.classList.add('active');
-        }
-    });
+    // Clear existing content
+    container.innerHTML = '';
     
-    // Show/hide content groups
-    document.getElementById('textContentGroup').style.display = type === 'text' ? 'block' : 'none';
-    document.getElementById('photoContentGroup').style.display = type === 'photo' ? 'block' : 'none';
-    document.getElementById('videoContentGroup').style.display = type === 'video' ? 'block' : 'none';
+    // Create form configuration for generic post
+    const formConfig = {
+        "Title": { type: "text", required: false },
+        "Content": { type: "textarea", charLimit: 1000, required: true },
+        "Tags": { type: "text", required: false }
+    };
+    
+    // Create the form widget
+    if (window.getForm) {
+        const formWidget = window.getForm(formConfig, handlePostSubmission);
+        container.appendChild(formWidget);
+    } else {
+        console.error('Form widget not available. Make sure form-widget.js is loaded.');
+    }
 }
 
-async function handleCreatePost(e) {
-    e.preventDefault();
-    
-    const title = document.getElementById('postTitle').value || null;
-    const tags = document.getElementById('postTags').value ? 
-        document.getElementById('postTags').value.split(',').map(s => s.trim()) : [];
+async function handlePostSubmission(formData) {
+    console.log('📝 Post submission received:', formData);
     
     try {
-        let result;
+        // Extract form data
+        const title = formData.Title || '';
+        const content = formData.Content || '';
+        const tagsString = formData.Tags || '';
+        const tags = tagsString ? tagsString.split(',').map(s => s.trim()).filter(s => s) : [];
         
-        switch (appState.currentPostType) {
-            case 'text':
-                const content = document.getElementById('postContent').value;
-                result = await invoke('create_text_post', { title, content, tags });
-                break;
-                
-            case 'photo':
-                const description = document.getElementById('photoDescription').value;
-                const images = document.getElementById('photoUrls').value ? 
-                    document.getElementById('photoUrls').value.split('\n').map(s => s.trim()).filter(s => s) : [];
-                result = await invoke('create_photo_post', { title, description, images, tags });
-                break;
-                
-            case 'video':
-                const videoDescription = document.getElementById('videoDescription').value;
-                const url = document.getElementById('videoUrl').value;
-                const thumbnail = document.getElementById('videoThumbnail').value || null;
-                result = await invoke('create_video_post', { 
-                    title, 
-                    description: videoDescription, 
-                    url, 
-                    thumbnail, 
-                    duration: null, 
-                    tags 
-                });
-                break;
+        // Create the post object for Dolores
+        const post = {
+            title,
+            content,
+            tags,
+            timestamp: Date.now()
+        };
+        
+        console.log('🚀 Submitting post to Dolores:', post);
+        
+        // Get sessionless info for authentication
+        const sessionlessResult = await invoke('get_sessionless_info');
+        if (!sessionlessResult || !sessionlessResult.publicKey) {
+            throw new Error('Failed to get sessionless authentication');
         }
         
-        if (result.success) {
+        const doloresUrl = getServiceUrl('dolores');
+        const uuid = sessionlessResult.publicKey;
+        
+        // Submit to Dolores using the new generic post endpoint
+        const response = await fetch(`${doloresUrl}user/${uuid}/post`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                post,
+                timestamp: Date.now().toString(),
+                signature: 'placeholder_signature' // TODO: Implement proper signing
+            })
+        });
+        
+        if (response.ok) {
+            console.log('✅ Post created successfully');
             closeCreatePostModal();
             await loadSocialFeed(); // Refresh the feed
         } else {
-            alert(`Failed to create post: ${result.error}`);
+            const error = await response.text();
+            console.error('❌ Failed to create post:', error);
+            alert('Failed to create post. Please try again.');
         }
+        
     } catch (error) {
         console.error('Error creating post:', error);
-        alert('Failed to create post');
+        alert('Failed to create post: ' + error.message);
     }
+}
+
+function createPostWidgetElement(post) {
+    // Create container for the post widget
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'post-widget-container';
+    
+    try {
+        // Use the PostWidget from post-widget.js
+        if (window.PostWidgetBuilder) {
+            const widget = new window.PostWidgetBuilder(widgetContainer)
+                .description(post.content.content || post.content.title || 'No content')
+                .name(`${post.author.name} - ${formatTimeAgo(new Date(post.timestamp))}`)
+                .spacer() // Push any buttons to bottom
+                .button('💬 Comment')
+                .build();
+            
+            return widgetContainer;
+        } else {
+            console.warn('PostWidget not available, falling back to basic display');
+            return createFallbackPostElement(post);
+        }
+    } catch (error) {
+        console.error('Error creating post widget:', error);
+        return createFallbackPostElement(post);
+    }
+}
+
+function createFallbackPostElement(post) {
+    // Simple fallback if post widget fails
+    const postDiv = document.createElement('div');
+    postDiv.className = 'social-post';
+    postDiv.innerHTML = `
+        <div class="post-header">
+            <div class="author-avatar">${getInitials(post.author.name)}</div>
+            <div class="author-info">
+                <div class="author-name">${post.author.name}</div>
+                <div class="post-time">${formatTimeAgo(new Date(post.timestamp))}</div>
+            </div>
+        </div>
+        <div class="post-content">
+            <div class="post-description">${post.content.content || post.content.title || 'No content'}</div>
+        </div>
+    `;
+    return postDiv;
 }
 
 // Planet Nine Content
@@ -1019,9 +1076,30 @@ window.showEditProfileForm = showEditProfileForm;
 window.viewMyPosts = () => alert('View my posts feature coming soon!');
 window.viewBaseProfiles = (baseName) => alert(`View profiles for ${baseName} coming soon!`);
 
+// Initialize environment from Rust environment variables
+async function initializeEnvironment() {
+    try {
+        if (invoke) {
+            const envFromRust = await invoke('get_env_config');
+            if (envFromRust && ['dev', 'test', 'local'].includes(envFromRust)) {
+                console.log(`🌍 Environment from Rust: ${envFromRust}`);
+                localStorage.setItem('nullary-env', envFromRust);
+                return envFromRust;
+            }
+        }
+    } catch (error) {
+        console.log('⚠️ Could not get environment from Rust, using localStorage/default');
+    }
+    
+    return localStorage.getItem('nullary-env') || 'dev';
+}
+
 // Initialize the application
 async function initApp() {
     try {
+        // Initialize environment from Rust first
+        await initializeEnvironment();
+        
         // Get sessionless info
         const sessionlessResult = await invoke('get_sessionless_info');
         if (sessionlessResult.success) {

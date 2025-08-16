@@ -25,9 +25,10 @@ function getEnvironmentConfig() {
     local: {
       sanora: 'http://localhost:7243/',
       bdo: 'http://localhost:3003/',
-      dolores: 'http://localhost:3005/',
+      dolores: 'http://localhost:3007/',
       fount: 'http://localhost:3002/',
-      addie: 'http://localhost:3005/'
+      addie: 'http://localhost:3005/',
+      prof: 'http://localhost:3008/'
     }
   };
   

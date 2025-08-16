@@ -1,12 +1,11 @@
 {
-  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "IDothis",
   "version": "0.0.1",
   "identifier": "com.planetnine.idothis",
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "devUrl": "http://localhost:1420",
     "frontendDist": "../src"
   },
   "app": {
@@ -16,11 +15,13 @@
     },
     "windows": [
       {
-        "title": "IDothis - Showcase What You Do",
+        "title": "IDothis - Professional Showcase",
         "width": 1200,
         "height": 800,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ]
   },

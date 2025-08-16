@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Nexus is the central web portal that visually demonstrates the complete Planet Nine ecosystem. It serves as the "front door" to Planet Nine, showcasing how all services work together through an elegant, unified interface.
+Nexus is the central Planet Nine ecosystem portal available in two versions:
+1. **Web Portal** (`/public/` and `/server/`) - Express.js web interface for browser-based ecosystem demonstration
+2. **Tauri App** (`/nexus/`) - Desktop application with three-screen interface for comprehensive feed management
+
+Both serve as the "front door" to Planet Nine, showcasing how all services work together through elegant, unified interfaces.
 
 ## Key Context from Development
 
@@ -51,7 +55,7 @@ Nexus is integrated as **Phase 5** of the complete ecosystem test suite:
 ### File Structure
 ```
 nexus/
-├── public/                 # Frontend (served statically)
+├── public/                 # Web Portal Frontend (served statically)
 │   ├── index.html         # Main portal page
 │   ├── css/nexus.css      # Responsive styling
 │   └── js/
@@ -60,6 +64,17 @@ nexus/
 ├── server/                # Express.js backend  
 │   ├── server.js          # Main server (NO helmet.js)
 │   └── package.json       # Dependencies (helmet removed)
+├── nexus/                 # Tauri Desktop App
+│   ├── src/
+│   │   ├── index.html     # Three-screen interface
+│   │   ├── main.js        # Feed management & navigation
+│   │   ├── environment-config.js # Environment switching
+│   │   └── base-command.js # Base server management
+│   ├── src-tauri/         # Rust backend
+│   │   ├── src/lib.rs     # Feed APIs & service integration
+│   │   └── Cargo.toml     # Planet Nine service clients
+│   ├── package.json       # Tauri dependencies
+│   └── README.md          # Tauri app documentation
 └── CLAUDE.md             # This file
 ```
 
@@ -212,3 +227,57 @@ Nexus is the visual centerpiece of Planet Nine ecosystem demonstration:
 5. **Error Handling**: Graceful degradation when services unavailable
 
 This provides concrete visual proof that the Planet Nine ecosystem delivers a user experience comparable to mainstream platforms while maintaining privacy and decentralization principles.
+
+## Tauri Desktop Application
+
+### Three-Screen Interface
+
+The Nexus Tauri app provides a comprehensive desktop experience with three main screens:
+
+1. **Main Screen - Feed Overview**: 
+   - Feed previews for Dolores (social), Products (Sanora), and Blogs (Sanora)
+   - Real-time feed counts and click-to-view functionality
+   - Combined "All Content" view with unified feed display
+
+2. **Bases Screen**:
+   - Connected base servers with real-time status indicators
+   - Uses shared base-command.js for consistent base management
+   - Join/leave functionality and base discovery
+
+3. **Planet Nine Screen**:
+   - Animated Planet Nine logo with orbital elements
+   - Ecosystem overview and philosophy
+   - Beautiful visual introduction to the platform
+
+### Feed Integration
+
+- **Real Backend Integration**: Tauri Rust backend with Planet Nine service clients (BDO, Dolores, Sanora)
+- **Mock Data Fallbacks**: Realistic development experience when services unavailable
+- **Post-Widget Rendering**: Uses simplified post-widget style for consistent content display
+- **Environment Switching**: Full support for dev/test/local environments
+
+### Development Commands
+
+```bash
+# Tauri Desktop App
+cd nexus/nexus
+npm install
+
+# Run with environment switching
+npm run dev         # Dev server (default)
+npm run dev:test    # 3-base test ecosystem  
+npm run dev:local   # Local development
+
+# Build desktop app
+npm run build
+```
+
+### Key Features
+
+- **Environment Configuration**: Uses shared environment-config.js with browser console switching
+- **Base Management**: Integrates shared base-command.js for unified base server handling
+- **Feed Aggregation**: Combines content from multiple sources with proper sorting and filtering
+- **Offline Support**: Graceful degradation with informative placeholder content
+- **Real Service Integration**: Framework for connecting to actual Planet Nine services
+
+The Tauri version complements the web portal by providing a native desktop experience with deeper integration into the Planet Nine service ecosystem, while maintaining the same visual design principles and user experience patterns.

@@ -1,0 +1,26 @@
+{
+  "name": "nexus",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "npm run dev:dev",
+    "dev:dev": "NULLARY_ENV=dev npm run tauri dev",
+    "dev:test": "NULLARY_ENV=test npm run tauri dev",
+    "dev:local": "NULLARY_ENV=local npm run tauri dev",
+    "build": "npm run tauri build",
+    "build:dev": "NULLARY_ENV=dev npm run tauri build",
+    "build:test": "NULLARY_ENV=test npm run tauri build",
+    "build:local": "NULLARY_ENV=local npm run tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-shell": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

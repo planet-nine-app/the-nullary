@@ -188,17 +188,21 @@ Base server cards show:
 ```
 mybase/
 ├── src/
-│   ├── main.js          # Main social application logic (no modules)
-│   └── index.html       # Application shell with social-focused CSS
+│   ├── main.js              # Main social application logic (no modules)
+│   ├── index.html           # Application shell with social-focused CSS
+│   ├── environment-config.js # Environment switching (dev/test/local)
+│   ├── base-command.js      # Base discovery and management
+│   ├── form-widget.js       # Sanora form widget for post creation
+│   └── post-widget.js       # Dolores post widget for post display
 ├── src-tauri/
 │   ├── src/
-│   │   ├── lib.rs       # Backend service integration with prof
-│   │   ├── main.rs      # Tauri application entry
-│   │   └── build.rs     # Build configuration
-│   ├── Cargo.toml       # Rust dependencies including prof-rs
-│   └── tauri.conf.json  # Tauri desktop configuration
-├── CLAUDE.md           # This documentation
-└── package.json        # Frontend dependencies
+│   │   ├── lib.rs           # Backend service integration with prof
+│   │   ├── main.rs          # Tauri application entry
+│   │   └── build.rs         # Build configuration
+│   ├── Cargo.toml           # Rust dependencies including prof-rs
+│   └── tauri.conf.json      # Tauri desktop configuration
+├── CLAUDE.md               # This documentation
+└── package.json            # Frontend dependencies
 ```
 
 ## Key Dependencies
@@ -346,32 +350,52 @@ const bdoUrl = getServiceUrl('bdo');
 
 ## Content Creation
 
-### Multi-Format Post Creation
-MyBase supports three main content types through a unified creation interface:
+### Widget-Based Post Creation System
+MyBase uses Planet Nine widget components for an integrated post creation and display experience:
 
-#### Text Posts
-- **Rich Text**: Title and content with formatting support
-- **Tag System**: Hashtag-based categorization
-- **Character Limits**: Reasonable limits for social media content
+#### Sanora Form Widget Integration
+- **Widget Source**: Uses `form-widget.js` from Sanora service for consistent form experience
+- **Modal Integration**: Form widget loads in create post modal with proper styling
+- **Field Configuration**: Configurable form fields (Title, Content, Tags) with validation
+- **Submission Handling**: Direct integration with Dolores generic post endpoint
+- **UX Consistency**: Same form experience across all Planet Nine applications
 
-#### Photo Posts
-- **Multiple Images**: Support for image galleries
-- **Descriptions**: Rich text descriptions for photo context
-- **Image URLs**: Support for external image hosting
-- **Gallery Layout**: Responsive grid display for multiple images
+```javascript
+// Form widget configuration
+const formConfig = {
+    "Title": { type: "text", required: false },
+    "Content": { type: "textarea", charLimit: 1000, required: true },
+    "Tags": { type: "text", required: false }
+};
 
-#### Video Posts
-- **Video Embedding**: Support for video URLs
-- **Thumbnails**: Optional thumbnail images for video previews
-- **Duration**: Video length metadata for better user experience
-- **Playback**: Integrated video player (placeholder implementation)
+// Widget initialization
+const formWidget = window.getForm(formConfig, handlePostSubmission);
+container.appendChild(formWidget);
+```
+
+#### Dolores Post Widget Integration
+- **Widget Source**: Uses `post-widget.js` from Dolores service for rich post display
+- **Event Components**: Supports complex post layouts with images, descriptions, dates, addresses
+- **Spacer System**: Advanced layout control with spacer elements for bottom-anchored content
+- **Builder Pattern**: Chainable PostWidgetBuilder for programmatic post construction
+
+```javascript
+// Post widget builder example
+const post = new PostWidgetBuilder(container, { debug: true })
+    .name('Social Media Post')
+    .description('Post content and description...')
+    .spacer() // Push content to bottom
+    .button('Interact')
+    .build();
+```
 
 ### Post Creation Workflow
-1. **FAB Access**: Floating action button for quick post creation
-2. **Type Selection**: Choose between text, photo, or video post
-3. **Content Entry**: Appropriate form fields based on selected type
-4. **Tag Management**: Add relevant hashtags for discoverability
-5. **Publishing**: Submit post to social feed with immediate display
+1. **FAB Access**: Floating action button opens create post modal
+2. **Form Widget**: Sanora form widget provides consistent input experience  
+3. **Content Entry**: Title, content, and tags with real-time validation
+4. **Dolores Integration**: Posts submitted to `/user/:uuid/post` endpoint
+5. **Widget Display**: Posts rendered using Dolores post-widget for consistent styling
+6. **Feed Integration**: New posts appear immediately in social feed
 
 ## Integration Points
 
@@ -389,9 +413,44 @@ MyBase supports three main content types through a unified creation interface:
 
 ### With Planet Nine Services
 - **BDO**: File storage for images and media content
-- **Dolores**: Content feed aggregation and distribution
+- **Dolores**: Content feed aggregation, post storage, and widget components
+- **Sanora**: Form widget components for consistent input experience
 - **Sessionless**: Cryptographic authentication for all operations
 - **Base Discovery**: Network service discovery for social connections
+
+### Widget Component System
+MyBase demonstrates Planet Nine's widget component strategy:
+
+#### Cross-Service Widget Usage
+- **Sanora Form Widget**: Provides consistent form experience across applications
+- **Dolores Post Widget**: Rich post display with event-style layouts
+- **Shared CSS Integration**: Widgets integrate seamlessly with MyBase styling
+- **Modal Compatibility**: Widgets work within modal dialogs and main UI
+
+#### Widget Loading Pattern
+```html
+<!-- Widget scripts loaded in index.html -->
+<script src="form-widget.js"></script>
+<script src="post-widget.js"></script>
+
+<!-- Widgets initialized in main.js -->
+<script>
+// Form widget for post creation
+const formWidget = window.getForm(formConfig, handleSubmission);
+
+// Post widget for display
+const postWidget = new PostWidgetBuilder(container)
+    .name('Post Title')
+    .description('Content...')
+    .build();
+</script>
+```
+
+#### Widget Integration Benefits
+- **Consistency**: Same form/post experience across Planet Nine apps
+- **Maintainability**: Widget updates improve all applications simultaneously  
+- **Modularity**: Applications can mix and match widgets as needed
+- **Styling**: Widgets adapt to host application's CSS and themes
 
 ## Capacity Management
 

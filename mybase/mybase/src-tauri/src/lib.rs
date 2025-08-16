@@ -249,6 +249,10 @@ async fn get_social_feed(
     
     // Create/get Dolores user first
     let dolores = Dolores::new(Some(dolores_url), Some(sessionless));
+    
+    println!("🔐 Debug auth data (from dolores.sessionless):");
+    println!("  PubKey: {}", dolores.sessionless.public_key().to_hex());
+    
     let dolores_user = match dolores.create_user().await {
         Ok(user) => {
             println!("✅ Dolores user ready: {}", user.uuid);

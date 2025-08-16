@@ -1,16 +1,16 @@
-# IDothis - Professional Showcase Platform
+# IDothis - Professional Discovery Platform
 
 ## Overview
 
-IDothis is a professional showcase platform built on The Nullary ecosystem, designed to help users create profiles and showcase their products and services. It combines profile management via the Prof service with product listings via Sanora, featuring a unique swipable discovery feed for finding relevant services and products by tags.
+IDothis is a professional discovery platform built on The Nullary ecosystem, designed to help users create professional profiles with their "I do this" specializations and discover other professionals through an intuitive Tinder-style swipeable interface. It focuses on profile-based professional networking with seamless form integration via Sanora's form-widget system.
 
 ## Architecture
 
 ### Core Philosophy
-- **Profile + Product Integration**: Seamlessly connects personal profiles with professional offerings
-- **Tag-Based Discovery**: Uses swipable feeds to help people discover relevant services and products
-- **Cross-Service Integration**: Leverages both prof (PII-safe profiles) and sanora (product hosting)
-- **Modern UX**: Tinder-style swipable interface for product discovery
+- **Professional Discovery**: Focus on "I do this" specializations for clear professional positioning
+- **Swipeable Interface**: Tinder-style discovery to make professional networking engaging and intuitive
+- **Form Widget Consistency**: Uses Sanora's form-widget system for consistent UX across Planet Nine
+- **Profile-Centric**: Built around rich professional profiles with Prof service integration
 - **Privacy-First**: Uses sessionless authentication and keeps PII separate via prof service
 
 ### Technology Stack
@@ -18,7 +18,7 @@ IDothis is a professional showcase platform built on The Nullary ecosystem, desi
 - **Backend**: Complete Rust integration with Planet Nine services
 - **Desktop**: Tauri v2.x framework for cross-platform deployment
 - **Authentication**: sessionless protocol with secp256k1 cryptographic keys
-- **Services**: prof (profiles), sanora (products), fount (payments), bdo (storage)
+- **Services**: prof (profiles), sanora (form-widgets), bdo (discovery), sessionless (authentication)
 
 ## Project Structure
 
@@ -41,95 +41,141 @@ idothis/
 ## Screen Architecture (Three Main Screens)
 
 ### 1. Profile Screen
-**Purpose**: Create and manage user profiles using the prof service
+**Purpose**: Create and manage professional profiles using prof service and Sanora form-widget
 
 **Features**:
-- **Profile Creation**: Full profile creation with name, email, bio, skills, website, location
-- **Image Upload**: Profile image upload with automatic processing via prof service
-- **Profile Editing**: Update any profile information including image replacement
+- **Sanora Form-Widget Integration**: Uses `window.getForm()` for consistent form experience across Planet Nine
+- **"I do this" Field**: Prominent professional specialization field for clear positioning
+- **Profile Creation**: Full profile creation with name, email, bio, website, location, and image
+- **Image Upload**: Profile image upload via form-widget's image field type with drag-and-drop support
+- **Profile Editing**: Update any profile information with pre-populated form-widget
 - **Profile Deletion**: Complete profile removal with confirmation
 - **Real-time Display**: Live profile preview with formatted information
 
-**Key Components**:
-- Profile display card with formatted information
-- Profile creation/editing form with validation
-- Image upload with base64 conversion
-- Profile image display with generated URLs
-
-**Prof Service Integration**:
+**Form-Widget Integration**:
 ```javascript
-// Create profile with image
-const result = await invoke('create_profile', {
-  profileData: {
-    name: 'John Doe',
-    email: 'john@example.com',
-    bio: 'Software developer...',
-    skills: ['JavaScript', 'Rust'],
-    website: 'https://johndoe.dev',
-    location: 'San Francisco, CA'
-  },
-  imageData: base64ImageString
-});
+// Create form configuration for consistent Planet Nine UX
+const formConfig = {
+    "Name": { type: "text", required: true },
+    "Email": { type: "text", required: true },
+    "I do this": { type: "text", required: true },
+    "Bio": { type: "textarea", charLimit: 500, required: false },
+    "Website": { type: "text", required: false },
+    "Location": { type: "text", required: false },
+    "Profile Image": { type: "image", required: false }
+};
+
+// Handle form submission with widget data conversion
+function handleProfileCreation(formData) {
+    const profileData = {
+        name: formData["Name"] || '',
+        email: formData["Email"] || '',
+        idothis: formData["I do this"] || '',
+        bio: formData["Bio"] || '',
+        website: formData["Website"] || '',
+        location: formData["Location"] || ''
+    };
+    
+    let imageData = null;
+    if (formData["Profile Image"] && formData["Profile Image"].dataUrl) {
+        imageData = formData["Profile Image"].dataUrl.split(',')[1];
+    }
+    
+    createProfileFromData(profileData, imageData);
+}
+
+// Create and append the form widget
+const formWidget = window.getForm(formConfig, handleProfileCreation);
+container.appendChild(formWidget);
 ```
 
-### 2. Products Screen
-**Purpose**: Create and manage products/services using the sanora service
+**Key Features**:
+- Beautiful SVG-based forms with purple-to-green gradients
+- Real-time validation with visual feedback
+- Image upload with preview and drag-and-drop
+- Character counting for bio field
+- Consistent form experience with MyBase, Sanora, and other Planet Nine apps
+
+### 2. Discover Screen (Swipeable Profile Feed)
+**Purpose**: Discover other professionals through an intuitive Tinder-style swipeable interface
 
 **Features**:
-- **Product Creation**: Add products with title, description, pricing, categories, and tags
-- **Product Management**: Edit and delete existing products
-- **Tag System**: Comprehensive tagging for product discovery
-- **Category Support**: Service, digital product, consultation, course, physical product
-- **Pricing**: USD pricing with cent-based storage
-- **Preview URLs**: Optional preview/demo links
-
-**Product Categories**:
-- 🛠️ **Service**: Professional services (consulting, development, design)
-- 💻 **Digital Product**: Software, templates, digital downloads
-- 💬 **Consultation**: One-on-one consulting sessions
-- 🎓 **Course**: Educational content and training
-- 📦 **Physical Product**: Tangible goods and merchandise
-
-**Sanora Service Integration**:
-```javascript
-// Create product
-const result = await invoke('create_product', {
-  productData: {
-    title: 'Web Development Service',
-    description: 'Custom web development...',
-    price: 5000, // $50.00 in cents
-    category: 'service',
-    tags: ['web', 'development', 'javascript'],
-    content_type: 'service',
-    preview_url: 'https://example.com/preview'
-  }
-});
-```
-
-### 3. Discover Screen (Swipable Feed)
-**Purpose**: Discover products and services through tag-based swipable interface
-
-**Features**:
-- **Tag-Based Search**: Enter tags to find relevant products and services
-- **Swipable Interface**: Tinder-style swipe right (like) / left (pass) interaction
-- **Visual Feedback**: Real-time swipe indicators and animations
-- **Statistics Tracking**: Shows remaining, liked, and passed counts
-- **Product Details**: Full product information including pricing, tags, and author
-- **Infinite Discovery**: Load more products with different tag combinations
+- **Professional Profile Cards**: Full-view cards showing complete professional information
+- **Swipeable Interface**: Tinder-style swipe right (like/save) / left (pass/skip) interaction
+- **Rich Profile Display**: Shows name, "I do this", location, bio, website, and profile image
+- **Visual Feedback**: Real-time swipe indicators with color-coded feedback
+- **Statistics Tracking**: Shows remaining, liked, and passed profile counts
+- **Smooth Animations**: 300ms transitions with rotation and opacity effects
+- **Stack Management**: 3-card visible stack with scaling and positioning effects
 
 **Swipe Interactions**:
-- **Swipe Right / Like**: Add to liked products collection
-- **Swipe Left / Pass**: Add to passed products collection
-- **Mouse & Touch Support**: Works on desktop and mobile
-- **Visual Indicators**: Color-coded feedback during swipe gestures
-- **Smooth Animations**: Card transitions and stack management
+- **Swipe Right / Like**: Save profile for later (adds to liked profiles collection)
+- **Swipe Left / Pass**: Skip profile (adds to passed profiles collection)
+- **Mouse & Touch Support**: Works seamlessly on desktop and mobile devices
+- **Visual Indicators**: Green "LIKE" and red "PASS" indicators during swipe gestures
+- **Manual Controls**: Backup thumb up/down buttons for precise control
 
-**Tag-Based Discovery**:
+**Profile Card Layout**:
 ```javascript
-// Search by tags
-const tags = ['web', 'design', 'development'];
-const result = await invoke('get_products_by_tags', { tags });
+// Complete profile information displayed in swipe cards
+<div class="swipe-card">
+    <div class="card-content">
+        <div class="profile-header">
+            <div class="profile-avatar">
+                // Profile image or initials fallback
+            </div>
+            <div class="profile-info">
+                <h3 class="profile-name">${profile.name}</h3>
+                <p class="profile-idothis">${profile.idothis}</p>
+                <p class="profile-location">📍 ${profile.location}</p>
+            </div>
+        </div>
+        <div class="profile-bio">${profile.bio}</div>
+        <div class="profile-website">
+            <a href="${profile.website}">🌐 Website</a>
+        </div>
+        <div class="swipe-indicator left">PASS</div>
+        <div class="swipe-indicator right">LIKE</div>
+    </div>
+</div>
 ```
+
+**Swipe Logic Implementation**:
+```javascript
+// Swipe threshold detection and card animation
+function swipeCard(card, direction) {
+    const profileUuid = card.dataset.profileUuid;
+    const profile = appState.profiles.find(p => p.uuid === profileUuid);
+    
+    if (profile) {
+        if (direction === 'like') {
+            appState.likedProfiles.push(profile); // Save for later
+        } else {
+            appState.passedProfiles.push(profile); // Skip
+        }
+    }
+    
+    // Animate card out with rotation
+    const translateX = direction === 'like' ? '100vw' : '-100vw';
+    const rotation = direction === 'like' ? '30' : '-30';
+    card.style.transform = `translateX(${translateX}) rotate(${rotation}deg)`;
+    card.style.opacity = '0';
+    
+    // Auto-advance to next profile
+    appState.currentProfileIndex++;
+    setTimeout(() => displaySwipeableProfiles(), 300);
+}
+```
+
+### 3. Likes Screen
+**Purpose**: View and manage all liked/saved profiles in a grid layout
+
+**Features**:
+- **Liked Profiles Grid**: Clean grid layout of all saved professional profiles
+- **Quick Profile Access**: Direct links to websites and contact information
+- **Profile Summary**: Name, specialization, location, and website for each liked profile
+- **Visual Consistency**: Same avatar and styling as discovery cards
+- **Empty State Handling**: Helpful messaging when no profiles have been liked yet
 
 ## Backend Architecture
 
@@ -312,76 +358,90 @@ export PRIVATE_KEY="your_private_key_hex"
 
 ## Key Features Implemented
 
-### Profile Management ✅
-- ✅ Complete profile CRUD operations
-- ✅ Image upload with base64 conversion
-- ✅ Prof service integration with PII isolation
-- ✅ Form validation and error handling
-- ✅ Real-time profile display updates
+### Professional Profile Management ✅
+- ✅ **Sanora Form-Widget Integration**: Uses `window.getForm()` for consistent UX across Planet Nine ecosystem
+- ✅ **"I do this" Professional Field**: Prominent specialization field for clear professional positioning
+- ✅ **Complete Profile CRUD**: Create, read, update, delete operations via Prof service
+- ✅ **Image Upload**: Drag-and-drop image upload with base64 conversion through form-widget
+- ✅ **PII Isolation**: Prof service integration with secure personal information handling
+- ✅ **Form Validation**: Real-time validation with visual feedback via SVG form components
+- ✅ **Pre-populated Editing**: Profile edit forms auto-fill with current profile data
 
-### Product Management ✅
-- ✅ Product creation with comprehensive metadata
-- ✅ Tag system for categorization and discovery
-- ✅ Category-based organization
-- ✅ Pricing in USD with cent precision
-- ✅ Sanora service integration
-- ✅ Product editing and deletion
+### Swipeable Professional Discovery ✅
+- ✅ **Tinder-Style Interface**: Intuitive swipe right (save) / left (skip) professional discovery
+- ✅ **Full-View Profile Cards**: Complete professional information in beautiful card layout
+- ✅ **Touch & Mouse Support**: Seamless interaction on desktop and mobile devices
+- ✅ **Visual Swipe Indicators**: Real-time green "LIKE" and red "PASS" feedback
+- ✅ **Smooth Animations**: 300ms transitions with rotation and opacity effects
+- ✅ **Statistics Tracking**: Live counts of remaining, liked, and passed profiles
+- ✅ **3-Card Stack Management**: Visible card stack with scaling and positioning effects
+- ✅ **Auto-Advance**: Automatic progression to next profile after swipe decision
 
-### Swipable Discovery Feed ✅
-- ✅ Tag-based product search
-- ✅ Tinder-style swipe interface
-- ✅ Mouse and touch support
-- ✅ Visual swipe indicators
-- ✅ Statistics tracking (liked/passed)
-- ✅ Smooth animations and transitions
-- ✅ Card stack management
+### Liked Profiles Management ✅
+- ✅ **Saved Profiles Grid**: Clean grid layout of all liked professional profiles
+- ✅ **Profile Persistence**: Profiles saved for later review and contact
+- ✅ **Quick Access**: Direct links to websites and professional contact information
+- ✅ **Visual Consistency**: Same avatar and styling system as discovery interface
+- ✅ **Empty State Handling**: Helpful messaging and guidance for new users
+
+### Form-Widget Ecosystem Integration ✅
+- ✅ **Cross-Service Consistency**: Same form experience as MyBase, Sanora, and all Planet Nine apps
+- ✅ **SVG-Based Forms**: Beautiful vector-based forms with purple-to-green gradients
+- ✅ **Widget Component Loading**: Proper script loading and initialization in Tauri environment
+- ✅ **Data Format Conversion**: Seamless conversion between widget data and profile data formats
+- ✅ **Image Field Integration**: Full image upload support through form-widget's image field type
 
 ### Technical Features ✅
-- ✅ Complete Rust backend with Planet Nine integration
-- ✅ Sessionless authentication
-- ✅ No-module JavaScript for Tauri compatibility
-- ✅ Responsive design with modern CSS
-- ✅ Error handling and user feedback
-- ✅ Real-time UI updates
+- ✅ **Complete Rust Backend**: Prof service integration with sessionless authentication
+- ✅ **Environment Configuration**: Support for dev/test/local environments with instant switching
+- ✅ **No-Module JavaScript**: Tauri-compatible vanilla JavaScript architecture
+- ✅ **Responsive Design**: Modern CSS with mobile-first responsive design principles
+- ✅ **Error Handling**: Comprehensive error handling and user feedback systems
+- ✅ **Mock Profile System**: Built-in mock profiles for testing and demonstration
 
 ## Use Cases
 
-### For Service Providers
-1. **Create Profile**: Set up professional profile with skills and experience
-2. **Add Services**: List consulting, development, design, or other services
-3. **Tag Products**: Use relevant tags for better discoverability
-4. **Manage Offerings**: Edit pricing, descriptions, and availability
+### For Professionals
+1. **Create Professional Profile**: Set up profile with "I do this" specialization, bio, and contact information
+2. **Professional Positioning**: Use the "I do this" field to clearly communicate your core professional offering
+3. **Visual Branding**: Upload professional profile image through intuitive drag-and-drop interface
+4. **Contact Information**: Include website and location for professional networking and opportunities
+5. **Profile Management**: Update and refine professional information as your career evolves
 
-### For Service Seekers
-1. **Discover Services**: Use tag-based search to find relevant providers
-2. **Swipe Interface**: Quickly browse through available services
-3. **Like/Pass System**: Build curated lists of interesting services
-4. **View Profiles**: See provider information and expertise
+### For Networking & Discovery
+1. **Discover Professionals**: Use intuitive swipe interface to browse through professional profiles
+2. **Quick Decisions**: Swipe right to save interesting professionals, left to pass
+3. **Build Professional Network**: Create curated collection of liked professionals for follow-up
+4. **Contact Management**: Access saved profiles with direct links to websites and contact information
+5. **Professional Exploration**: Discover new specializations and professional approaches through browsing
 
-### Professional Categories
-- **Developers**: Web development, mobile apps, software consulting
-- **Designers**: UI/UX design, graphic design, branding services
-- **Consultants**: Business consulting, technical advisory, coaching
-- **Creators**: Content creation, photography, video production
-- **Educators**: Course creation, tutoring, workshop facilitation
+### Professional Specializations
+- **"I do Web Development"**: Front-end, back-end, full-stack development
+- **"I do UI/UX Design"**: User interface design, user experience consulting, prototyping
+- **"I do Business Consulting"**: Strategy consulting, operations optimization, market analysis
+- **"I do Content Creation"**: Writing, photography, video production, social media
+- **"I do Data Analysis"**: Business intelligence, data science, analytics consulting
+- **"I do Project Management"**: Agile coaching, team leadership, process optimization
 
 ## Integration Points
 
-### Prof Service Integration
-- **Profile Storage**: All personal information stored in prof service
-- **Image Handling**: Profile images processed and optimized by prof
-- **PII Isolation**: Personal data kept separate from product information
-- **Privacy Protection**: Email and contact info not shared across services
+### Sanora Form-Widget Integration
+- **Consistent UX**: Uses `window.getForm()` to provide the same form experience as MyBase, Sanora, and all Planet Nine applications
+- **SVG-Based Forms**: Beautiful vector-based forms with purple-to-green gradients and real-time validation
+- **Image Upload**: Full drag-and-drop image upload support through form-widget's image field type
+- **Data Conversion**: Seamless conversion between widget data format and IDothis profile data structure
+- **Script Loading**: Proper widget script loading in Tauri environment via index.html
 
-### Sanora Service Integration
-- **Product Hosting**: All products stored as Sanora products
-- **Pricing System**: Uses Sanora's cent-based pricing
-- **Product Management**: Full CRUD operations via Sanora API
-- **Future Payments**: Ready for MAGIC/Addie payment integration
+### Prof Service Integration
+- **"I do this" Field**: Custom professional specialization field stored as additional_fields in Prof service
+- **Profile CRUD**: Complete profile management lifecycle with sessionless authentication
+- **Image Handling**: Profile image upload with base64 conversion and authenticated URL generation
+- **PII Isolation**: Secure handling of personal information with Prof service's privacy-first architecture
+- **Environment Support**: Works across dev/test/local environments with automatic service URL switching
 
 ### Cross-Service Data Flow
 ```
-User Profile (prof) → Product Creation (sanora) → Discovery Feed (tags) → Purchase (future: addie)
+Professional Profile Creation (prof + form-widget) → Profile Discovery (swipeable interface) → Professional Networking (liked profiles)
 ```
 
 ## Future Enhancements

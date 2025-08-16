@@ -1,366 +1,353 @@
-/**
- * IDothis - Main Application
- * A platform for showcasing what you do with profile and product management
- */
+// IDothis - Professional Showcase Platform
+// No-modules approach for Tauri compatibility
 
-import { invoke } from '@tauri-apps/api/core';
-
-// Environment configuration for idothis
+// Use the global environment configuration from environment-config.js
 function getEnvironmentConfig() {
-  const env = localStorage.getItem('nullary-env') || 'dev';
-  
-  const configs = {
-    dev: {
-      sanora: 'https://dev.sanora.allyabase.com/',
-      bdo: 'https://dev.bdo.allyabase.com/',
-      dolores: 'https://dev.dolores.allyabase.com/',
-      fount: 'https://dev.fount.allyabase.com/',
-      addie: 'https://dev.addie.allyabase.com/',
-      pref: 'https://dev.pref.allyabase.com/',
-      julia: 'https://dev.julia.allyabase.com/',
-      continuebee: 'https://dev.continuebee.allyabase.com/',
-      joan: 'https://dev.joan.allyabase.com/',
-      aretha: 'https://dev.aretha.allyabase.com/',
-      minnie: 'https://dev.minnie.allyabase.com/',
-      covenant: 'https://dev.covenant.allyabase.com/'
-    },
-    test: {
-      sanora: 'http://localhost:5121/',
-      bdo: 'http://localhost:5114/',
-      dolores: 'http://localhost:5118/',
-      fount: 'http://localhost:5117/',
-      addie: 'http://localhost:5116/',
-      pref: 'http://localhost:5113/',
-      julia: 'http://localhost:5111/',
-      continuebee: 'http://localhost:5112/',
-      joan: 'http://localhost:5115/',
-      aretha: 'http://localhost:5120/',
-      minnie: 'http://localhost:5119/',
-      covenant: 'http://localhost:5122/'
-    },
-    local: {
-      sanora: 'http://localhost:7243/',
-      bdo: 'http://localhost:3003/',
-      dolores: 'http://localhost:3005/',
-      fount: 'http://localhost:3002/',
-      addie: 'http://localhost:3005/',
-      pref: 'http://localhost:3004/',
-      julia: 'http://localhost:3000/',
-      continuebee: 'http://localhost:2999/',
-      joan: 'http://localhost:3004/',
-      aretha: 'http://localhost:7277/',
-      minnie: 'http://localhost:2525/',
-      covenant: 'http://localhost:3011/'
-    }
-  };
-  
-  const config = configs[env] || configs.dev;
-  return { env, services: config, name: env };
+  if (window.PlanetNineEnvironment) {
+    return window.PlanetNineEnvironment.getEnvironmentConfig();
+  }
+  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
+  return { env: 'dev', services: {}, name: 'dev' };
 }
 
 function getServiceUrl(serviceName) {
-  const config = getEnvironmentConfig();
-  return config.services[serviceName] || config.services.sanora;
-}
-
-// Environment switching functions for browser console
-window.idothisEnv = {
-  switch: (env) => {
-    const envs = { dev: 'dev', test: 'test', local: 'local' };
-    if (!envs[env]) {
-      console.error(`❌ Unknown environment: ${env}. Available: dev, test, local`);
-      return false;
-    }
-    localStorage.setItem('nullary-env', env);
-    console.log(`🔄 idothis environment switched to ${env}. Refresh app to apply changes.`);
-    console.log(`Run: location.reload() to refresh`);
-    return true;
-  },
-  current: () => {
-    const config = getEnvironmentConfig();
-    console.log(`🌐 Current environment: ${config.env}`);
-    console.log(`📍 Services:`, config.services);
-    return config;
-  },
-  list: () => {
-    console.log('🌍 Available environments for idothis:');
-    console.log('• dev - https://dev.*.allyabase.com (production dev server)');
-    console.log('• test - localhost:5111-5122 (3-base test ecosystem)');
-    console.log('• local - localhost:3000-3007 (local development)');
+  if (window.PlanetNineEnvironment) {
+    return window.PlanetNineEnvironment.getServiceUrl(serviceName);
   }
-};
+  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
+  return 'https://dev.sanora.allyabase.com/';
+}
 
-// Make functions globally available
-window.getEnvironmentConfig = getEnvironmentConfig;
-window.getServiceUrl = getServiceUrl;
+const { invoke } = window.__TAURI__.core;
 
-
-// Application state
+// Global app state
 const appState = {
-    currentScreen: 'profile',
-    profile: null,
-    products: [],
-    contracts: [],
+    currentScreen: 'profiles',
+    currentProfile: null,
+    profiles: [], // All discovered profiles
+    currentProfileIndex: 0,
+    likedProfiles: [],
+    passedProfiles: [],
     sessionless: null,
-    loading: false
+    loading: false,
+    swipeThreshold: 100
 };
 
-// Utility functions
-function showMessage(message, type = 'info') {
-    const messageEl = document.createElement('div');
-    messageEl.className = `message ${type}`;
-    messageEl.textContent = message;
-    
-    const container = document.querySelector('.content');
-    container.insertBefore(messageEl, container.firstChild);
-    
-    setTimeout(() => {
-        messageEl.remove();
-    }, 5000);
+// Initialize environment
+async function initializeEnvironment() {
+    try {
+        if (invoke) {
+            const envFromRust = await invoke('get_env_config');
+            if (envFromRust && ['dev', 'test', 'local'].includes(envFromRust)) {
+                console.log(`🌍 Environment from Rust: ${envFromRust}`);
+                localStorage.setItem('nullary-env', envFromRust);
+                return envFromRust;
+            }
+        }
+    } catch (error) {
+        console.log('⚠️ Could not get environment from Rust, using localStorage/default');
+    }
+    return localStorage.getItem('nullary-env') || 'dev';
 }
 
-function setLoading(loading) {
-    appState.loading = loading;
-    const buttons = document.querySelectorAll('.form-button');
-    buttons.forEach(btn => {
-        btn.disabled = loading;
-    });
-}
-
-// Screen management
+// Screen Management
 function showScreen(screenName) {
     // Hide all screens
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
     
-    // Show requested screen
+    // Update navigation buttons
+    document.querySelectorAll('.nav-button').forEach(button => {
+        button.classList.remove('active');
+        if (button.dataset.screen === screenName) {
+            button.classList.add('active');
+        }
+    });
+    
+    // Show the requested screen
     const screen = document.getElementById(`${screenName}-screen`);
     if (screen) {
         screen.classList.add('active');
         appState.currentScreen = screenName;
         
-        // Update navigation
-        document.querySelectorAll('.nav-button').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        const navBtn = document.querySelector(`[data-screen="${screenName}"]`);
-        if (navBtn) {
-            navBtn.classList.add('active');
-        }
-        
-        // Load screen data
+        // Load screen-specific data
         loadScreenData(screenName);
     }
 }
 
+// Load data for specific screens
 async function loadScreenData(screenName) {
     switch (screenName) {
         case 'profile':
-            await loadProfile();
+            await loadMyProfile();
             break;
-        case 'products':
-            await loadUserProducts();
+        case 'profiles':
+            await loadProfilesForSwipe();
             break;
-        case 'feed':
-            await loadTagFeed();
-            break;
-        case 'contracts':
-            await loadMyContracts();
+        case 'likes':
+            displayLikedProfiles();
             break;
     }
 }
 
-// Profile management
-async function loadProfile() {
+// Profile Management
+async function loadMyProfile() {
     try {
-        const result = await invoke('get_profile');
-        if (result.success && result.data) {
-            appState.profile = result.data;
-            displayProfile(result.data);
-        } else {
-            displayEmptyProfile();
-        }
+        appState.loading = true;
+        updateUI();
+        
+        const profile = await invoke('get_profile');
+        appState.currentProfile = profile;
+        displayProfile(profile);
     } catch (error) {
-        console.error('Failed to load profile:', error);
-        displayEmptyProfile();
+        console.error('Error loading profile:', error);
+        showCreateProfileForm();
+    } finally {
+        appState.loading = false;
+        updateUI();
     }
 }
 
 function displayProfile(profile) {
-    const container = document.getElementById('profile-display');
-    if (!container) return;
+    const container = document.getElementById('profileDisplay');
     
+    if (!profile) {
+        showCreateProfileForm();
+        return;
+    }
+    
+    // Create profile display
     container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Your Profile</div>
-            <div class="card-content">
-                <p><strong>Name:</strong> ${profile.name}</p>
-                <p><strong>Email:</strong> ${profile.email}</p>
-                ${profile.bio ? `<p><strong>Bio:</strong> ${profile.bio}</p>` : ''}
-                ${profile.skills ? `<p><strong>Skills:</strong> ${profile.skills.join(', ')}</p>` : ''}
-                ${profile.website ? `<p><strong>Website:</strong> <a href="${profile.website}" target="_blank" style="color: #4CAF50;">${profile.website}</a></p>` : ''}
-                ${profile.location ? `<p><strong>Location:</strong> ${profile.location}</p>` : ''}
-                <p><strong>Created:</strong> ${new Date(profile.createdAt).toLocaleDateString()}</p>
-            </div>
-            <div style="margin-top: 15px;">
-                <button class="form-button" onclick="showProfileForm(true)">Edit Profile</button>
-                <button class="form-button" onclick="deleteProfile()" style="background: #f44336; border-color: #f44336; margin-left: 10px;">Delete Profile</button>
-            </div>
-        </div>
-    `;
-    
-    // Load profile image if available
-    loadProfileImage();
-}
-
-function displayEmptyProfile() {
-    const container = document.getElementById('profile-display');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Create Your Profile</div>
-            <div class="card-content">
-                <p>Start by creating your profile to showcase who you are and what you do.</p>
-                <button class="form-button primary" onclick="showProfileForm(false)" style="margin-top: 15px;">Create Profile</button>
-            </div>
-        </div>
-    `;
-}
-
-async function loadProfileImage() {
-    try {
-        const result = await invoke('get_profile_image_url');
-        if (result.success && result.data) {
-            const profileDisplay = document.getElementById('profile-display');
-            if (profileDisplay) {
-                const imageEl = document.createElement('img');
-                imageEl.src = result.data;
-                imageEl.style.cssText = `
-                    width: 100px;
-                    height: 100px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                    margin-bottom: 15px;
-                    border: 3px solid rgba(255, 255, 255, 0.3);
-                `;
-                
-                const card = profileDisplay.querySelector('.card');
-                if (card) {
-                    card.insertBefore(imageEl, card.querySelector('.card-title'));
+        <div class="profile-card">
+            <div class="profile-avatar-large">
+                ${profile.imageFilename ? 
+                    `<img src="${profile.imageUrl || '#'}" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                     <div class="avatar-fallback" style="display:none;">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>` :
+                    `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
                 }
-            }
-        }
-    } catch (error) {
-        console.log('No profile image available');
-    }
+            </div>
+            <div class="profile-name">${profile.name || 'No Name'}</div>
+            <div class="profile-email">${profile.email || 'No Email'}</div>
+            <div class="profile-idothis">${profile.idothis || 'What do you do?'}</div>
+            ${profile.bio ? `<div class="profile-bio">${profile.bio}</div>` : ''}
+            ${profile.website ? `<div class="profile-website"><a href="${profile.website}" target="_blank">${profile.website}</a></div>` : ''}
+            ${profile.location ? `<div class="profile-location">📍 ${profile.location}</div>` : ''}
+            
+            <div class="profile-actions">
+                <button class="form-button" onclick="showEditProfileForm()">Edit Profile</button>
+                <button class="form-button danger" onclick="deleteProfile()">Delete Profile</button>
+            </div>
+        </div>
+    `;
 }
 
-function showProfileForm(isEdit) {
-    const container = document.getElementById('profile-form-container');
-    if (!container) return;
-    
-    const profile = isEdit ? appState.profile : {};
-    
+function showCreateProfileForm() {
+    const container = document.getElementById('profileDisplay');
     container.innerHTML = `
-        <div class="card">
-            <div class="card-title">${isEdit ? 'Edit' : 'Create'} Profile</div>
-            <form id="profile-form" onsubmit="handleProfileSubmit(event)">
-                <div class="form-group">
-                    <label class="form-label">Name *</label>
-                    <input type="text" class="form-input" name="name" value="${profile.name || ''}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Email *</label>
-                    <input type="email" class="form-input" name="email" value="${profile.email || ''}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Bio</label>
-                    <textarea class="form-input form-textarea" name="bio" placeholder="Tell people what you do...">${profile.bio || ''}</textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Skills (comma-separated)</label>
-                    <input type="text" class="form-input" name="skills" value="${profile.skills ? profile.skills.join(', ') : ''}" placeholder="JavaScript, Design, Photography...">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Website</label>
-                    <input type="url" class="form-input" name="website" value="${profile.website || ''}" placeholder="https://yourwebsite.com">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Location</label>
-                    <input type="text" class="form-input" name="location" value="${profile.location || ''}" placeholder="City, Country">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Profile Image</label>
-                    <input type="file" class="form-input" name="image" accept="image/*">
-                </div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="form-button primary">${isEdit ? 'Update' : 'Create'} Profile</button>
-                    <button type="button" class="form-button" onclick="hideProfileForm()">Cancel</button>
-                </div>
-            </form>
+        <div class="profile-card">
+            <h3>Create Your Professional Profile</h3>
+            <div class="widget-container" id="profileFormContainer"></div>
         </div>
     `;
     
-    container.style.display = 'block';
-}
-
-function hideProfileForm() {
-    const container = document.getElementById('profile-form-container');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-async function handleProfileSubmit(event) {
-    event.preventDefault();
-    setLoading(true);
+    // Create form configuration for profile creation
+    const formConfig = {
+        "Name": { type: "text", required: true },
+        "Email": { type: "text", required: true },
+        "I do this": { type: "text", required: true },
+        "Bio": { type: "textarea", charLimit: 500, required: false },
+        "Website": { type: "text", required: false },
+        "Location": { type: "text", required: false },
+        "Profile Image": { type: "image", required: false }
+    };
     
-    try {
-        const formData = new FormData(event.target);
+    // Handle form submission
+    function handleProfileCreation(formData) {
+        console.log('🚀 Creating profile with form data:', formData);
+        
         const profileData = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            bio: formData.get('bio') || null,
-            skills: formData.get('skills') ? formData.get('skills').split(',').map(s => s.trim()).filter(s => s) : null,
-            website: formData.get('website') || null,
-            location: formData.get('location') || null,
-            additional_fields: {}
+            name: formData["Name"] || '',
+            email: formData["Email"] || '',
+            idothis: formData["I do this"] || '',
+            bio: formData["Bio"] || '',
+            website: formData["Website"] || '',
+            location: formData["Location"] || ''
         };
         
-        // Handle image upload
+        // Get image data if provided
         let imageData = null;
-        const imageFile = formData.get('image');
-        if (imageFile && imageFile.size > 0) {
-            imageData = await fileToBase64(imageFile);
+        if (formData["Profile Image"] && formData["Profile Image"].dataUrl) {
+            imageData = formData["Profile Image"].dataUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
         }
         
-        const isEdit = appState.profile !== null;
-        const result = await invoke(isEdit ? 'update_profile' : 'create_profile', {
-            profileData,
-            imageData
-        });
+        // Call the existing create profile function
+        createProfileFromData(profileData, imageData);
+    }
+    
+    // Create and append the form widget
+    const formWidget = window.getForm(formConfig, handleProfileCreation);
+    document.getElementById('profileFormContainer').appendChild(formWidget);
+}
+
+function showEditProfileForm() {
+    if (!appState.currentProfile) return;
+    
+    const profile = appState.currentProfile;
+    const container = document.getElementById('profileDisplay');
+    
+    container.innerHTML = `
+        <div class="profile-card">
+            <h3>Edit Your Profile</h3>
+            <div class="widget-container" id="profileEditFormContainer"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button type="button" class="form-button secondary" onclick="loadMyProfile()">Cancel</button>
+            </div>
+        </div>
+    `;
+    
+    // Create form configuration for profile editing with current values
+    const formConfig = {
+        "Name": { type: "text", required: true },
+        "Email": { type: "text", required: true },
+        "I do this": { type: "text", required: true },
+        "Bio": { type: "textarea", charLimit: 500, required: false },
+        "Website": { type: "text", required: false },
+        "Location": { type: "text", required: false },
+        "Profile Image": { type: "image", required: false }
+    };
+    
+    // Handle form submission
+    function handleProfileUpdate(formData) {
+        console.log('🚀 Updating profile with form data:', formData);
         
-        if (result.success) {
-            showMessage(`Profile ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
-            hideProfileForm();
-            await loadProfile();
-        } else {
-            showMessage(result.error || 'Failed to save profile', 'error');
+        const profileData = {
+            name: formData["Name"] || '',
+            email: formData["Email"] || '',
+            idothis: formData["I do this"] || '',
+            bio: formData["Bio"] || '',
+            website: formData["Website"] || '',
+            location: formData["Location"] || ''
+        };
+        
+        // Get image data if provided
+        let imageData = null;
+        if (formData["Profile Image"] && formData["Profile Image"].dataUrl) {
+            imageData = formData["Profile Image"].dataUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
         }
+        
+        // Call the existing update profile function
+        updateProfileFromData(profileData, imageData);
+    }
+    
+    // Create and append the form widget
+    const formWidget = window.getForm(formConfig, handleProfileUpdate);
+    document.getElementById('profileEditFormContainer').appendChild(formWidget);
+    
+    // Pre-populate the form with current profile data
+    setTimeout(() => {
+        // Fill in current values
+        const nameInput = document.getElementById('NameInput');
+        const emailInput = document.getElementById('EmailInput');
+        const idothisInput = document.getElementById('IdothisInput');
+        const bioTextarea = document.getElementById('BioTextarea');
+        const websiteInput = document.getElementById('WebsiteInput');
+        const locationInput = document.getElementById('LocationInput');
+        
+        if (nameInput) nameInput.value = profile.name || '';
+        if (emailInput) emailInput.value = profile.email || '';
+        if (idothisInput) idothisInput.value = profile.idothis || '';
+        if (bioTextarea) bioTextarea.value = profile.bio || '';
+        if (websiteInput) websiteInput.value = profile.website || '';
+        if (locationInput) locationInput.value = profile.location || '';
+        
+        // Trigger validation after pre-populating
+        if (window.validateFormAndUpdateSubmit && window.currentFormJSON) {
+            window.validateFormAndUpdateSubmit(window.currentFormJSON);
+        }
+    }, 300);
+}
+
+// Profile creation and management
+async function createProfile(event) {
+    event.preventDefault();
+    
+    const profileData = {
+        name: document.getElementById('profileName').value,
+        email: document.getElementById('profileEmail').value,
+        idothis: document.getElementById('profileIdothis').value,
+        bio: document.getElementById('profileBio').value,
+        website: document.getElementById('profileWebsite').value,
+        location: document.getElementById('profileLocation').value
+    };
+    
+    const imageFile = document.getElementById('profileImage').files[0];
+    let imageData = null;
+    
+    if (imageFile) {
+        imageData = await fileToBase64(imageFile);
+    }
+    
+    await createProfileFromData(profileData, imageData);
+}
+
+// Helper function for profile creation from widget data
+async function createProfileFromData(profileData, imageData) {
+    try {
+        appState.loading = true;
+        updateUI();
+        
+        const result = await invoke('create_profile', { profileData, imageData });
+        console.log('Profile created:', result);
+        
+        await loadMyProfile();
     } catch (error) {
-        showMessage('Error saving profile: ' + error.message, 'error');
+        console.error('Error creating profile:', error);
+        alert('Error creating profile: ' + error);
     } finally {
-        setLoading(false);
+        appState.loading = false;
+        updateUI();
+    }
+}
+
+async function updateProfile(event) {
+    event.preventDefault();
+    
+    const profileData = {
+        name: document.getElementById('profileName').value,
+        email: document.getElementById('profileEmail').value,
+        idothis: document.getElementById('profileIdothis').value,
+        bio: document.getElementById('profileBio').value,
+        website: document.getElementById('profileWebsite').value,
+        location: document.getElementById('profileLocation').value
+    };
+    
+    const imageFile = document.getElementById('profileImage').files[0];
+    let imageData = null;
+    
+    if (imageFile) {
+        imageData = await fileToBase64(imageFile);
+    }
+    
+    await updateProfileFromData(profileData, imageData);
+}
+
+// Helper function for profile update from widget data
+async function updateProfileFromData(profileData, imageData) {
+    try {
+        appState.loading = true;
+        updateUI();
+        
+        const result = await invoke('update_profile', { profileData, imageData });
+        console.log('Profile updated:', result);
+        
+        await loadMyProfile();
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        alert('Error updating profile: ' + error);
+    } finally {
+        appState.loading = false;
+        updateUI();
     }
 }
 
@@ -369,634 +356,359 @@ async function deleteProfile() {
         return;
     }
     
-    setLoading(true);
-    
     try {
-        const result = await invoke('delete_profile');
-        if (result.success) {
-            showMessage('Profile deleted successfully', 'success');
-            appState.profile = null;
-            displayEmptyProfile();
-        } else {
-            showMessage(result.error || 'Failed to delete profile', 'error');
-        }
+        appState.loading = true;
+        updateUI();
+        
+        await invoke('delete_profile');
+        console.log('Profile deleted');
+        
+        appState.currentProfile = null;
+        showCreateProfileForm();
     } catch (error) {
-        showMessage('Error deleting profile: ' + error.message, 'error');
+        console.error('Error deleting profile:', error);
+        alert('Error deleting profile: ' + error);
     } finally {
-        setLoading(false);
+        appState.loading = false;
+        updateUI();
     }
 }
 
-// Product management
-async function loadUserProducts() {
+// Swipeable Profile Discovery
+async function loadProfilesForSwipe() {
     try {
-        const result = await invoke('get_user_products');
-        if (result.success && result.data) {
-            appState.products = result.data.products || [];
-            displayProducts(appState.products);
-        } else {
-            displayEmptyProducts();
-        }
+        appState.loading = true;
+        updateUI();
+        
+        // Get all profiles except our own
+        const profiles = await invoke('get_all_profiles');
+        appState.profiles = profiles.filter(profile => 
+            profile.uuid !== appState.currentProfile?.uuid
+        );
+        appState.currentProfileIndex = 0;
+        
+        displaySwipeableProfiles();
     } catch (error) {
-        console.error('Failed to load products:', error);
-        displayEmptyProducts();
+        console.error('Error loading profiles:', error);
+        displayNoProfiles();
+    } finally {
+        appState.loading = false;
+        updateUI();
     }
 }
 
-function displayProducts(products) {
-    const container = document.getElementById('products-display');
-    if (!container) return;
+function displaySwipeableProfiles() {
+    const container = document.getElementById('swipeContainer');
     
-    if (products.length === 0) {
-        displayEmptyProducts();
+    if (!appState.profiles || appState.profiles.length === 0) {
+        displayNoProfiles();
+        return;
+    }
+    
+    const remainingProfiles = appState.profiles.slice(appState.currentProfileIndex);
+    
+    if (remainingProfiles.length === 0) {
+        displayNoMoreProfiles();
         return;
     }
     
     container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Your Products & Services</div>
-            <button class="form-button primary" onclick="showProductForm(false)" style="margin-bottom: 20px;">Add New Product</button>
-            ${products.map(product => `
-                <div class="card" style="margin-top: 15px;">
-                    <h3 style="color: white; margin-bottom: 10px;">${product.title}</h3>
-                    <p style="color: rgba(255,255,255,0.9); margin-bottom: 10px;">${product.description}</p>
-                    <p style="color: #4CAF50; font-weight: 600;">$${(product.price / 100).toFixed(2)}</p>
-                    ${product.tags ? `<p style="color: rgba(255,255,255,0.7); font-size: 14px;">Tags: ${product.tags.join(', ')}</p>` : ''}
-                    <div style="margin-top: 10px;">
-                        <button class="form-button" onclick="editProduct('${product.id}')">Edit</button>
-                        <button class="form-button" onclick="deleteProduct('${product.id}')" style="background: #f44336; border-color: #f44336; margin-left: 10px;">Delete</button>
+        <div class="swipe-stats">
+            <div class="stat">
+                <span class="stat-number">${remainingProfiles.length}</span>
+                <span class="stat-label">Remaining</span>
+            </div>
+            <div class="stat">
+                <span class="stat-number">${appState.likedProfiles.length}</span>
+                <span class="stat-label">Liked</span>
+            </div>
+            <div class="stat">
+                <span class="stat-number">${appState.passedProfiles.length}</span>
+                <span class="stat-label">Passed</span>
+            </div>
+        </div>
+        
+        <div class="swipe-area">
+            <div class="swipe-instructions">
+                Swipe right to like, left to pass
+            </div>
+            <div class="swipe-stack" id="swipeStack">
+                ${generateSwipeCards(remainingProfiles.slice(0, 3))}
+            </div>
+            <div class="swipe-actions">
+                <button class="swipe-button pass" onclick="swipeProfile('pass')">👎 Pass</button>
+                <button class="swipe-button like" onclick="swipeProfile('like')">👍 Like</button>
+            </div>
+        </div>
+    `;
+    
+    // Add swipe listeners to the top card
+    const topCard = container.querySelector('.swipe-card:first-child');
+    if (topCard) {
+        addSwipeListeners(topCard);
+    }
+}
+
+function generateSwipeCards(profiles) {
+    return profiles.map((profile, index) => `
+        <div class="swipe-card" data-profile-uuid="${profile.uuid}" style="z-index: ${10 - index}; transform: scale(${1 - index * 0.05}) translateY(${index * 10}px);">
+            <div class="card-content">
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        ${profile.imageFilename ? 
+                            `<img src="${profile.imageUrl || '#'}" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div class="avatar-fallback" style="display:none;">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>` :
+                            `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
+                        }
                     </div>
+                    <div class="profile-info">
+                        <h3 class="profile-name">${profile.name || 'No Name'}</h3>
+                        <p class="profile-idothis">${profile.idothis || 'Professional'}</p>
+                        ${profile.location ? `<p class="profile-location">📍 ${profile.location}</p>` : ''}
+                    </div>
+                </div>
+                
+                ${profile.bio ? `<div class="profile-bio">${profile.bio}</div>` : ''}
+                ${profile.website ? `<div class="profile-website"><a href="${profile.website}" target="_blank">🌐 Website</a></div>` : ''}
+                
+                <div class="swipe-indicator left">PASS</div>
+                <div class="swipe-indicator right">LIKE</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Swipe functionality
+function addSwipeListeners(card) {
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let currentY = 0;
+    let isDragging = false;
+    
+    function handleStart(e) {
+        isDragging = true;
+        const point = e.touches ? e.touches[0] : e;
+        startX = point.clientX;
+        startY = point.clientY;
+        card.style.transition = 'none';
+    }
+    
+    function handleMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        
+        const point = e.touches ? e.touches[0] : e;
+        currentX = point.clientX - startX;
+        currentY = point.clientY - startY;
+        
+        // Apply transform
+        const rotation = currentX * 0.1;
+        card.style.transform = `translateX(${currentX}px) translateY(${currentY}px) rotate(${rotation}deg)`;
+        
+        // Show indicators
+        const leftIndicator = card.querySelector('.swipe-indicator.left');
+        const rightIndicator = card.querySelector('.swipe-indicator.right');
+        
+        if (currentX < -50) {
+            leftIndicator.style.opacity = Math.min(1, Math.abs(currentX) / 100);
+            rightIndicator.style.opacity = 0;
+        } else if (currentX > 50) {
+            rightIndicator.style.opacity = Math.min(1, currentX / 100);
+            leftIndicator.style.opacity = 0;
+        } else {
+            leftIndicator.style.opacity = 0;
+            rightIndicator.style.opacity = 0;
+        }
+    }
+    
+    function handleEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        card.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+        
+        // Determine swipe direction
+        if (Math.abs(currentX) > appState.swipeThreshold) {
+            const direction = currentX > 0 ? 'like' : 'pass';
+            swipeCard(card, direction);
+        } else {
+            // Snap back
+            card.style.transform = 'translateX(0) translateY(0) rotate(0deg)';
+            card.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                indicator.style.opacity = 0;
+            });
+        }
+        
+        currentX = 0;
+        currentY = 0;
+    }
+    
+    // Mouse events
+    card.addEventListener('mousedown', handleStart);
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleEnd);
+    
+    // Touch events
+    card.addEventListener('touchstart', handleStart);
+    card.addEventListener('touchmove', handleMove);
+    card.addEventListener('touchend', handleEnd);
+}
+
+function swipeProfile(direction) {
+    const topCard = document.querySelector('.swipe-card:first-child');
+    if (topCard) {
+        swipeCard(topCard, direction);
+    }
+}
+
+function swipeCard(card, direction) {
+    const profileUuid = card.dataset.profileUuid;
+    const profile = appState.profiles.find(p => p.uuid === profileUuid);
+    
+    if (profile) {
+        if (direction === 'like') {
+            appState.likedProfiles.push(profile);
+        } else {
+            appState.passedProfiles.push(profile);
+        }
+    }
+    
+    // Animate card out
+    const translateX = direction === 'like' ? '100vw' : '-100vw';
+    card.style.transform = `translateX(${translateX}) rotate(${direction === 'like' ? '30' : '-30'}deg)`;
+    card.style.opacity = '0';
+    
+    // Move to next profile
+    appState.currentProfileIndex++;
+    
+    setTimeout(() => {
+        displaySwipeableProfiles();
+    }, 300);
+}
+
+// Display functions for empty states
+function displayNoProfiles() {
+    const container = document.getElementById('swipeContainer');
+    container.innerHTML = `
+        <div class="empty-state">
+            <h3>No Profiles Found</h3>
+            <p>There are no other profiles to discover yet.</p>
+            <button class="form-button" onclick="loadProfilesForSwipe()">Refresh</button>
+        </div>
+    `;
+}
+
+function displayNoMoreProfiles() {
+    const container = document.getElementById('swipeContainer');
+    container.innerHTML = `
+        <div class="empty-state">
+            <h3>All Done! 🎉</h3>
+            <p>You've seen all available profiles.</p>
+            <div class="swipe-stats">
+                <div class="stat">
+                    <span class="stat-number">${appState.likedProfiles.length}</span>
+                    <span class="stat-label">Liked</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">${appState.passedProfiles.length}</span>
+                    <span class="stat-label">Passed</span>
+                </div>
+            </div>
+            <button class="form-button" onclick="loadProfilesForSwipe()">Start Over</button>
+        </div>
+    `;
+}
+
+// Liked profiles display
+function displayLikedProfiles() {
+    const container = document.getElementById('likedProfilesContainer');
+    
+    if (appState.likedProfiles.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No Liked Profiles Yet</h3>
+                <p>Profiles you like will appear here.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="liked-profiles-grid">
+            ${appState.likedProfiles.map(profile => `
+                <div class="profile-card liked-profile">
+                    <div class="profile-avatar">
+                        ${profile.imageFilename ? 
+                            `<img src="${profile.imageUrl || '#'}" alt="Profile">` :
+                            `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
+                        }
+                    </div>
+                    <h4 class="profile-name">${profile.name || 'No Name'}</h4>
+                    <p class="profile-idothis">${profile.idothis || 'Professional'}</p>
+                    ${profile.location ? `<p class="profile-location">📍 ${profile.location}</p>` : ''}
+                    ${profile.website ? `<a href="${profile.website}" target="_blank" class="profile-website">🌐 Website</a>` : ''}
                 </div>
             `).join('')}
         </div>
     `;
 }
 
-function displayEmptyProducts() {
-    const container = document.getElementById('products-display');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Your Products & Services</div>
-            <div class="card-content">
-                <p>Start showcasing what you do by adding your first product or service.</p>
-                <button class="form-button primary" onclick="showProductForm(false)" style="margin-top: 15px;">Add Your First Product</button>
-            </div>
-        </div>
-    `;
-}
-
-function showProductForm(isEdit, productId = null) {
-    const container = document.getElementById('product-form-container');
-    if (!container) return;
-    
-    const product = isEdit ? appState.products.find(p => p.id === productId) : {};
-    
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">${isEdit ? 'Edit' : 'Add'} Product/Service</div>
-            <form id="product-form" onsubmit="handleProductSubmit(event, ${isEdit}, '${productId}')">
-                <div class="form-group">
-                    <label class="form-label">Title *</label>
-                    <input type="text" class="form-input" name="title" value="${product.title || ''}" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description *</label>
-                    <textarea class="form-input form-textarea" name="description" required>${product.description || ''}</textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Price (USD) *</label>
-                    <input type="number" class="form-input" name="price" value="${product.price ? (product.price / 100).toFixed(2) : ''}" step="0.01" min="0" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Category *</label>
-                    <select class="form-input" name="category" required>
-                        <option value="">Select a category</option>
-                        <option value="service" ${product.category === 'service' ? 'selected' : ''}>Service</option>
-                        <option value="digital_product" ${product.category === 'digital_product' ? 'selected' : ''}>Digital Product</option>
-                        <option value="consultation" ${product.category === 'consultation' ? 'selected' : ''}>Consultation</option>
-                        <option value="course" ${product.category === 'course' ? 'selected' : ''}>Course</option>
-                        <option value="physical_product" ${product.category === 'physical_product' ? 'selected' : ''}>Physical Product</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Tags (comma-separated) *</label>
-                    <input type="text" class="form-input" name="tags" value="${product.tags ? product.tags.join(', ') : ''}" placeholder="web, design, development, photography..." required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Content Type</label>
-                    <select class="form-input" name="content_type">
-                        <option value="service" ${product.content_type === 'service' ? 'selected' : ''}>Service</option>
-                        <option value="digital_product" ${product.content_type === 'digital_product' ? 'selected' : ''}>Digital Product</option>
-                        <option value="consultation" ${product.content_type === 'consultation' ? 'selected' : ''}>Consultation</option>
-                        <option value="course" ${product.content_type === 'course' ? 'selected' : ''}>Course</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Preview URL</label>
-                    <input type="url" class="form-input" name="preview_url" value="${product.preview_url || ''}" placeholder="https://example.com/preview">
-                </div>
-                
-                <div class="form-group">
-                    <label style="color: rgba(255,255,255,0.9); font-size: 16px; margin-bottom: 10px; display: block;">
-                        <input type="checkbox" name="include_contract" onchange="toggleProductContract()" style="margin-right: 8px;">
-                        🪄 Include Magical Contract
-                    </label>
-                    <div id="product-contract-section" style="display: none; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; margin-top: 10px;">
-                        <p style="color: rgba(255,255,255,0.8); font-size: 14px; margin-bottom: 15px;">
-                            Define project steps and automatic MAGIC spells that trigger when each step is completed by all parties.
-                        </p>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label class="form-label" style="font-size: 14px;">Contract Title</label>
-                            <input type="text" name="contract_title" class="form-input" placeholder="e.g., Web Development Delivery Contract">
-                        </div>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label class="form-label" style="font-size: 14px;">Client/Participant UUID</label>
-                            <input type="text" name="contract_participant" class="form-input" placeholder="Client's sessionless UUID">
-                            <div style="color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 5px;">
-                                Your UUID (${appState.sessionless?.uuid?.substring(0, 8) || 'loading...'}...) will be automatically included
-                            </div>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label class="form-label" style="font-size: 14px;">Quick Contract Template</label>
-                            <select name="contract_template" class="form-input" onchange="applyContractTemplate()">
-                                <option value="">Select a template (optional)</option>
-                                <option value="web_development">Web Development (3 steps)</option>
-                                <option value="design_project">Design Project (4 steps)</option>
-                                <option value="consultation">Consultation Service (2 steps)</option>
-                                <option value="custom">Custom Contract</option>
-                            </select>
-                        </div>
-                        
-                        <div style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.4;">
-                            💡 <strong>Tip:</strong> Templates create common project workflows with milestone payments. 
-                            You can customize them after creation or build your own from scratch.
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="form-button primary">${isEdit ? 'Update' : 'Add'} Product</button>
-                    <button type="button" class="form-button" onclick="hideProductForm()">Cancel</button>
-                </div>
-            </form>
-        </div>
-    `;
-    
-    container.style.display = 'block';
-}
-
-function hideProductForm() {
-    const container = document.getElementById('product-form-container');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-async function handleProductSubmit(event, isEdit, productId) {
-    event.preventDefault();
-    setLoading(true);
-    
-    try {
-        const formData = new FormData(event.target);
-        const productData = {
-            title: formData.get('title'),
-            description: formData.get('description'),
-            price: Math.round(parseFloat(formData.get('price')) * 100), // Convert to cents
-            category: formData.get('category'),
-            tags: formData.get('tags').split(',').map(t => t.trim()).filter(t => t),
-            content_type: formData.get('content_type'),
-            preview_url: formData.get('preview_url') || null
-        };
-        
-        // Add magical contract if included
-        const includeContract = formData.get('include_contract');
-        if (includeContract) {
-            const contractTitle = formData.get('contract_title');
-            const contractParticipant = formData.get('contract_participant');
-            const contractTemplate = formData.get('contract_template');
-            
-            if (contractTitle && contractParticipant && appState.sessionless?.uuid) {
-                const participants = [appState.sessionless.uuid, contractParticipant.trim()];
-                const steps = getContractTemplateSteps(contractTemplate, productData.price);
-                
-                productData.magical_contract = {
-                    title: contractTitle,
-                    description: `Delivery contract for: ${productData.title}`,
-                    participants,
-                    steps
-                };
-            }
-        }
-        
-        const result = await invoke(isEdit ? 'update_product' : 'create_product', 
-            isEdit ? { productId, productData } : { productData }
-        );
-        
-        if (result.success) {
-            let message = `Product ${isEdit ? 'updated' : 'created'} successfully!`;
-            if (result.data?.contract_uuid) {
-                message += ' 🪄 Magical contract created and linked!';
-            }
-            showMessage(message, 'success');
-            hideProductForm();
-            await loadUserProducts();
-        } else {
-            showMessage(result.error || 'Failed to save product', 'error');
-        }
-    } catch (error) {
-        showMessage('Error saving product: ' + error.message, 'error');
-    } finally {
-        setLoading(false);
-    }
-}
-
-async function deleteProduct(productId) {
-    if (!confirm('Are you sure you want to delete this product?')) {
-        return;
-    }
-    
-    setLoading(true);
-    
-    try {
-        const result = await invoke('delete_product', { productId });
-        if (result.success) {
-            showMessage('Product deleted successfully', 'success');
-            await loadUserProducts();
-        } else {
-            showMessage(result.error || 'Failed to delete product', 'error');
-        }
-    } catch (error) {
-        showMessage('Error deleting product: ' + error.message, 'error');
-    } finally {
-        setLoading(false);
-    }
-}
-
-// Tag-based feed
-async function loadTagFeed() {
-    const tagInput = document.getElementById('tag-input');
-    const tags = tagInput ? tagInput.value.split(',').map(t => t.trim()).filter(t => t) : ['web', 'design'];
-    
-    await loadProductsByTags(tags);
-}
-
-async function loadProductsByTags(tags) {
-    try {
-        const result = await invoke('get_products_by_tags', { tags });
-        if (result.success && result.data) {
-            displaySwipableFeed(result.data);
-        } else {
-            displayEmptyFeed();
-        }
-    } catch (error) {
-        console.error('Failed to load tag feed:', error);
-        displayEmptyFeed();
-    }
-}
-
-function displaySwipableFeed(products) {
-    const container = document.getElementById('feed-display');
-    if (!container) return;
-    
-    if (products.length === 0) {
-        displayEmptyFeed();
-        return;
-    }
-    
-    // Create swipable feed
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Discover Products & Services</div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="tag-input" class="form-input" placeholder="Enter tags: web, design, development..." value="web, design">
-                <button class="form-button" onclick="searchByTags()" style="margin-top: 10px;">Search</button>
-            </div>
-            <div id="swipable-container" style="height: 500px; position: relative;">
-                ${createSwipableCards(products)}
-            </div>
-            <div id="feed-stats" style="margin-top: 20px; text-align: center; color: rgba(255,255,255,0.8);">
-                <div>Swipe right to like, left to pass</div>
-                <div id="stats-text">Showing ${products.length} products</div>
-            </div>
-        </div>
-    `;
-    
-    initializeSwipableCards(products);
-}
-
-function displayEmptyFeed() {
-    const container = document.getElementById('feed-display');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">Discover Products & Services</div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="tag-input" class="form-input" placeholder="Enter tags: web, design, development..." value="web, design">
-                <button class="form-button" onclick="searchByTags()" style="margin-top: 10px;">Search</button>
-            </div>
-            <div class="card-content">
-                <p>No products found for the selected tags. Try different tags or check back later.</p>
-            </div>
-        </div>
-    `;
-}
-
-function createSwipableCards(products) {
-    return products.map((product, index) => `
-        <div class="swipe-card" data-index="${index}" style="
-            position: absolute;
-            width: 100%;
-            height: 400px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 20px;
-            cursor: grab;
-            transform: scale(${1 - index * 0.05}) translateY(${index * 10}px);
-            z-index: ${100 - index};
-            border: 1px solid rgba(255,255,255,0.2);
-            ${index > 2 ? 'display: none;' : ''}
-        ">
-            <div style="height: 100%; display: flex; flex-direction: column;">
-                <h3 style="color: white; margin-bottom: 10px; font-size: 20px;">${product.title}</h3>
-                <p style="color: rgba(255,255,255,0.9); margin-bottom: 15px; flex: 1; overflow: hidden;">${product.description}</p>
-                <div style="color: #4CAF50; font-size: 18px; font-weight: 600; margin-bottom: 10px;">$${(product.price / 100).toFixed(2)}</div>
-                <div style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 10px;">
-                    <span style="background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; margin-right: 5px;">${product.category}</span>
-                </div>
-                <div style="color: rgba(255,255,255,0.6); font-size: 12px;">
-                    Tags: ${product.tags.join(', ')}
-                </div>
-                <div style="color: rgba(255,255,255,0.8); font-size: 14px; margin-top: 10px;">
-                    by ${product.author}
-                </div>
-            </div>
-            
-            <!-- Swipe indicators -->
-            <div class="swipe-indicator like" style="
-                position: absolute;
-                top: 50%;
-                right: 20px;
-                transform: translateY(-50%) scale(0);
-                background: #4CAF50;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-weight: bold;
-                opacity: 0;
-                transition: all 0.2s ease;
-            ">❤️ LIKE</div>
-            
-            <div class="swipe-indicator pass" style="
-                position: absolute;
-                top: 50%;
-                left: 20px;
-                transform: translateY(-50%) scale(0);
-                background: #f44336;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-weight: bold;
-                opacity: 0;
-                transition: all 0.2s ease;
-            ">✖️ PASS</div>
-        </div>
-    `).join('');
-}
-
-let currentCardIndex = 0;
-let likedProducts = [];
-let passedProducts = [];
-
-function initializeSwipableCards(products) {
-    currentCardIndex = 0;
-    likedProducts = [];
-    passedProducts = [];
-    
-    const cards = document.querySelectorAll('.swipe-card');
-    cards.forEach((card, index) => {
-        if (index === 0) {
-            addSwipeListeners(card, products[index]);
-        }
-    });
-    
-    updateStats();
-}
-
-function addSwipeListeners(card, product) {
-    let startX = 0;
-    let currentX = 0;
-    let isDragging = false;
-    
-    card.addEventListener('mousedown', startDrag);
-    card.addEventListener('touchstart', startDrag);
-    
-    function startDrag(e) {
-        isDragging = true;
-        startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
-        currentX = startX;
-        card.style.cursor = 'grabbing';
-        card.style.transition = 'none';
-        
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag);
-        document.addEventListener('mouseup', endDrag);
-        document.addEventListener('touchend', endDrag);
-    }
-    
-    function drag(e) {
-        if (!isDragging) return;
-        
-        e.preventDefault();
-        currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
-        const deltaX = currentX - startX;
-        const rotation = deltaX * 0.1;
-        
-        card.style.transform = `translateX(${deltaX}px) rotate(${rotation}deg)`;
-        
-        // Show indicators
-        const likeIndicator = card.querySelector('.swipe-indicator.like');
-        const passIndicator = card.querySelector('.swipe-indicator.pass');
-        
-        if (deltaX > 50) {
-            likeIndicator.style.opacity = Math.min(1, (deltaX - 50) / 100);
-            likeIndicator.style.transform = `translateY(-50%) scale(${Math.min(1, (deltaX - 50) / 100)})`;
-            passIndicator.style.opacity = 0;
-            passIndicator.style.transform = 'translateY(-50%) scale(0)';
-        } else if (deltaX < -50) {
-            passIndicator.style.opacity = Math.min(1, (Math.abs(deltaX) - 50) / 100);
-            passIndicator.style.transform = `translateY(-50%) scale(${Math.min(1, (Math.abs(deltaX) - 50) / 100)})`;
-            likeIndicator.style.opacity = 0;
-            likeIndicator.style.transform = 'translateY(-50%) scale(0)';
-        } else {
-            likeIndicator.style.opacity = 0;
-            likeIndicator.style.transform = 'translateY(-50%) scale(0)';
-            passIndicator.style.opacity = 0;
-            passIndicator.style.transform = 'translateY(-50%) scale(0)';
-        }
-    }
-    
-    function endDrag() {
-        if (!isDragging) return;
-        
-        isDragging = false;
-        card.style.cursor = 'grab';
-        
-        const deltaX = currentX - startX;
-        const threshold = 100;
-        
-        if (Math.abs(deltaX) > threshold) {
-            // Swipe out
-            const direction = deltaX > 0 ? 'right' : 'left';
-            swipeCard(card, product, direction);
-        } else {
-            // Snap back
-            card.style.transition = 'transform 0.3s ease';
-            card.style.transform = 'translateX(0) rotate(0deg)';
-            
-            // Hide indicators
-            const indicators = card.querySelectorAll('.swipe-indicator');
-            indicators.forEach(indicator => {
-                indicator.style.opacity = 0;
-                indicator.style.transform = 'translateY(-50%) scale(0)';
-            });
-        }
-        
-        document.removeEventListener('mousemove', drag);
-        document.removeEventListener('touchmove', drag);
-        document.removeEventListener('mouseup', endDrag);
-        document.removeEventListener('touchend', endDrag);
-    }
-}
-
-function swipeCard(card, product, direction) {
-    const containerWidth = card.parentElement.offsetWidth;
-    const targetX = direction === 'right' ? containerWidth + 100 : -(containerWidth + 100);
-    const rotation = direction === 'right' ? 30 : -30;
-    
-    card.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-    card.style.transform = `translateX(${targetX}px) rotate(${rotation}deg)`;
-    card.style.opacity = '0';
-    
-    // Add to appropriate collection
-    if (direction === 'right') {
-        likedProducts.push(product);
-        showMessage(`Liked: ${product.title}`, 'success');
-    } else {
-        passedProducts.push(product);
-        showMessage(`Passed: ${product.title}`, 'info');
-    }
-    
-    setTimeout(() => {
-        card.remove();
-        showNextCard();
-        updateStats();
-    }, 300);
-}
-
-function showNextCard() {
-    currentCardIndex++;
-    const cards = document.querySelectorAll('.swipe-card');
-    
-    if (cards.length === 0) {
-        showFeedComplete();
-        return;
-    }
-    
-    // Update card positions
-    cards.forEach((card, index) => {
-        const newScale = 1 - index * 0.05;
-        const newTranslateY = index * 10;
-        
-        card.style.transform = `scale(${newScale}) translateY(${newTranslateY}px)`;
-        card.style.zIndex = 100 - index;
-        
-        if (index < 3) {
-            card.style.display = 'block';
-        }
-        
-        if (index === 0) {
-            // Add swipe listeners to new top card
-            const productIndex = parseInt(card.dataset.index);
-            // Note: In a real app, you'd need to maintain the products array
-            addSwipeListeners(card, { title: 'Product ' + productIndex });
-        }
-    });
-}
-
-function showFeedComplete() {
-    const container = document.getElementById('swipable-container');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-            color: white;
-        ">
-            <div style="font-size: 48px; margin-bottom: 20px;">🎉</div>
-            <h3 style="margin-bottom: 10px;">All done!</h3>
-            <p style="color: rgba(255,255,255,0.8); margin-bottom: 20px;">You've reviewed all products for these tags.</p>
-            <button class="form-button primary" onclick="searchByTags()">Load More</button>
-        </div>
-    `;
-}
-
-function updateStats() {
-    const statsEl = document.getElementById('stats-text');
-    if (statsEl) {
-        const remaining = document.querySelectorAll('.swipe-card').length;
-        statsEl.textContent = `Remaining: ${remaining} | Liked: ${likedProducts.length} | Passed: ${passedProducts.length}`;
-    }
-}
-
-async function searchByTags() {
-    const tagInput = document.getElementById('tag-input');
-    if (tagInput) {
-        const tags = tagInput.value.split(',').map(t => t.trim()).filter(t => t);
-        if (tags.length > 0) {
-            await loadProductsByTags(tags);
-        }
-    }
-}
-
 // Utility functions
-function fileToBase64(file) {
+async function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = () => {
-            const base64 = reader.result.split(',')[1]; // Remove data:image/...;base64, prefix
-            resolve(base64);
-        };
+        reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = error => reject(error);
     });
 }
 
-// Application initialization
+function previewImage(input) {
+    const preview = document.getElementById('imagePreview');
+    preview.innerHTML = '';
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `
+                <div class="image-preview-container">
+                    <img src="${e.target.result}" alt="Preview" class="image-preview-img">
+                    <p class="image-preview-text">Image selected</p>
+                </div>
+            `;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// UI Update
+function updateUI() {
+    // Update loading states
+    const loadingElements = document.querySelectorAll('.loading-posts');
+    loadingElements.forEach(el => {
+        el.style.display = appState.loading ? 'flex' : 'none';
+    });
+    
+    // Update main loading
+    const mainLoading = document.querySelector('.loading');
+    if (mainLoading) {
+        mainLoading.style.display = appState.loading ? 'flex' : 'none';
+    }
+}
+
+// App Initialization
 async function initializeApp() {
+    console.log('🚀 Initializing IDothis...');
+    
+    // Initialize environment
+    await initializeEnvironment();
+    
     try {
         // Get sessionless info
-        const sessionlessResult = await invoke('get_sessionless_info');
-        if (sessionlessResult.success) {
-            appState.sessionless = sessionlessResult.data;
-            console.log('Sessionless UUID:', appState.sessionless.uuid);
-        }
+        const sessionlessInfo = await invoke('get_sessionless_info');
+        appState.sessionless = sessionlessInfo;
+        console.log('🔑 Sessionless initialized:', sessionlessInfo.uuid);
         
         // Create app structure
         createAppStructure();
@@ -1004,710 +716,67 @@ async function initializeApp() {
         // Show initial screen
         showScreen('profile');
         
-        console.log('IDothis app initialized successfully');
+        console.log('✅ IDothis initialized successfully');
     } catch (error) {
-        console.error('Failed to initialize app:', error);
-        showMessage('Failed to initialize app: ' + error.message, 'error');
+        console.error('❌ Failed to initialize IDothis:', error);
+        
+        // Show error state
+        document.getElementById('app').innerHTML = `
+            <div class="loading">
+                <div style="text-align: center; color: white;">
+                    <h2>Failed to Initialize</h2>
+                    <p>Error: ${error}</p>
+                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; color: #667eea; border: none; border-radius: 5px; cursor: pointer;">
+                        Retry
+                    </button>
+                </div>
+            </div>
+        `;
     }
 }
 
+// App Structure Creation
 function createAppStructure() {
-    const app = document.getElementById('app');
-    app.innerHTML = `
+    document.getElementById('app').innerHTML = `
         <!-- Navigation -->
-        <div class="nav-bar">
-            <div class="nav-title">IDothis</div>
+        <nav class="nav-bar">
+            <div class="nav-title">
+                💼 IDothis
+            </div>
             <div class="nav-buttons">
-                <button class="nav-button active" data-screen="profile" onclick="showScreen('profile')">Profile</button>
-                <button class="nav-button" data-screen="products" onclick="showScreen('products')">Products</button>
-                <button class="nav-button" data-screen="contracts" onclick="showScreen('contracts')">🪄 Contracts</button>
-                <button class="nav-button" data-screen="feed" onclick="showScreen('feed')">Discover</button>
+                <button class="nav-button" data-screen="profile" onclick="showScreen('profile')">Profile</button>
+                <button class="nav-button active" data-screen="profiles" onclick="showScreen('profiles')">Discover</button>
+                <button class="nav-button" data-screen="likes" onclick="showScreen('likes')">Likes</button>
             </div>
-        </div>
-        
+        </nav>
+
         <!-- Profile Screen -->
-        <div id="profile-screen" class="screen active">
+        <div id="profile-screen" class="screen">
             <div class="content">
-                <div id="profile-form-container" style="display: none;"></div>
-                <div id="profile-display"></div>
+                <div id="profileDisplay"></div>
             </div>
         </div>
-        
-        <!-- Products Screen -->
-        <div id="products-screen" class="screen">
+
+        <!-- Profiles Discovery Screen -->
+        <div id="profiles-screen" class="screen active">
             <div class="content">
-                <div id="product-form-container" style="display: none;"></div>
-                <div id="products-display"></div>
+                <div id="swipeContainer"></div>
             </div>
         </div>
-        
-        <!-- Contracts Screen -->
-        <div id="contracts-screen" class="screen">
+
+        <!-- Liked Profiles Screen -->
+        <div id="likes-screen" class="screen">
             <div class="content">
-                <div id="contract-form-container" style="display: none;"></div>
-                <div id="contracts-display"></div>
-            </div>
-        </div>
-        
-        <!-- Feed Screen -->
-        <div id="feed-screen" class="screen">
-            <div class="content">
-                <div id="feed-display"></div>
+                <h2 style="color: white; margin-bottom: 20px;">Liked Profiles</h2>
+                <div id="likedProfilesContainer"></div>
             </div>
         </div>
     `;
 }
 
-// Magical contract management
-async function loadMyContracts() {
-    try {
-        setLoading(true);
-        const result = await invoke('get_my_contracts');
-        
-        if (result.success && result.data) {
-            appState.contracts = result.data;
-            displayContracts(result.data);
-        } else {
-            displayEmptyContracts();
-        }
-    } catch (error) {
-        console.error('Failed to load contracts:', error);
-        displayEmptyContracts();
-        showMessage('Failed to load contracts: ' + error.message, 'error');
-    } finally {
-        setLoading(false);
-    }
+// Start the app when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
 }
-
-function displayContracts(contracts) {
-    const container = document.getElementById('contracts-display');
-    if (!container) return;
-    
-    if (contracts.length === 0) {
-        displayEmptyContracts();
-        return;
-    }
-    
-    container.innerHTML = `
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div class="card-title">🪄 My Magical Contracts</div>
-                <button class="form-button primary" onclick="showContractForm()">Create Contract</button>
-            </div>
-            ${contracts.map(contract => createContractCard(contract)).join('')}
-        </div>
-    `;
-}
-
-function displayEmptyContracts() {
-    const container = document.getElementById('contracts-display');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div class="card-title">🪄 My Magical Contracts</div>
-                <button class="form-button primary" onclick="showContractForm()">Create Contract</button>
-            </div>
-            <div class="card-content">
-                <p>No magical contracts yet. Create your first contract to define multi-step workflows with automatic MAGIC spell execution!</p>
-                <p style="margin-top: 15px; color: rgba(255,255,255,0.7); font-size: 14px;">
-                    💡 Tip: Contracts can be attached to products to define deliverables, payment schedules, and automated actions.
-                </p>
-            </div>
-        </div>
-    `;
-}
-
-function createContractCard(contract) {
-    const progress = calculateContractProgress(contract);
-    
-    return `
-        <div class="card" style="margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                <div>
-                    <h3 style="color: white; margin-bottom: 5px;">${contract.title}</h3>
-                    <div style="color: rgba(255,255,255,0.7); font-size: 14px; margin-bottom: 10px;">
-                        ${contract.participants.length} participants • ${contract.step_count} steps
-                    </div>
-                    <div style="color: rgba(255,255,255,0.6); font-size: 12px;">
-                        Created ${new Date(contract.created_at).toLocaleDateString()}
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="color: #4CAF50; font-weight: 600; margin-bottom: 5px;">
-                        ${contract.completed_steps}/${contract.step_count} Complete
-                    </div>
-                    <div style="background: rgba(255,255,255,0.2); height: 4px; width: 100px; border-radius: 2px; overflow: hidden;">
-                        <div style="background: #4CAF50; height: 100%; width: ${progress}%; transition: width 0.3s ease;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button class="form-button" onclick="viewContract('${contract.uuid}')">👁️ View</button>
-                <button class="form-button" onclick="viewContractSVG('${contract.uuid}')">🎨 Visualize</button>
-                ${progress < 100 ? `<button class="form-button" onclick="signContractSteps('${contract.uuid}')">✍️ Sign</button>` : ''}
-            </div>
-        </div>
-    `;
-}
-
-function calculateContractProgress(contract) {
-    if (contract.step_count === 0) return 0;
-    return Math.round((contract.completed_steps / contract.step_count) * 100);
-}
-
-function showContractForm() {
-    const container = document.getElementById('contract-form-container');
-    if (!container) return;
-    
-    container.style.display = 'block';
-    container.innerHTML = `
-        <div class="card">
-            <div class="card-title">🪄 Create Magical Contract</div>
-            <form onsubmit="handleContractSubmit(event)">
-                <div class="form-group">
-                    <label class="form-label">Contract Title *</label>
-                    <input type="text" name="title" class="form-input" placeholder="e.g., Web Development Project" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-input form-textarea" placeholder="Describe the overall contract and expectations..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Participants (UUIDs) *</label>
-                    <input type="text" name="participants" class="form-input" placeholder="Enter participant UUIDs separated by commas" required>
-                    <div style="color: rgba(255,255,255,0.6); font-size: 12px; margin-top: 5px;">
-                        Include your UUID (${appState.sessionless?.uuid?.substring(0, 8) || 'loading...'}...) and other participants
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Contract Steps *</label>
-                    <div id="contract-steps">
-                        <div class="contract-step" data-step="0">
-                            <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                                <span style="color: white; margin-right: 10px;">Step 1:</span>
-                                <button type="button" onclick="removeContractStep(0)" style="background: #f44336; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
-                            </div>
-                            <input type="text" name="step_description_0" class="form-input" placeholder="e.g., Complete project proposal and wireframes" required style="margin-bottom: 10px;">
-                            <div style="margin-bottom: 15px;">
-                                <label style="color: rgba(255,255,255,0.8); font-size: 14px;">
-                                    <input type="checkbox" name="has_magic_0" onchange="toggleMagicSpell(0)"> Add MAGIC Spell
-                                </label>
-                                <div id="magic-spell-0" style="display: none; margin-top: 10px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
-                                    <label class="form-label" style="font-size: 14px;">Payment Amount (USD)</label>
-                                    <input type="number" name="magic_amount_0" class="form-input" placeholder="0.00" step="0.01" style="margin-bottom: 10px;">
-                                    <label class="form-label" style="font-size: 14px;">Spell Description</label>
-                                    <textarea name="magic_description_0" class="form-input" placeholder="e.g., Pay $500 to freelancer upon step completion" style="height: 60px;"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" onclick="addContractStep()" class="form-button" style="margin-top: 10px;">+ Add Step</button>
-                </div>
-                
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button type="submit" class="form-button primary">Create Contract</button>
-                    <button type="button" onclick="hideContractForm()" class="form-button">Cancel</button>
-                </div>
-            </form>
-        </div>
-    `;
-}
-
-function hideContractForm() {
-    const container = document.getElementById('contract-form-container');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-let contractStepCounter = 1;
-
-function addContractStep() {
-    const stepsContainer = document.getElementById('contract-steps');
-    if (!stepsContainer) return;
-    
-    const stepDiv = document.createElement('div');
-    stepDiv.className = 'contract-step';
-    stepDiv.setAttribute('data-step', contractStepCounter);
-    
-    stepDiv.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 10px;">
-            <span style="color: white; margin-right: 10px;">Step ${contractStepCounter + 1}:</span>
-            <button type="button" onclick="removeContractStep(${contractStepCounter})" style="background: #f44336; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">Remove</button>
-        </div>
-        <input type="text" name="step_description_${contractStepCounter}" class="form-input" placeholder="Describe what needs to be completed in this step" required style="margin-bottom: 10px;">
-        <div style="margin-bottom: 15px;">
-            <label style="color: rgba(255,255,255,0.8); font-size: 14px;">
-                <input type="checkbox" name="has_magic_${contractStepCounter}" onchange="toggleMagicSpell(${contractStepCounter})"> Add MAGIC Spell
-            </label>
-            <div id="magic-spell-${contractStepCounter}" style="display: none; margin-top: 10px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
-                <label class="form-label" style="font-size: 14px;">Payment Amount (USD)</label>
-                <input type="number" name="magic_amount_${contractStepCounter}" class="form-input" placeholder="0.00" step="0.01" style="margin-bottom: 10px;">
-                <label class="form-label" style="font-size: 14px;">Spell Description</label>
-                <textarea name="magic_description_${contractStepCounter}" class="form-input" placeholder="e.g., Release milestone payment" style="height: 60px;"></textarea>
-            </div>
-        </div>
-    `;
-    
-    stepsContainer.appendChild(stepDiv);
-    contractStepCounter++;
-}
-
-function removeContractStep(stepIndex) {
-    const stepDiv = document.querySelector(`[data-step="${stepIndex}"]`);
-    if (stepDiv) {
-        stepDiv.remove();
-        // Renumber remaining steps
-        const remainingSteps = document.querySelectorAll('.contract-step');
-        remainingSteps.forEach((step, index) => {
-            const stepLabel = step.querySelector('span');
-            if (stepLabel) {
-                stepLabel.textContent = `Step ${index + 1}:`;
-            }
-        });
-    }
-}
-
-function toggleMagicSpell(stepIndex) {
-    const checkbox = document.querySelector(`input[name="has_magic_${stepIndex}"]`);
-    const spellDiv = document.getElementById(`magic-spell-${stepIndex}`);
-    
-    if (checkbox && spellDiv) {
-        spellDiv.style.display = checkbox.checked ? 'block' : 'none';
-    }
-}
-
-async function handleContractSubmit(event) {
-    event.preventDefault();
-    
-    try {
-        setLoading(true);
-        const formData = new FormData(event.target);
-        
-        // Parse participants
-        const participantsStr = formData.get('participants');
-        const participants = participantsStr.split(',').map(p => p.trim()).filter(p => p);
-        
-        if (participants.length < 2) {
-            showMessage('At least 2 participants are required', 'error');
-            return;
-        }
-        
-        // Parse steps
-        const steps = [];
-        const stepElements = document.querySelectorAll('.contract-step');
-        
-        stepElements.forEach((stepEl, index) => {
-            const stepIndex = stepEl.getAttribute('data-step');
-            const description = formData.get(`step_description_${stepIndex}`);
-            const hasMagic = formData.get(`has_magic_${stepIndex}`);
-            
-            if (description) {
-                const step = { description };
-                
-                if (hasMagic) {
-                    const amount = parseFloat(formData.get(`magic_amount_${stepIndex}`) || '0');
-                    const magicDescription = formData.get(`magic_description_${stepIndex}`) || '';
-                    
-                    step.magic_spell = {
-                        type: 'payment',
-                        amount: amount,
-                        description: magicDescription,
-                        currency: 'USD'
-                    };
-                }
-                
-                steps.push(step);
-            }
-        });
-        
-        if (steps.length === 0) {
-            showMessage('At least one step is required', 'error');
-            return;
-        }
-        
-        // Create contract
-        const contractData = {
-            title: formData.get('title'),
-            description: formData.get('description') || '',
-            participants,
-            steps
-        };
-        
-        const result = await invoke('create_contract', { contractData });
-        
-        if (result.success) {
-            showMessage('Magical contract created successfully! 🪄', 'success');
-            hideContractForm();
-            await loadMyContracts();
-            contractStepCounter = 1; // Reset counter
-        } else {
-            showMessage('Failed to create contract: ' + (result.error || 'Unknown error'), 'error');
-        }
-        
-    } catch (error) {
-        console.error('Failed to create contract:', error);
-        showMessage('Error creating contract: ' + error.message, 'error');
-    } finally {
-        setLoading(false);
-    }
-}
-
-async function viewContract(uuid) {
-    try {
-        const result = await invoke('get_contract', { uuid });
-        
-        if (result.success && result.data) {
-            const contract = result.data;
-            
-            // Create modal-style display
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                background: rgba(0,0,0,0.8); z-index: 1000; 
-                display: flex; align-items: center; justify-content: center;
-                padding: 20px; box-sizing: border-box;
-            `;
-            
-            modal.innerHTML = `
-                <div style="
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border-radius: 12px; padding: 30px; max-width: 800px; width: 100%;
-                    max-height: 80vh; overflow-y: auto; color: white;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">🪄 ${contract.title}</h2>
-                        <button onclick="this.closest('.modal').remove()" style="
-                            background: none; border: none; color: white; font-size: 24px; 
-                            cursor: pointer; padding: 0; width: 30px; height: 30px;
-                        ">×</button>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <strong>Description:</strong> ${contract.description || 'No description provided'}
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <strong>Participants:</strong>
-                        <div style="margin-top: 5px;">
-                            ${contract.participants.map(p => `
-                                <div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 6px; margin-bottom: 5px;">
-                                    ${p.substring(0, 8)}... ${p === appState.sessionless?.uuid ? '(You)' : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 20px;">
-                        <strong>Contract Steps:</strong>
-                        <div style="margin-top: 10px;">
-                            ${contract.steps.map((step, index) => {
-                                const signedCount = Object.values(step.signatures).filter(sig => sig !== null).length;
-                                const requiredCount = contract.participants.length;
-                                const isCompleted = step.completed;
-                                const userSigned = step.signatures[appState.sessionless?.uuid] !== null;
-                                
-                                return `
-                                    <div style="
-                                        background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; 
-                                        margin-bottom: 10px; border-left: 4px solid ${isCompleted ? '#4CAF50' : '#ff9800'};
-                                    ">
-                                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                            <div style="flex: 1;">
-                                                <div style="font-weight: 600; margin-bottom: 8px;">
-                                                    ${isCompleted ? '✅' : userSigned ? '⏳' : '⭕'} Step ${index + 1}: ${step.description}
-                                                </div>
-                                                <div style="font-size: 14px; color: rgba(255,255,255,0.7);">
-                                                    Signatures: ${signedCount}/${requiredCount} 
-                                                    ${userSigned ? '(You signed)' : '(Not signed by you)'}
-                                                </div>
-                                                ${step.magic_spell ? `
-                                                    <div style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;">
-                                                        🪄 MAGIC: ${step.magic_spell.description || 'Payment: $' + (step.magic_spell.amount || 0)}
-                                                    </div>
-                                                ` : ''}
-                                            </div>
-                                            ${!isCompleted && !userSigned ? `
-                                                <button onclick="signStep('${contract.uuid}', '${step.id}')" style="
-                                                    background: #4CAF50; color: white; border: none; 
-                                                    padding: 6px 12px; border-radius: 4px; cursor: pointer;
-                                                    margin-left: 10px; font-size: 12px;
-                                                ">Sign</button>
-                                            ` : ''}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin-top: 20px;">
-                        <button onclick="viewContractSVG('${contract.uuid}')" class="form-button" style="margin-right: 10px;">
-                            🎨 View SVG Visualization
-                        </button>
-                        <button onclick="this.closest('.modal').remove()" class="form-button">Close</button>
-                    </div>
-                </div>
-            `;
-            
-            modal.className = 'modal';
-            document.body.appendChild(modal);
-            
-        } else {
-            showMessage('Failed to load contract details', 'error');
-        }
-    } catch (error) {
-        console.error('Failed to view contract:', error);
-        showMessage('Error loading contract: ' + error.message, 'error');
-    }
-}
-
-async function viewContractSVG(uuid) {
-    try {
-        const result = await invoke('get_contract_svg', { 
-            uuid, 
-            theme: 'dark', 
-            width: 1000, 
-            height: 800 
-        });
-        
-        if (result.success && result.data) {
-            // Create modal to display SVG
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                background: rgba(0,0,0,0.9); z-index: 1000; 
-                display: flex; align-items: center; justify-content: center;
-                padding: 20px; box-sizing: border-box;
-            `;
-            
-            modal.innerHTML = `
-                <div style="
-                    background: white; border-radius: 12px; padding: 20px; 
-                    max-width: 95vw; max-height: 95vh; overflow: auto;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; color: #333;">Contract Visualization</h3>
-                        <button onclick="this.closest('.modal').remove()" style="
-                            background: none; border: none; color: #333; font-size: 24px; 
-                            cursor: pointer; padding: 0; width: 30px; height: 30px;
-                        ">×</button>
-                    </div>
-                    <div style="text-align: center;">
-                        ${result.data}
-                    </div>
-                </div>
-            `;
-            
-            modal.className = 'modal';
-            document.body.appendChild(modal);
-            
-        } else {
-            showMessage('Failed to load contract visualization', 'error');
-        }
-    } catch (error) {
-        console.error('Failed to load contract SVG:', error);
-        showMessage('Error loading visualization: ' + error.message, 'error');
-    }
-}
-
-async function signStep(contractUuid, stepId) {
-    try {
-        const message = prompt('Add a message with your signature (optional):') || 'Step completed and signed';
-        
-        const result = await invoke('sign_contract_step', { 
-            contractUuid, 
-            stepId, 
-            message 
-        });
-        
-        if (result.success) {
-            showMessage('Step signed successfully! ✍️', 'success');
-            
-            if (result.data.magic_triggered) {
-                showMessage('🪄 MAGIC spell triggered! Payment processing...', 'success');
-            }
-            
-            // Close modal and refresh
-            const modal = document.querySelector('.modal');
-            if (modal) modal.remove();
-            
-            await loadMyContracts();
-            
-        } else {
-            showMessage('Failed to sign step: ' + (result.error || 'Unknown error'), 'error');
-        }
-    } catch (error) {
-        console.error('Failed to sign step:', error);
-        showMessage('Error signing step: ' + error.message, 'error');
-    }
-}
-
-// Product contract integration helpers
-function toggleProductContract() {
-    const checkbox = document.querySelector('input[name="include_contract"]');
-    const section = document.getElementById('product-contract-section');
-    
-    if (checkbox && section) {
-        section.style.display = checkbox.checked ? 'block' : 'none';
-    }
-}
-
-function applyContractTemplate() {
-    const templateSelect = document.querySelector('select[name="contract_template"]');
-    if (!templateSelect) return;
-    
-    const template = templateSelect.value;
-    if (!template || template === 'custom') return;
-    
-    // Auto-fill contract title based on template
-    const contractTitleInput = document.querySelector('input[name="contract_title"]');
-    const productTitleInput = document.querySelector('input[name="title"]');
-    
-    if (contractTitleInput && productTitleInput) {
-        const productTitle = productTitleInput.value || 'Project';
-        const templateTitles = {
-            'web_development': `${productTitle} - Web Development Contract`,
-            'design_project': `${productTitle} - Design Project Contract`,
-            'consultation': `${productTitle} - Consultation Agreement`
-        };
-        
-        contractTitleInput.value = templateTitles[template] || `${productTitle} - Service Contract`;
-    }
-}
-
-function getContractTemplateSteps(template, productPrice) {
-    const templates = {
-        'web_development': [
-            {
-                description: 'Project planning, wireframes, and initial setup',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.3 / 100), // 30% upfront
-                    description: `30% upfront payment ($${(productPrice * 0.3 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Development phase - core functionality implementation',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.4 / 100), // 40% at milestone
-                    description: `Milestone payment ($${(productPrice * 0.4 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Final testing, deployment, and project handover',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.3 / 100), // 30% on completion
-                    description: `Final payment ($${(productPrice * 0.3 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            }
-        ],
-        'design_project': [
-            {
-                description: 'Discovery phase - requirements gathering and research',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.25 / 100),
-                    description: `Discovery phase payment ($${(productPrice * 0.25 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Concept development and initial designs',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.25 / 100),
-                    description: `Concept phase payment ($${(productPrice * 0.25 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Design refinement and client feedback integration',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.25 / 100),
-                    description: `Refinement phase payment ($${(productPrice * 0.25 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Final deliverables and asset handover',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.25 / 100),
-                    description: `Final payment ($${(productPrice * 0.25 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            }
-        ],
-        'consultation': [
-            {
-                description: 'Consultation session delivery',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.5 / 100),
-                    description: `Session payment ($${(productPrice * 0.5 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            },
-            {
-                description: 'Follow-up report and recommendations delivery',
-                magic_spell: {
-                    type: 'payment',
-                    amount: Math.round(productPrice * 0.5 / 100),
-                    description: `Final payment ($${(productPrice * 0.5 / 100).toFixed(2)})`,
-                    currency: 'USD'
-                }
-            }
-        ]
-    };
-    
-    return templates[template] || [
-        {
-            description: 'Service delivery and completion',
-            magic_spell: {
-                type: 'payment',
-                amount: Math.round(productPrice / 100),
-                description: `Full payment ($${(productPrice / 100).toFixed(2)})`,
-                currency: 'USD'
-            }
-        }
-    ];
-}
-
-// Global functions for HTML event handlers
-window.showScreen = showScreen;
-window.showProfileForm = showProfileForm;
-window.hideProfileForm = hideProfileForm;
-window.handleProfileSubmit = handleProfileSubmit;
-window.deleteProfile = deleteProfile;
-window.showProductForm = showProductForm;
-window.hideProductForm = hideProductForm;
-window.handleProductSubmit = handleProductSubmit;
-window.deleteProduct = deleteProduct;
-window.searchByTags = searchByTags;
-window.showContractForm = showContractForm;
-window.hideContractForm = hideContractForm;
-window.addContractStep = addContractStep;
-window.removeContractStep = removeContractStep;
-window.toggleMagicSpell = toggleMagicSpell;
-window.handleContractSubmit = handleContractSubmit;
-window.viewContract = viewContract;
-window.viewContractSVG = viewContractSVG;
-window.signStep = signStep;
-window.toggleProductContract = toggleProductContract;
-window.applyContractTemplate = applyContractTemplate;
-
-// Start the application
-document.addEventListener('DOMContentLoaded', initializeApp);
