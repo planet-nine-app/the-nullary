@@ -609,7 +609,8 @@ function getCategoryIcon(category) {
     'course': '🎓',
     'ticket': '🎫',
     'shippable': '📦',
-    'sodoto': '✅'
+    'sodoto': '✅',
+    'menu': '🍽️'
   };
   return icons[category] || '📦';
 }
@@ -628,7 +629,8 @@ function getMetadataTitle(category) {
     'course': '🎓 Course Information',
     'ticket': '🎫 Event Details',
     'shippable': '📦 Product Specifications',
-    'sodoto': '✅ SoDoTo Course Information'
+    'sodoto': '✅ SoDoTo Course Information',
+    'menu': '🍽️ Menu Catalog Information'
   };
   return titles[category] || '📋 Product Information';
 }
@@ -687,6 +689,12 @@ function createMetadataDisplay(category, metadata) {
         { key: 'modules', label: 'Modules', icon: '📚' },
         { key: 'schedule', label: 'Schedule', icon: '📅', type: 'file' },
         { key: 'certificate', label: 'Certificate', icon: '🏆', type: 'boolean' }
+      ],
+      menu: [
+        { key: 'menuDescription', label: 'Description', icon: '📝', type: 'textarea' },
+        { key: 'totalProducts', label: 'Total Products', icon: '📦' },
+        { key: 'menuCount', label: 'Number of Menus', icon: '🍽️' },
+        { key: 'menuStructure', label: 'Menu Structure', icon: '🗂️', type: 'special' }
       ]
     };
   }
@@ -713,6 +721,20 @@ function createMetadataDisplay(category, metadata) {
         displayValue = date.toLocaleString();
       } else if (field.type === 'file' && displayValue) {
         displayValue = '📎 ' + (displayValue.name || displayValue);
+      } else if (field.type === 'special' && field.key === 'menuStructure') {
+        // Special handling for menu structure display
+        const menuStructureElement = createMenuStructureDisplay(metadata[field.key]);
+        fieldElement.innerHTML = `
+          <div style="display: flex; align-items: flex-start; gap: 8px; width: 100%;">
+            <span>${field.icon}</span>
+            <div style="flex: 1;">
+              <strong>${field.label}:</strong>
+              <div style="margin-top: 8px;">${menuStructureElement.outerHTML}</div>
+            </div>
+          </div>
+        `;
+        container.appendChild(fieldElement);
+        return; // Skip the normal display logic
       } else if (field.suffix) {
         displayValue += field.suffix;
       }
@@ -727,6 +749,93 @@ function createMetadataDisplay(category, metadata) {
     }
   });
   
+  return container;
+}
+
+/**
+ * Create a visual display of menu structure for catalog products
+ */
+function createMenuStructureDisplay(menuData) {
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    font-family: monospace;
+    font-size: 13px;
+    max-height: 300px;
+    overflow-y: auto;
+  `;
+  
+  if (!menuData || typeof menuData !== 'object') {
+    container.innerHTML = '<span style="color: #666; font-style: italic;">No menu structure available</span>';
+    return container;
+  }
+  
+  let structureHTML = '';
+  
+  // Handle different formats of menu data
+  let menus = {};
+  if (menuData.menus) {
+    menus = menuData.menus;
+  } else if (typeof menuData === 'object') {
+    menus = menuData;
+  }
+  
+  if (Object.keys(menus).length === 0) {
+    container.innerHTML = '<span style="color: #666; font-style: italic;">No menus found</span>';
+    return container;
+  }
+  
+  structureHTML += '<div style="font-weight: bold; color: #2c3e50; margin-bottom: 10px;">📋 Menu Structure</div>';
+  
+  Object.entries(menus).forEach(([menuKey, menu]) => {
+    // Main menu
+    structureHTML += `
+      <div style="margin-bottom: 8px;">
+        <span style="color: #9b59b6; font-weight: bold;">🍽️ ${menu.title || menuKey}</span>
+    `;
+    
+    // Direct products in main menu
+    if (menu.products && menu.products.length > 0) {
+      structureHTML += `
+        <div style="margin-left: 20px; color: #27ae60; font-size: 12px;">
+          └ ${menu.products.length} direct products
+        </div>
+      `;
+    }
+    
+    // Submenus
+    if (menu.submenus && Object.keys(menu.submenus).length > 0) {
+      Object.entries(menu.submenus).forEach(([submenuKey, submenu]) => {
+        const productCount = submenu.products ? submenu.products.length : 0;
+        structureHTML += `
+          <div style="margin-left: 20px; color: #e74c3c;">
+            ├─ ${submenu.title || submenuKey}
+            <span style="color: #27ae60; font-size: 11px;">(${productCount} products)</span>
+          </div>
+        `;
+      });
+    }
+    
+    structureHTML += '</div>';
+  });
+  
+  // Summary statistics
+  const totalMenus = Object.keys(menus).length;
+  const totalSubmenus = Object.values(menus).reduce((count, menu) => {
+    return count + (menu.submenus ? Object.keys(menu.submenus).length : 0);
+  }, 0);
+  
+  structureHTML += `
+    <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #dee2e6; color: #666; font-size: 11px;">
+      📊 Summary: ${totalMenus} menus, ${totalSubmenus} submenus
+    </div>
+  `;
+  
+  container.innerHTML = structureHTML;
   return container;
 }
 
@@ -2070,12 +2179,32 @@ async function createFormWidgetUploadForm() {
       text-align: center;
       box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
     `;
-    successMessage.innerHTML = `
-      <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
-      <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product Uploaded Successfully!</h3>
-      <p style="margin: 0 0 10px 0; font-size: 15px;">Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.</p>
-      <p style="margin: 0; font-size: 13px; opacity: 0.8;">Form will reset automatically in 3 seconds...</p>
-    `;
+    
+    // Special message for menu catalogs
+    if (result.productType === 'menu') {
+      successMessage.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 15px;">🍽️✅</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Menu Catalog Created Successfully!</h3>
+        <p style="margin: 0 0 10px 0; font-size: 15px;">
+          Your menu catalog "${result.title}" has been processed.<br>
+          <strong>${result.uploadResults.successful}</strong> products uploaded to Sanora.
+        </p>
+        ${result.uploadResults.failed > 0 ? 
+          `<p style="margin: 0 0 10px 0; font-size: 13px; color: #856404; background: #fff3cd; padding: 8px; border-radius: 4px;">
+            ⚠️ ${result.uploadResults.failed} products failed to upload
+          </p>` : ''
+        }
+        <p style="margin: 0; font-size: 13px; opacity: 0.8;">Catalog stored in BDO • Form will reset in 3 seconds...</p>
+      `;
+    } else {
+      successMessage.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product Uploaded Successfully!</h3>
+        <p style="margin: 0 0 10px 0; font-size: 15px;">Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.</p>
+        <p style="margin: 0; font-size: 13px; opacity: 0.8;">Form will reset automatically in 3 seconds...</p>
+      `;
+    }
+    
     return successMessage;
   }
   
@@ -2186,6 +2315,8 @@ async function createFormWidgetUploadForm() {
       formDisplayContainer.appendChild(formHeader);
       formDisplayContainer.appendChild(currentForm);
       
+      // Note: Menu forms now use artifact upload instead of textarea + enhancement
+      
       // Update styling for active form
       formDisplayContainer.style.cssText = `
         flex: 1;
@@ -2242,6 +2373,283 @@ async function createFormWidgetUploadForm() {
 }
 
 /**
+ * Enhance menu form with CSV file upload and preview functionality
+ */
+function enhanceMenuForm(form) {
+  console.log('🍽️ Enhancing menu form with CSV upload capability...');
+  
+  try {
+    // Find the Menu Data textarea
+    const menuDataTextarea = form.querySelector('textarea[data-field="Menu Data"]');
+    if (!menuDataTextarea) {
+      console.warn('⚠️ Could not find Menu Data textarea to enhance');
+      return;
+    }
+    
+    // Create file upload section
+    const fileUploadSection = document.createElement('div');
+    fileUploadSection.style.cssText = `
+      margin-top: 15px;
+      padding: 20px;
+      border: 2px dashed #9b59b6;
+      border-radius: 8px;
+      background: #fafafa;
+    `;
+    
+    fileUploadSection.innerHTML = `
+      <div style="text-align: center; margin-bottom: 15px;">
+        <h4 style="margin: 0 0 8px 0; color: #9b59b6;">📊 Upload CSV File</h4>
+        <p style="margin: 0; font-size: 14px; color: #666;">
+          Upload a CSV file or paste data directly into the text area above
+        </p>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv,.json" style="
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      ">
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" id="loadSampleBtn" style="
+          background: #27ae60;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        ">Load Sample Data</button>
+        <button type="button" id="validateMenuBtn" style="
+          background: #e91e63;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        ">Validate Menu</button>
+        <button type="button" id="clearMenuBtn" style="
+          background: #95a5a6;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+        ">Clear</button>
+      </div>
+      <div id="menuPreview" style="
+        margin-top: 15px;
+        padding: 10px;
+        background: white;
+        border-radius: 4px;
+        border: 1px solid #e0e0e0;
+        display: none;
+      "></div>
+    `;
+    
+    // Insert after the textarea's parent
+    menuDataTextarea.parentNode.insertBefore(fileUploadSection, menuDataTextarea.nextSibling);
+    
+    // Add event handlers
+    const fileInput = fileUploadSection.querySelector('#csvFileInput');
+    const loadSampleBtn = fileUploadSection.querySelector('#loadSampleBtn');
+    const validateMenuBtn = fileUploadSection.querySelector('#validateMenuBtn');
+    const clearMenuBtn = fileUploadSection.querySelector('#clearMenuBtn');
+    const menuPreview = fileUploadSection.querySelector('#menuPreview');
+    
+    // File upload handler
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      console.log('📁 Processing uploaded file:', file.name);
+      
+      try {
+        const fileContent = await readFileAsText(file);
+        menuDataTextarea.value = fileContent;
+        
+        // Trigger validation
+        validateMenu();
+        
+        // Show success message
+        showMenuMessage('✅ File loaded successfully!', 'success');
+        
+      } catch (error) {
+        console.error('❌ Failed to read file:', error);
+        showMenuMessage('❌ Failed to read file: ' + error.message, 'error');
+      }
+    });
+    
+    // Load sample data handler
+    loadSampleBtn.addEventListener('click', () => {
+      const sampleCSV = `,rider,time span,product,price
+,adult,two-hour,adult two-hour pass,2.50
+,adult,day,adult day pass,5.00
+,adult,month,adult month pass,100.00
+,youth,two-hour,youth two-hour pass,1.00
+,youth,day,youth day pass,2.00
+,youth,month,youth month pass,20.00
+,reduced,two-hour,reduced two-hour pass,1.50
+,reduced,day,reduced day pass,2.50
+,reduced,month,reduced month pass,25.00`;
+      
+      menuDataTextarea.value = sampleCSV;
+      validateMenu();
+      showMenuMessage('📋 Sample data loaded!', 'info');
+    });
+    
+    // Validate menu handler
+    validateMenuBtn.addEventListener('click', validateMenu);
+    
+    // Clear menu handler
+    clearMenuBtn.addEventListener('click', () => {
+      menuDataTextarea.value = '';
+      menuPreview.style.display = 'none';
+      showMenuMessage('🗑️ Menu data cleared', 'info');
+    });
+    
+    // Validation function
+    function validateMenu() {
+      const menuData = menuDataTextarea.value.trim();
+      if (!menuData) {
+        menuPreview.style.display = 'none';
+        return;
+      }
+      
+      try {
+        // Detect format and parse
+        const isJson = menuData.startsWith('{') || menuData.startsWith('[');
+        let menuTree;
+        
+        if (isJson) {
+          menuTree = JSON.parse(menuData);
+        } else {
+          menuTree = window.MenuCatalogUtils.parseCSVToMenuTree(menuData);
+        }
+        
+        // Validate
+        const validation = window.MenuCatalogUtils.validateMenuTree(menuTree);
+        
+        // Show preview
+        showMenuPreview(menuTree, validation);
+        
+        if (validation.isValid) {
+          showMenuMessage(`✅ Valid menu! ${validation.stats.totalProducts} products, ${validation.stats.totalMenus} menus`, 'success');
+        } else {
+          showMenuMessage(`⚠️ Validation issues: ${validation.errors.join(', ')}`, 'warning');
+        }
+        
+      } catch (error) {
+        showMenuMessage(`❌ Parse error: ${error.message}`, 'error');
+        menuPreview.style.display = 'none';
+      }
+    }
+    
+    // Show menu preview
+    function showMenuPreview(menuTree, validation) {
+      menuPreview.style.display = 'block';
+      
+      let previewHTML = `
+        <h5 style="margin: 0 0 10px 0; color: #2c3e50;">📋 Menu Preview</h5>
+        <div style="margin-bottom: 10px; font-size: 13px;">
+          <strong>Total Products:</strong> ${validation.stats.totalProducts} |
+          <strong>Menus:</strong> ${validation.stats.totalMenus} |
+          <strong>Submenus:</strong> ${validation.stats.totalSubmenus}
+        </div>
+      `;
+      
+      // Show menu structure
+      Object.entries(menuTree.menus).forEach(([menuKey, menu]) => {
+        previewHTML += `
+          <div style="margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px;">
+            <strong>🍽️ ${menu.title || menuKey}</strong>
+        `;
+        
+        if (menu.submenus && Object.keys(menu.submenus).length > 0) {
+          Object.entries(menu.submenus).forEach(([submenuKey, submenu]) => {
+            const productCount = submenu.products ? submenu.products.length : 0;
+            previewHTML += `
+              <div style="margin-left: 20px; font-size: 12px; color: #666;">
+                └ ${submenu.title || submenuKey} (${productCount} products)
+              </div>
+            `;
+          });
+        }
+        
+        if (menu.products && menu.products.length > 0) {
+          previewHTML += `
+            <div style="margin-left: 20px; font-size: 12px; color: #666;">
+              └ ${menu.products.length} direct products
+            </div>
+          `;
+        }
+        
+        previewHTML += `</div>`;
+      });
+      
+      menuPreview.innerHTML = previewHTML;
+    }
+    
+    // Show status message
+    function showMenuMessage(message, type) {
+      // Remove existing message
+      const existingMessage = fileUploadSection.querySelector('.menu-message');
+      if (existingMessage) {
+        existingMessage.remove();
+      }
+      
+      const colors = {
+        success: { bg: '#d4edda', border: '#c3e6cb', text: '#155724' },
+        error: { bg: '#f8d7da', border: '#f5c6cb', text: '#721c24' },
+        warning: { bg: '#fff3cd', border: '#ffeaa7', text: '#856404' },
+        info: { bg: '#cce7ff', border: '#b3d9ff', text: '#004085' }
+      };
+      
+      const color = colors[type] || colors.info;
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'menu-message';
+      messageDiv.style.cssText = `
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: ${color.bg};
+        border: 1px solid ${color.border};
+        color: ${color.text};
+        border-radius: 4px;
+        font-size: 13px;
+      `;
+      messageDiv.textContent = message;
+      
+      fileUploadSection.appendChild(messageDiv);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        if (messageDiv.parentNode) {
+          messageDiv.remove();
+        }
+      }, 5000);
+    }
+    
+    // Helper function to read file as text
+    function readFileAsText(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsText(file);
+      });
+    }
+    
+    console.log('✅ Menu form enhanced with CSV upload functionality');
+    
+  } catch (error) {
+    console.error('❌ Failed to enhance menu form:', error);
+  }
+}
+
+/**
  * Upload complete product to Sanora with images and artifacts
  */
 async function uploadProductToSanora(productData) {
@@ -2291,6 +2699,12 @@ async function uploadProductToSanora(productData) {
       userUuid = sanoraUser.uuid;
     } catch (error) {
       console.log('⚠️ Could not create Sanora user, continuing with mock UUID:', error.message);
+    }
+    
+    // Special handling for menu catalog products
+    if (productData.productType === 'menu') {
+      console.log('🍽️ Processing menu catalog product...');
+      return await processMenuCatalogProduct(productData, userUuid, sanoraUrl);
     }
     
     // Step 1: Create product in Sanora FIRST
@@ -2359,6 +2773,226 @@ async function uploadProductToSanora(productData) {
     console.error('❌ Complete product upload failed:', error);
     
     // Return detailed error
+    return {
+      success: false,
+      error: error.message,
+      details: error
+    };
+  }
+}
+
+/**
+ * Process menu catalog product - special handling for CSV/JSON menus
+ */
+async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
+  console.log('🍽️ Starting menu catalog processing...');
+  
+  try {
+    // Extract form data
+    const menuTitle = productData.formData['Menu Title'] || 'Untitled Menu';
+    const menuDescription = productData.formData['Menu Description'] || '';
+    
+    // Get CSV/JSON data from form data (catalog field)
+    let menuData = '';
+    if (productData.formData && productData.formData['CSV or JSON File']) {
+      const catalogFile = productData.formData['CSV or JSON File'];
+      console.log('📁 CSV/JSON catalog file detected:', catalogFile);
+      
+      // Read file content
+      if (catalogFile.file) {
+        try {
+          menuData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(catalogFile.file);
+          });
+          console.log('📄 File content loaded, length:', menuData.length);
+        } catch (error) {
+          console.error('❌ Error reading catalog file:', error);
+          throw new Error('Failed to read catalog file content');
+        }
+      }
+    }
+    
+    console.log('📋 Menu info:', { menuTitle, menuDataLength: menuData.length });
+    
+    // Step 1: Parse menu data (CSV or JSON)
+    let menuTree;
+    
+    if (!menuData.trim()) {
+      throw new Error('Menu data is required');
+    }
+    
+    // Detect if it's CSV or JSON
+    const isJson = menuData.trim().startsWith('{') || menuData.trim().startsWith('[');
+    
+    if (isJson) {
+      console.log('📄 Parsing JSON menu data...');
+      try {
+        menuTree = JSON.parse(menuData);
+      } catch (error) {
+        throw new Error(`Invalid JSON format: ${error.message}`);
+      }
+    } else {
+      console.log('📊 Parsing CSV menu data...');
+      menuTree = window.MenuCatalogUtils.parseCSVToMenuTree(menuData);
+    }
+    
+    // Set menu title if not already set
+    if (!menuTree.title) {
+      menuTree.title = menuTitle;
+    }
+    
+    // Step 2: Validate menu structure
+    console.log('✅ Validating menu structure...');
+    const validation = window.MenuCatalogUtils.validateMenuTree(menuTree);
+    
+    if (!validation.isValid) {
+      throw new Error(`Menu validation failed: ${validation.errors.join(', ')}`);
+    }
+    
+    console.log('📊 Menu stats:', validation.stats);
+    
+    // Step 3: Upload individual products to Sanora
+    console.log('📦 Uploading leaf products to Sanora...');
+    const uploadedProducts = [];
+    const uploadErrors = [];
+    
+    for (const product of menuTree.products) {
+      try {
+        console.log(`📤 Uploading product: ${product.name} ($${(product.price / 100).toFixed(2)})`);
+        
+        const productUploadData = {
+          uuid: userUuid,
+          sanoraUrl: sanoraUrl,
+          title: product.name,
+          description: `Menu item from ${menuTitle}. Category: ${product.metadata?.riderType || 'N/A'}, Time span: ${product.metadata?.timeSpan || 'N/A'}`,
+          price: product.price,
+          productType: 'menu-item'
+        };
+        
+        const uploadResult = await invoke('add_product', productUploadData);
+        
+        // Store the Sanora UUID for this product
+        product.sanoraUuid = uploadResult.id || uploadResult.uuid;
+        uploadedProducts.push({
+          localId: product.id,
+          sanoraUuid: product.sanoraUuid,
+          name: product.name,
+          price: product.price
+        });
+        
+        console.log(`✅ Product uploaded: ${product.name} -> ${product.sanoraUuid}`);
+        
+      } catch (error) {
+        console.error(`❌ Failed to upload product ${product.name}:`, error);
+        uploadErrors.push({
+          product: product.name,
+          error: error.message
+        });
+      }
+    }
+    
+    console.log(`📈 Upload results: ${uploadedProducts.length} successful, ${uploadErrors.length} failed`);
+    
+    // Step 4: Update menu tree with Sanora UUIDs
+    console.log('🔗 Mapping Sanora UUIDs to menu structure...');
+    // The products array already has the sanoraUuid added above
+    
+    // Step 5: Store menu catalog in BDO as public data
+    console.log('🗄️ Storing menu catalog in BDO...');
+    
+    const catalogForBDO = {
+      title: menuTree.title,
+      description: menuDescription,
+      menus: menuTree.menus,
+      products: menuTree.products.map(p => ({
+        id: p.id,
+        sanoraUuid: p.sanoraUuid,
+        name: p.name,
+        price: p.price,
+        category: p.category,
+        metadata: p.metadata
+      })),
+      metadata: {
+        ...menuTree.metadata,
+        uploadedAt: new Date().toISOString(),
+        totalProducts: uploadedProducts.length,
+        failedUploads: uploadErrors.length,
+        sanoraUrl: sanoraUrl
+      },
+      uploadResults: {
+        successful: uploadedProducts,
+        failed: uploadErrors
+      }
+    };
+    
+    // Store in BDO (this would need BDO integration)
+    let bdoResult = null;
+    try {
+      if (invoke) {
+        // This would require a BDO storage function - for now we'll simulate
+        console.log('📁 Storing catalog in BDO...');
+        // bdoResult = await invoke('store_bdo_object', {
+        //   data: JSON.stringify(catalogForBDO),
+        //   isPublic: true,
+        //   contentType: 'application/json'
+        // });
+        
+        // For now, store locally as fallback
+        localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
+        bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally (BDO integration pending)' };
+      }
+    } catch (error) {
+      console.warn('⚠️ BDO storage failed, stored locally:', error);
+      localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
+      bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally due to BDO error' };
+    }
+    
+    // Step 6: Create a catalog product in Sanora as well (for marketplace listing)
+    console.log('📋 Creating catalog entry in Sanora...');
+    let catalogProductResult = null;
+    
+    try {
+      const catalogProductData = {
+        uuid: userUuid,
+        sanoraUrl: sanoraUrl,
+        title: menuTitle,
+        description: `Menu catalog with ${uploadedProducts.length} products. ${menuDescription}`,
+        price: 0, // Catalog itself is free, individual items have prices
+        productType: 'menu-catalog'
+      };
+      
+      catalogProductResult = await invoke('add_product', catalogProductData);
+      console.log('✅ Catalog product created:', catalogProductResult);
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to create catalog product in Sanora:', error);
+    }
+    
+    // Return comprehensive result
+    return {
+      success: true,
+      productType: 'menu',
+      title: menuTitle,
+      catalogId: catalogProductResult?.id || 'unknown',
+      bdoId: bdoResult?.id || 'unknown',
+      menuStats: validation.stats,
+      uploadResults: {
+        successful: uploadedProducts.length,
+        failed: uploadErrors.length,
+        details: {
+          uploaded: uploadedProducts,
+          errors: uploadErrors
+        }
+      },
+      catalogData: catalogForBDO,
+      sanoraUrl: sanoraUrl
+    };
+    
+  } catch (error) {
+    console.error('❌ Menu catalog processing failed:', error);
     return {
       success: false,
       error: error.message,

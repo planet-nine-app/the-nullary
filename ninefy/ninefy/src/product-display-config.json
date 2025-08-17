@@ -58,6 +58,18 @@
         { "key": "courseSchedule", "label": "Course Schedule", "icon": "📅", "type": "textarea" },
         { "key": "courseMaterials", "label": "Materials", "icon": "📚", "type": "file" }
       ]
+    },
+    "menu": {
+      "cardFields": [
+        { "key": "totalProducts", "label": "Products", "icon": "📦", "showInCard": true },
+        { "key": "menuCount", "label": "Menus", "icon": "🍽️", "showInCard": true }
+      ],
+      "detailFields": [
+        { "key": "menuDescription", "label": "Description", "icon": "📝", "type": "textarea" },
+        { "key": "totalProducts", "label": "Total Products", "icon": "📦" },
+        { "key": "menuCount", "label": "Number of Menus", "icon": "🍽️" },
+        { "key": "menuStructure", "label": "Menu Structure", "icon": "🗂️", "type": "special" }
+      ]
     }
   },
   "displaySettings": {

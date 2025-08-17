@@ -138,6 +138,28 @@
           "required": false
         }
       }
+    },
+    "menu": {
+      "label": "🍽️ Menu Catalog",
+      "icon": "🍽️",
+      "title": "🍽️ Menu Catalog Configuration",
+      "formConfig": {
+        "Menu Title": {
+          "type": "text"
+        },
+        "CSV or JSON File": {
+          "type": "catalog"
+        },
+        "Menu Description": {
+          "type": "textarea",
+          "charLimit": 500,
+          "required": false
+        },
+        "Menu Image": {
+          "type": "image",
+          "required": false
+        }
+      }
     }
   }
 }

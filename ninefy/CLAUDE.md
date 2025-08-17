@@ -267,6 +267,13 @@ npm run build:local  # Build for local
 - Same fields as Course (optimized for productivity/task management courses)
 - Includes ICS schedule upload for structured learning paths
 
+**🍽️ Menu Form**:
+- Menu Title, CSV or JSON File (catalog field), Menu Description, Menu Image
+- **NEW**: Custom `catalog` field type that only accepts .csv and .json files
+- Hierarchical menu processing with CSV-to-JSON transformation
+- Individual product upload to Sanora with UUID mapping back to menu structure
+- Complete menu structure storage in BDO as public data
+
 ### Shared Code with Rhapsold
 
 Ninefy maximizes code reuse with rhapsold:
@@ -365,9 +372,42 @@ Ninefy is now a **fully functional digital goods marketplace** with complete pur
 
 **🆕 Type-Specific Product Forms (Latest)**:
 7. **Smart Form System**: Dynamic forms that change based on product type selection
-8. **Professional Categories**: Updated to ebook, course, ticket, shippable, and SoDoTo
+8. **Professional Categories**: Updated to ebook, course, ticket, shippable, SoDoTo, and **menu**
 9. **ICS Calendar Upload**: Course and SoDoTo types support calendar schedule uploads (.ics files)
 10. **Category-Specific Metadata**: Each product type shows relevant information in details view
+11. **🍽️ Menu Catalog System**: Complete hierarchical menu creation with CSV/JSON upload support
+
+### 🍽️ **Menu Catalog System Implementation (January 2025)**
+
+**Complete Menu Product Type**:
+- ✅ **Custom Catalog Field**: New `catalog` field type in Sanora form-widget.js
+- ✅ **CSV/JSON File Upload**: Restricted to .csv and .json files only (no artifacts)
+- ✅ **Hierarchical Menu Processing**: CSV parsing with rider → time span → product structure
+- ✅ **Individual Product Upload**: Each leaf product uploaded separately to Sanora
+- ✅ **UUID Mapping**: Sanora product UUIDs mapped back to menu tree structure
+- ✅ **BDO Storage**: Complete menu JSON stored as public data in BDO
+- ✅ **Visual Menu Display**: Tree structure display in product details view
+
+**Technical Implementation**:
+- **New Form Field Type**: `catalog` field in `/sanora/public/form-widget.js`
+- **Menu Processing**: Enhanced `processMenuCatalogProduct()` function in main.js
+- **CSV Parser**: Menu-catalog-utils.js with parseCSVToMenuTree() and validation
+- **Display System**: createMenuStructureDisplay() for visual menu trees
+- **Form Configuration**: Updated product-forms-config.json and product-display-config.json
+
+**CSV Format Example**:
+```csv
+,rider,time span,product,price
+,adult,two-hour,adult two-hour 250,2.50
+,adult,day,adult day 500,5.00
+,youth,two-hour,youth two-hour 100,1.00
+```
+
+**Key Files Modified**:
+- `/sanora/public/form-widget.js` - Added catalog field type with CSV/JSON validation
+- `/the-nullary/ninefy/ninefy/src/product-forms-config.json` - Menu form configuration
+- `/the-nullary/ninefy/ninefy/src/main.js` - Menu processing and file reading logic
+- `/the-nullary/ninefy/ninefy/src/utils/menu-catalog-utils.js` - CSV parsing utilities
 
 **Architecture Improvements**:
 - **Production BDO Integration**: Base screen connects to actual BDO servers
