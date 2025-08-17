@@ -8,6 +8,10 @@ use bdo_rs::{BdoClient, BdoUser};
 use dolores_rs::{DoloresClient, DoloresUser};
 use sanora_rs::{SanoraClient, SanoraUser, Product};
 use sessionless::{Sessionless, PrivateKey};
+// User Persistence Module
+mod user_persistence;
+use user_persistence::*;
+
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FeedPost {
@@ -383,14 +387,24 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            get_feed_count,
+get_feed_count,
             get_products_count,
             get_blogs_count,
             get_dolores_feed,
             get_products_feed,
             get_blogs_feed,
             get_bases,
-            initialize_clients
+            initialize_clients,
+
+            // User Persistence Functions
+            generate_sessionless_keys,
+            stronghold_init,
+            stronghold_get_record,
+            stronghold_set_record,
+            stronghold_clear_vault,
+            read_user_data_file,
+            write_user_data_file,
+            clear_user_data
         ])
         .setup(|app| {
             println!("🌍 Nexus Portal starting...");

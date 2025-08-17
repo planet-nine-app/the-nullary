@@ -27,3 +27,9 @@ tokio = { version = "1.0", features = ["full"] }
 uuid = { version = "1.0", features = ["v4"] }
 base64 = "0.21"
 chrono = { version = "0.4", features = ["serde"] }
+
+# User persistence dependencies
+sessionless = "0.1.1"
+hex = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }

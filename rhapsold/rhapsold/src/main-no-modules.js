@@ -654,114 +654,7 @@ const TELEPORTED_CONTENT = [
   }
 ];
 
-// Placeholder data
-const PLACEHOLDER_POSTS = [
-  {
-    id: 'post-1',
-    title: 'The Future of Decentralized Blogging',
-    content: `![Decentralized Network](${SVG_IMAGES.decentralizedNetwork})
-
-The landscape of digital publishing is rapidly evolving. With platforms like Rhapsold leading the charge, we're witnessing a paradigm shift toward user-owned content and cryptographic authentication.
-
-This new model empowers writers with **true ownership** of their work while providing readers with authentic, censorship-resistant content. The integration with allyabase services creates a robust ecosystem where creativity and technology converge.
-
-## Key Benefits
-
-- **True content ownership** through cryptographic signatures
-- **Decentralized storage** eliminating single points of failure  
-- **Direct creator monetization** without platform intermediaries
-- **Cross-platform interoperability** through open protocols
-
-> The future of blogging is here, and it's decentralized.
-
-*Ready to join the revolution?*`,
-    author: 'Alice Chen',
-    timestamp: '2025-01-28T10:30:00Z',
-    readTime: '4 min read',
-    tags: ['decentralization', 'blogging', 'technology'],
-    featuredImage: SVG_IMAGES.blogFeatured
-  },
-  {
-    id: 'post-2', 
-    title: 'Understanding sessionless Authentication',
-    content: `![Cryptographic Keys](${SVG_IMAGES.cryptoKeys})
-
-Traditional web authentication relies on usernames, passwords, and session cookies - a model fraught with security vulnerabilities and privacy concerns. **Sessionless authentication** represents a fundamental shift toward cryptographic identity.
-
-## How It Works
-
-Using \`secp256k1\` elliptic curve cryptography, users can authenticate without revealing personal information. Each interaction is signed with a private key, creating an unforgeable digital signature that proves identity without compromising privacy.
-
-### Benefits of Sessionless Auth
-
-This approach eliminates:
-- ❌ Password databases vulnerable to breaches
-- ❌ Session hijacking attacks  
-- ❌ Personal information collection requirements
-- ❌ Centralized identity verification
-
-### The Technical Flow
-
-\`\`\`javascript
-// Generate cryptographic keypair
-const keys = sessionless.generateKeys();
-
-// Sign a message
-const signature = sessionless.sign(message, keys.privateKey);
-
-// Verify signature (no secrets shared)
-const isValid = sessionless.verify(message, signature, keys.publicKey);
-\`\`\`
-
-> The result is a more secure, private, and user-controlled authentication experience.`,
-    author: 'Bob Martinez',
-    timestamp: '2025-01-27T14:15:00Z',
-    readTime: '6 min read',
-    tags: ['security', 'authentication', 'cryptography'],
-    featuredImage: SVG_IMAGES.authFeatured
-  },
-  {
-    id: 'post-3',
-    title: 'Building SVG-First Interfaces',
-    content: `![SVG Graphics](${SVG_IMAGES.svgGraphics})
-
-Modern web development often relies on complex CSS frameworks and component libraries. But what if we could build beautiful, scalable interfaces using just **SVG and vanilla JavaScript**?
-
-## Why SVG-First?
-
-SVG-first design offers compelling advantages:
-
-✨ **Perfect scalability** at any resolution  
-🎯 **Programmatic control** over every visual element  
-📦 **Smaller bundle sizes** compared to CSS frameworks  
-🎬 **Built-in animation** capabilities  
-♿ **Accessibility** through proper semantic markup  
-
-### A Simple Example
-
-\`\`\`xml
-<svg viewBox="0 0 200 100">
-  <rect x="10" y="10" width="180" height="80" 
-        fill="#3498db" rx="8"/>
-  <text x="100" y="55" text-anchor="middle" 
-        fill="white" font-size="16">
-    Click Me!
-  </text>
-</svg>
-\`\`\`
-
-## Real-World Applications
-
-From simple icons to complex data visualizations, SVG provides the foundation for next-generation web applications.
-
-> The future of UI is vector-based, scalable, and programmable.`,
-    author: 'Charlie Smith',
-    timestamp: '2025-01-26T09:45:00Z',
-    readTime: '8 min read',
-    tags: ['svg', 'ui-design', 'web-development'],
-    featuredImage: SVG_IMAGES.svgFeatured
-  }
-];
+// Mock data removed - now using real Sanora service calls for blog posts
 
 // Application state
 const appState = {
@@ -1857,69 +1750,112 @@ function createBaseScreen() {
     gap: 20px;
   `;
   
-  // Placeholder base data
-  const placeholderBases = [
-    {
-      name: 'Local Development',
-      url: getServiceUrl('sanora'),
-      status: 'connected',
-      type: 'development',
-      services: ['sanora', 'bdo', 'dolores', 'addie', 'fount'],
-      description: 'Local development environment for testing',
-      users: 1,
-      uptime: '99.9%'
-    },
-    {
-      name: 'Planet Nine Alpha',
-      url: 'https://alpha.allyabase.com', // Keep as-is for alpha server
-      status: 'connected', 
-      type: 'production',
-      services: ['sanora', 'bdo', 'dolores', 'addie', 'fount', 'julia'],
-      description: 'Main Planet Nine production cluster',
-      users: 15420,
-      uptime: '99.8%'
-    },
-    {
-      name: 'Community Beta',
-      url: 'https://beta.community.allyabase.com',
-      status: 'available',
-      type: 'community',
-      services: ['sanora', 'bdo', 'dolores'],
-      description: 'Community-run server for beta testing',
-      users: 892,
-      uptime: '98.5%'
-    },
-    {
-      name: 'Privacy-First Base',
-      url: 'https://privacy.allyabase.org',
-      status: 'available',
-      type: 'privacy',
-      services: ['sanora', 'bdo', 'julia'],
-      description: 'Enhanced privacy and encryption focus',
-      users: 3241,
-      uptime: '99.2%'
-    },
-    {
-      name: 'Academic Research',
-      url: 'https://research.edu.allyabase.net',
-      status: 'limited',
-      type: 'research', 
-      services: ['bdo', 'dolores'],
-      description: 'University research cluster (restricted access)',
-      users: 156,
-      uptime: '97.1%'
-    }
-  ];
-  
-  placeholderBases.forEach(base => {
-    const baseCard = createBaseCard(base);
-    basesContainer.appendChild(baseCard);
-  });
+  // Load real base data using shared base-command pattern
+  loadBasesIntoContainer(basesContainer);
   
   screen.appendChild(header);
   screen.appendChild(basesContainer);
   
   return screen;
+}
+
+/**
+ * Load real base data into container (following shared base-command pattern)
+ */
+async function loadBasesIntoContainer(container) {
+  try {
+    console.log('🏗️ Loading real base data...');
+    
+    // Try to get bases from Tauri backend first  
+    let bases = [];
+    
+    if (typeof window.__TAURI__ !== 'undefined') {
+      try {
+        console.log('🔗 Getting bases from backend...');
+        
+        // Try to get real bases from backend
+        bases = await window.__TAURI__.core.invoke('get_bases');
+        
+        if (bases && bases.length > 0) {
+          console.log(`✅ Loaded ${bases.length} bases from backend`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to get bases from backend:', error);
+      }
+    }
+    
+    // Fallback to environment-based base configuration
+    if (!bases || bases.length === 0) {
+      const envConfig = getEnvironmentConfig();
+      bases = [
+        {
+          name: `${envConfig.env.toUpperCase()} Environment`,
+          description: `Current environment: ${envConfig.env}`,
+          connected: true,
+          services: {
+            sanora: getServiceUrl('sanora'),
+            bdo: getServiceUrl('bdo'),
+            dolores: getServiceUrl('dolores')
+          }
+        }
+      ];
+      console.log(`📋 Using fallback base configuration for ${envConfig.env} environment`);
+    }
+    
+    // Clear container
+    container.innerHTML = '';
+    
+    if (bases.length === 0) {
+      // Show professional empty state
+      container.innerHTML = `
+        <div style="text-align: center; padding: 60px 40px; color: #4a5568;">
+          <div style="font-size: 64px; margin-bottom: 20px;">🌐</div>
+          <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 24px;">No Base Servers Found</h3>
+          <p style="margin: 0; color: #718096; line-height: 1.6; max-width: 400px; margin: 0 auto;">
+            Base servers will appear here when connected to the Planet Nine network.
+          </p>
+          <div style="margin-top: 30px; padding: 15px; background: #f7fafc; border-radius: 8px; border-left: 4px solid #667eea;">
+            <small style="color: #4a5568;">💡 <strong>Tip:</strong> Make sure you're connected to the Planet Nine network and services are running.</small>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Render base cards
+    bases.forEach(base => {
+      // Convert backend format to UI format
+      const baseData = {
+        name: base.name || 'Unknown Base',
+        url: base.services?.sanora || base.url || '#',
+        status: base.connected ? 'connected' : 'available',
+        type: base.type || 'unknown',
+        services: Array.isArray(base.services) ? base.services : Object.keys(base.services || {}),
+        description: base.description || 'Planet Nine base server',
+        users: base.users || 1,
+        uptime: base.uptime || '99.9%'
+      };
+      
+      const baseCard = createBaseCard(baseData);
+      container.appendChild(baseCard);
+    });
+    
+    console.log(`🎨 Rendered ${bases.length} base cards`);
+    
+  } catch (error) {
+    console.error('❌ Failed to load bases:', error);
+    
+    // Show error state
+    container.innerHTML = `
+      <div style="text-align: center; padding: 60px 40px; color: #e53e3e;">
+        <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+        <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 24px;">Error Loading Base Servers</h3>
+        <p style="margin: 0; color: #718096; line-height: 1.6; max-width: 400px; margin: 0 auto;">
+          Unable to load base server information. Please check your connection and try again.
+        </p>
+      </div>
+    `;
+  }
 }
 
 /**
@@ -1938,8 +1874,8 @@ function renderCurrentScreen() {
     case 'main':
       screen = createMainScreen();
       // Load posts after screen is added to DOM
-      setTimeout(() => {
-        loadPosts();
+      setTimeout(async () => {
+        await loadPosts();
         // Also try to load teleported content directly 
         console.log('🌐 Loading teleported content from main screen...');
         fetchTeleportedContentFromBases();
@@ -1963,56 +1899,117 @@ function renderCurrentScreen() {
 }
 
 /**
- * Load posts and teleported content
+ * Load posts from real Sanora service and localStorage
  */
-function loadPosts() {
-  console.log('📄 Loading posts and teleported content...');
+async function loadPosts() {
+  console.log('📄 Loading posts from real Sanora service...');
   
   try {
-    // Load blog posts (use placeholder data + localStorage)
-    const localPosts = JSON.parse(localStorage.getItem('rhapsold-posts') || '[]');
-    const allPosts = [...localPosts, ...PLACEHOLDER_POSTS];
-    
     const postsContainer = document.getElementById('posts-container');
-    if (postsContainer) {
-      // Clear existing content
-      postsContainer.innerHTML = '';
-      
-      allPosts.forEach(postData => {
-        // Convert localStorage format to placeholder format if needed
-        const post = postData.author ? postData : {
-          id: postData.id || Date.now().toString(),
-          title: postData.title,
-          content: postData.content,
-          author: 'Anonymous',
-          timestamp: postData.timestamp || new Date().toISOString(),
-          readTime: '3 min read',
-          tags: ['user-generated']
-        };
+    if (!postsContainer) return;
+    
+    // Clear existing content
+    postsContainer.innerHTML = '';
+    
+    // Load blog posts from both localStorage and real Sanora service
+    const localPosts = JSON.parse(localStorage.getItem('rhapsold-posts') || '[]');
+    let sanoraBlogs = [];
+    
+    // Try to get real blog posts from Sanora via Tauri backend
+    if (typeof window.__TAURI__ !== 'undefined') {
+      try {
+        console.log('🔗 Fetching blogs from Sanora service...');
+        const sanoraUrl = getServiceUrl('sanora');
         
-        const postElement = createBlogPost(post);
-        postsContainer.appendChild(postElement);
-      });
-      
-      console.log(`📄 Loaded ${allPosts.length} blog posts (${localPosts.length} user + ${PLACEHOLDER_POSTS.length} placeholder)`);
+        // Create user if needed and get their products (blogs)
+        const user = await window.__TAURI__.core.invoke('create_sanora_user', { sanoraUrl });
+        const userData = await window.__TAURI__.core.invoke('get_sanora_user', { 
+          uuid: user.uuid, 
+          sanoraUrl 
+        });
+        
+        // Filter for blog products (products with 'blog' tag)
+        if (userData.products && userData.products.length > 0) {
+          sanoraBlogs = userData.products
+            .filter(product => product.tags && product.tags.some(tag => tag.toLowerCase().includes('blog')))
+            .map(product => ({
+              id: product.uuid || `blog-${Date.now()}`,
+              title: product.title || 'Untitled Blog Post',
+              content: product.description || 'No content available',
+              author: 'Blogger',
+              timestamp: product.created_at ? new Date(product.created_at).toISOString() : new Date().toISOString(),
+              readTime: Math.ceil((product.description || '').split(' ').length / 200) + ' min read',
+              tags: product.tags || ['blog'],
+              source: 'sanora'
+            }));
+          
+          console.log(`✅ Loaded ${sanoraBlogs.length} blog posts from Sanora`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load blogs from Sanora service:', error);
+        console.log('💡 This is expected if Sanora service is not running');
+      }
     }
     
-    // Load teleported content
-    const teleportedContainer = document.getElementById('teleported-container');
-    if (teleportedContainer) {
-      // Clear existing content
-      teleportedContainer.innerHTML = '';
-      
-      TELEPORTED_CONTENT.forEach(item => {
-        const teleportedElement = createTeleportedItem(item);
-        teleportedContainer.appendChild(teleportedElement);
-      });
-      
-      console.log(`🌐 Loaded ${TELEPORTED_CONTENT.length} teleported items`);
+    // Combine local and Sanora blogs
+    const allPosts = [...localPosts, ...sanoraBlogs];
+    
+    if (allPosts.length === 0) {
+      // Show professional empty state
+      postsContainer.innerHTML = `
+        <div style="text-align: center; padding: 60px 40px; color: #4a5568;">
+          <div style="font-size: 64px; margin-bottom: 20px;">📝</div>
+          <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 24px;">No Blog Posts Yet</h3>
+          <p style="margin: 0; color: #718096; line-height: 1.6; max-width: 400px; margin: 0 auto;">
+            Blog posts will appear here when you create them or when connected to bases with blog content.
+          </p>
+          <div style="margin-top: 30px; padding: 15px; background: #f7fafc; border-radius: 8px; border-left: 4px solid #667eea;">
+            <small style="color: #4a5568;">💡 <strong>Tip:</strong> Click "New Post" to create your first blog post, or connect to bases with existing blog content.</small>
+          </div>
+        </div>
+      `;
+      return;
     }
+    
+    // Sort posts by timestamp (newest first)
+    allPosts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // Render posts
+    allPosts.forEach(postData => {
+      // Ensure consistent post format
+      const post = postData.author ? postData : {
+        id: postData.id || Date.now().toString(),
+        title: postData.title,
+        content: postData.content,
+        author: 'Anonymous',
+        timestamp: postData.timestamp || new Date().toISOString(),
+        readTime: '3 min read',
+        tags: postData.tags || ['user-generated'],
+        source: postData.source || 'local'
+      };
+      
+      const postElement = createBlogPost(post);
+      postsContainer.appendChild(postElement);
+    });
+    
+    console.log(`📄 Loaded ${allPosts.length} blog posts (${localPosts.length} local + ${sanoraBlogs.length} from Sanora)`);
     
   } catch (error) {
-    console.warn('⚠️ Could not load content:', error);
+    console.error('❌ Failed to load posts:', error);
+    
+    // Show error state
+    const postsContainer = document.getElementById('posts-container');
+    if (postsContainer) {
+      postsContainer.innerHTML = `
+        <div style="text-align: center; padding: 60px 40px; color: #e53e3e;">
+          <div style="font-size: 64px; margin-bottom: 20px;">❌</div>
+          <h3 style="margin: 0 0 15px 0; color: #2d3748; font-size: 24px;">Error Loading Posts</h3>
+          <p style="margin: 0; color: #718096; line-height: 1.6; max-width: 400px; margin: 0 auto;">
+            Unable to load blog posts. Please check your connection and try again.
+          </p>
+        </div>
+      `;
+    }
   }
 }
 
