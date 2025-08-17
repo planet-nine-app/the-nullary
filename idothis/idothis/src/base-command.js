@@ -254,48 +254,68 @@ async function getBases(forceRefresh = false) {
 }
 
 /**
- * Join a base
- * Enhanced implementation supporting both object and string parameters
- * @param {Object|string} base - Base object or base name
+ * Join a base (local-only operation)
+ * Updates the joined status for a base in local storage and memory
+ * @param {Object|string} base - Base object or base name/ID
  * @returns {boolean} Success status
  */
 async function joinBase(base) {
   try {
-    // Support both base object and base name
+    console.log('🔗 Joining base:', typeof base === 'string' ? base : base.name);
+    
+    let targetBase = null;
+    
+    // Find the base to join
     if (typeof base === 'string') {
-      const result = await invoke('join_base', { baseName: base });
-      if (result && result.success) {
-        // Refresh bases list
-        lastBaseRefresh = 0;
-        bases = null;
-        await getBases();
-        return true;
+      // Find base by name or ID
+      if (bases) {
+        if (Array.isArray(bases)) {
+          targetBase = bases.find(b => b.name === base || b.id === base);
+        } else {
+          // Object-based bases (MyBase pattern)
+          targetBase = bases[base] || Object.values(bases).find(b => b.name === base);
+        }
       }
-      return false;
+      
+      if (!targetBase) {
+        console.warn('Base not found:', base);
+        return false;
+      }
+    } else {
+      // Use provided base object
+      targetBase = base;
     }
 
-    // Original object-based approach
-    base.joined = true;
-    await saveHomeBase(base);
+    // Update joined status locally
+    targetBase.joined = true;
     
-    // Update bases array/object
+    // Update in bases collection
     if (bases) {
       if (Array.isArray(bases)) {
-        const existingBase = bases.find(b => b.name === base.name);
+        const existingBase = bases.find(b => b.name === targetBase.name);
         if (existingBase) {
           existingBase.joined = true;
         }
       } else {
         // Object-based bases (MyBase pattern)
         for (let baseId in bases) {
-          if (bases[baseId].name === base.name) {
+          if (bases[baseId].name === targetBase.name) {
             bases[baseId].joined = true;
           }
         }
       }
     }
     
+    // Save to local storage (if this becomes the home base)
+    try {
+      await saveHomeBase(targetBase);
+    } catch (err) {
+      console.warn('Could not save home base (non-critical):', err);
+    }
+    
+    console.log('✅ Successfully joined base:', targetBase.name);
     return true;
+    
   } catch (err) {
     console.error('Failed to join base:', err);
     return false;
@@ -303,53 +323,72 @@ async function joinBase(base) {
 }
 
 /**
- * Leave a base
- * Enhanced implementation supporting both object and string parameters
- * @param {Object|string} base - Base object or base name
+ * Leave a base (local-only operation)
+ * Updates the joined status for a base in local storage and memory
+ * @param {Object|string} base - Base object or base name/ID
  * @returns {boolean} Success status
  */
 async function leaveBase(base) {
   try {
-    // Support both base object and base name
+    console.log('🔗 Leaving base:', typeof base === 'string' ? base : base.name);
+    
+    let targetBase = null;
+    
+    // Find the base to leave
     if (typeof base === 'string') {
-      const result = await invoke('leave_base', { baseName: base });
-      if (result && result.success) {
-        // Refresh bases list
-        lastBaseRefresh = 0;
-        bases = null;
-        await getBases();
-        return true;
+      // Find base by name or ID
+      if (bases) {
+        if (Array.isArray(bases)) {
+          targetBase = bases.find(b => b.name === base || b.id === base);
+        } else {
+          // Object-based bases (MyBase pattern)
+          targetBase = bases[base] || Object.values(bases).find(b => b.name === base);
+        }
       }
-      return false;
+      
+      if (!targetBase) {
+        console.warn('Base not found:', base);
+        return false;
+      }
+    } else {
+      // Use provided base object
+      targetBase = base;
     }
 
-    // Original object-based approach
-    base.joined = false;
+    // Update joined status locally
+    targetBase.joined = false;
     
-    // If this was the home base, clear it
-    const homeBase = await getHomeBase();
-    if (homeBase && homeBase.name === base.name) {
-      await saveHomeBase(getDevBase());
-    }
-    
-    // Update bases array/object
+    // Update in bases collection
     if (bases) {
       if (Array.isArray(bases)) {
-        const existingBase = bases.find(b => b.name === base.name);
+        const existingBase = bases.find(b => b.name === targetBase.name);
         if (existingBase) {
           existingBase.joined = false;
         }
       } else {
         // Object-based bases (MyBase pattern)
         for (let baseId in bases) {
-          if (bases[baseId].name === base.name) {
+          if (bases[baseId].name === targetBase.name) {
             bases[baseId].joined = false;
           }
         }
       }
     }
     
+    // If this was the home base, switch to dev base
+    try {
+      const homeBase = await getHomeBase();
+      if (homeBase && homeBase.name === targetBase.name) {
+        console.log('🏠 Leaving home base, switching to dev base');
+        await saveHomeBase(getDevBase());
+      }
+    } catch (err) {
+      console.warn('Could not update home base (non-critical):', err);
+    }
+    
+    console.log('✅ Successfully left base:', targetBase.name);
     return true;
+    
   } catch (err) {
     console.error('Failed to leave base:', err);
     return false;
@@ -357,10 +396,11 @@ async function leaveBase(base) {
 }
 
 /**
- * Get feed from bases
+ * Get feed from joined bases only
+ * Aggregates content from all bases where joined = true
  * @param {Function} callback - Callback function to handle feed data
  * @param {boolean} forceRefresh - Force refresh from server
- * @returns {Object} Feed data
+ * @returns {Object} Feed data from joined bases
  */
 async function getFeed(callback, forceRefresh = false) {
   const now = Date.now();
@@ -370,81 +410,205 @@ async function getFeed(callback, forceRefresh = false) {
     return _feed;
   }
 
+  console.log('🔄 Aggregating content from joined bases...');
+
   try {
-    const homeBase = await getHomeBase();
-    
-    // Initialize backend users if needed
-    if (!bdoUser) {
-      try {
-        bdoUser = await invoke('create_bdo_user', { bdoUrl: homeBase.dns.bdo });
-      } catch (err) {
-        console.warn('Failed to create BDO user:', err);
-      }
-    }
-    
-    if (!doloresUser) {
-      try {
-        doloresUser = await invoke('create_dolores_user', { doloresUrl: homeBase.dns.dolores });
-      } catch (err) {
-        console.warn('Failed to create Dolores user:', err);
-      }
+    // Get all available bases
+    const allBases = await getBases();
+    if (!allBases) {
+      throw new Error('No bases available');
     }
 
-    // Get feed data
-    let feedData = {
+    // Filter to only joined bases
+    const joinedBases = [];
+    if (Array.isArray(allBases)) {
+      joinedBases.push(...allBases.filter(base => base.joined === true));
+    } else {
+      // Object-based bases (MyBase pattern)
+      Object.values(allBases).forEach(base => {
+        if (base.joined === true) {
+          joinedBases.push(base);
+        }
+      });
+    }
+
+    console.log(`📊 Found ${joinedBases.length} joined bases for content aggregation`);
+    
+    if (joinedBases.length === 0) {
+      console.log('📦 No joined bases - returning empty feed');
+      const emptyFeed = {
+        textPosts: [],
+        imagePosts: [],
+        videoPosts: [],
+        isEmpty: true,
+        message: 'No bases joined. Join bases to see their content in your feed.',
+        joinedBasesCount: 0
+      };
+      
+      _feed = emptyFeed;
+      lastFeedRefresh = now;
+      if (callback) callback(_feed);
+      return _feed;
+    }
+
+    // Aggregate feed data from all joined bases
+    let aggregatedFeed = {
       textPosts: [],
       imagePosts: [],
-      videoPosts: []
+      videoPosts: [],
+      joinedBasesCount: joinedBases.length,
+      baseSources: []
     };
 
-    try {
-      // Get photo feed from Dolores
-      const photoFeed = await invoke('get_feed', {
-        uuid: doloresUser?.uuid,
-        doloresUrl: homeBase.dns.dolores,
-        tags: homeBase.soma.photary || ['photos']
-      });
+    // Process each joined base
+    for (const base of joinedBases) {
+      console.log(`🔍 Getting content from joined base: ${base.name}`);
       
-      if (photoFeed && photoFeed.length > 0) {
-        feedData.imagePosts = photoFeed.map(item => ({
-          uuid: item.uuid || generateId(),
-          title: item.title || '',
-          description: item.description || '',
-          images: item.images || [item.url],
-          timestamp: item.timestamp || Date.now(),
-          author: item.author || 'Anonymous'
-        }));
+      try {
+        // Add base to sources list
+        aggregatedFeed.baseSources.push({
+          name: base.name,
+          dns: base.dns,
+          joined: base.joined
+        });
+
+        // Get content from this base's services
+        await Promise.allSettled([
+          getContentFromDolores(base, aggregatedFeed),
+          getContentFromSanora(base, aggregatedFeed),
+          // Add other content sources as needed
+        ]);
+        
+      } catch (err) {
+        console.warn(`Failed to get content from base ${base.name}:`, err);
+        // Continue with other bases even if one fails
       }
-    } catch (err) {
-      console.warn('Failed to get photo feed:', err);
     }
 
-    // No mock data - show empty state when no content available
-    if (feedData.imagePosts.length === 0) {
-      console.log('📦 No photo content available from connected bases');
-    }
+    // Sort all content by timestamp (newest first)
+    aggregatedFeed.imagePosts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    aggregatedFeed.textPosts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    aggregatedFeed.videoPosts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-    _feed = feedData;
+    console.log(`✅ Content aggregation complete: ${aggregatedFeed.imagePosts.length} images, ${aggregatedFeed.textPosts.length} text, ${aggregatedFeed.videoPosts.length} videos`);
+
+    _feed = aggregatedFeed;
     lastFeedRefresh = now;
     
     if (callback) callback(_feed);
     return _feed;
     
   } catch (err) {
-    console.error('Failed to get feed:', err);
+    console.error('Failed to aggregate feed from joined bases:', err);
     
-    // Return empty feed with error info instead of mock data
-    const emptyFeed = {
+    // Return empty feed with error info
+    const errorFeed = {
       textPosts: [],
       imagePosts: [],
       videoPosts: [],
       error: err.message,
       isEmpty: true,
-      message: 'Unable to connect to base servers. Check your connection and try again.'
+      message: 'Unable to connect to joined bases. Check your connection and try again.',
+      joinedBasesCount: 0
     };
     
-    if (callback) callback(emptyFeed);
-    return emptyFeed;
+    _feed = errorFeed;
+    lastFeedRefresh = now;
+    if (callback) callback(errorFeed);
+    return errorFeed;
+  }
+}
+
+/**
+ * Get content from a base's Dolores service
+ * @param {Object} base - Base configuration
+ * @param {Object} aggregatedFeed - Feed object to append content to
+ */
+async function getContentFromDolores(base, aggregatedFeed) {
+  if (!base.dns || !base.dns.dolores) {
+    console.log(`⏭️ Base ${base.name} has no Dolores service`);
+    return;
+  }
+
+  try {
+    // Create Dolores user for this base if needed
+    const doloresUser = await invoke('create_dolores_user', { 
+      doloresUrl: base.dns.dolores 
+    });
+    
+    // Get photo feed from this base's Dolores
+    const photoFeed = await invoke('get_feed', {
+      uuid: doloresUser.uuid,
+      doloresUrl: base.dns.dolores,
+      tags: base.soma?.photary || ['photos']
+    });
+    
+    if (photoFeed && photoFeed.length > 0) {
+      const baseImages = photoFeed.map(item => ({
+        uuid: item.uuid || generateId(),
+        title: item.title || '',
+        description: item.description || '',
+        images: item.images || [item.url],
+        timestamp: item.timestamp || Date.now(),
+        author: item.author || 'Anonymous',
+        baseName: base.name,
+        baseSource: 'dolores'
+      }));
+      
+      aggregatedFeed.imagePosts.push(...baseImages);
+      console.log(`📸 Added ${baseImages.length} images from ${base.name}`);
+    }
+    
+  } catch (err) {
+    console.warn(`Failed to get Dolores content from ${base.name}:`, err);
+  }
+}
+
+/**
+ * Get content from a base's Sanora service
+ * @param {Object} base - Base configuration  
+ * @param {Object} aggregatedFeed - Feed object to append content to
+ */
+async function getContentFromSanora(base, aggregatedFeed) {
+  if (!base.dns || !base.dns.sanora) {
+    console.log(`⏭️ Base ${base.name} has no Sanora service`);
+    return;
+  }
+
+  try {
+    // Create Sanora user for this base if needed
+    const sanoraUser = await invoke('create_sanora_user', { 
+      sanoraUrl: base.dns.sanora 
+    });
+    
+    // Get products/content from this base's Sanora
+    const userData = await invoke('get_sanora_user', {
+      uuid: sanoraUser.uuid,
+      sanoraUrl: base.dns.sanora
+    });
+    
+    if (userData.products && userData.products.length > 0) {
+      // Filter for blog-type content
+      const blogPosts = userData.products
+        .filter(product => product.tags && product.tags.some(tag => tag.toLowerCase().includes('blog')))
+        .map(product => ({
+          uuid: product.uuid || generateId(),
+          title: product.title || 'Untitled',
+          description: product.description || '',
+          content: product.description,
+          timestamp: product.created_at ? new Date(product.created_at).getTime() : Date.now(),
+          author: 'Blogger',
+          baseName: base.name,
+          baseSource: 'sanora',
+          price: product.price
+        }));
+      
+      aggregatedFeed.textPosts.push(...blogPosts);
+      console.log(`📝 Added ${blogPosts.length} blog posts from ${base.name}`);
+    }
+    
+  } catch (err) {
+    console.warn(`Failed to get Sanora content from ${base.name}:`, err);
   }
 }
 
