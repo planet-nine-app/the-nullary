@@ -147,6 +147,11 @@
         "Menu Title": {
           "type": "text"
         },
+        "Menu Type": {
+          "type": "text",
+          "placeholder": "e.g., restaurant, cafe, food-truck, catering",
+          "required": true
+        },
         "CSV or JSON File": {
           "type": "catalog"
         },

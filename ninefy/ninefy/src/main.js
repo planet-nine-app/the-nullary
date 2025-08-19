@@ -465,15 +465,45 @@ function normalizeBaseProduct(rawProduct, baseId, baseName, baseUrl) {
   // Handle the weird nested structure where product data is nested under the title key
   let productData;
   if (rawProduct && typeof rawProduct === 'object') {
-    // Check if this has the nested structure like { "Foo": { actualProductData } }
+    // Check if this has the nested structure like { "Fares": { actualProductData } }
     const keys = Object.keys(rawProduct).filter(key => !['baseId', 'baseName', 'baseUrl'].includes(key));
-    if (keys.length === 1 && typeof rawProduct[keys[0]] === 'object') {
+    
+    // Look for a key that contains the actual product data (has required fields like title, category, etc.)
+    // Prioritize menu catalog products (category: 'menu') over individual menu items
+    let mainProductKey = null;
+    
+    // First pass: look specifically for menu catalog products
+    for (const key of keys) {
+      const potentialProduct = rawProduct[key];
+      if (potentialProduct && typeof potentialProduct === 'object' && 
+          potentialProduct.category === 'menu') {
+        mainProductKey = key;
+        console.log('🍽️ Found menu catalog product:', key);
+        break;
+      }
+    }
+    
+    // Second pass: if no menu catalog found, look for any valid product
+    if (!mainProductKey) {
+      for (const key of keys) {
+        const potentialProduct = rawProduct[key];
+        if (potentialProduct && typeof potentialProduct === 'object' && 
+            (potentialProduct.title || potentialProduct.category || potentialProduct.description)) {
+          mainProductKey = key;
+          console.log('📋 Found regular product:', key);
+          break;
+        }
+      }
+    }
+    
+    if (mainProductKey) {
       // This is the nested format
-      productData = rawProduct[keys[0]];
-      console.log('📋 Extracted nested product data:', productData);
+      productData = rawProduct[mainProductKey];
+      console.log('📋 Extracted nested product data from key:', mainProductKey, 'data:', productData);
     } else {
       // This is already flat
       productData = rawProduct;
+      console.log('📋 Using flat product data:', productData);
     }
   } else {
     productData = rawProduct;
@@ -889,6 +919,38 @@ function parseMarkdown(text) {
  * Create product card
  */
 function createProductCard(product) {
+  // Debug logging for menu detection
+  console.log('🔍 Checking product for menu detection:', {
+    title: product.title,
+    category: product.category,
+    productType: product.productType,
+    hasMenuUtils: !!window.MenuUtils,
+    hasMenuDisplay: !!window.MenuDisplay
+  });
+  
+  // Check if this is a menu product and use menu display if available
+  if (window.MenuUtils && window.MenuDisplay) {
+    const isMenu = window.MenuUtils.isMenuProduct(product);
+    console.log('🍽️ Menu detection result for', product.title, ':', isMenu);
+    
+    if (isMenu) {
+      console.log('🍽️ Creating menu catalog card for:', product.title);
+      
+      // Convert product to menu catalog format if needed
+      const menuCatalog = window.MenuUtils.convertProductToMenuCatalog(product);
+      if (menuCatalog) {
+        return window.MenuDisplay.createMenuCatalogCard(menuCatalog, {
+          theme: appState.currentTheme,
+          onClick: (menu) => {
+            console.log('🍽️ Menu clicked:', menu.title);
+            showProductDetails(menu.originalProduct || menu); // Show details using the original product
+          }
+        });
+      }
+    }
+  }
+
+  // Create regular product card
   const cardContainer = document.createElement('div');
   cardContainer.className = 'product-card';
   cardContainer.style.cssText = `
@@ -1603,6 +1665,12 @@ function createDetailsScreen() {
   if (appState.selectedProduct) {
     const product = appState.selectedProduct;
     
+    // Check if this is a menu product and display it differently
+    if (window.MenuUtils && window.MenuDisplay && window.MenuUtils.isMenuProduct(product)) {
+      console.log('🍽️ Creating menu details view for:', product.title);
+      return createMenuDetailsScreen(product);
+    }
+    
     // Display the selected product
     const productContainer = document.createElement('div');
     productContainer.style.cssText = `
@@ -1861,6 +1929,511 @@ function createDetailsScreen() {
     `;
   }
   
+  return screen;
+}
+
+/**
+ * Simple JSON syntax highlighting
+ */
+function syntaxHighlightJson(json) {
+  json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+    let cls = 'number';
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) {
+        cls = 'key';
+      } else {
+        cls = 'string';
+      }
+    } else if (/true|false/.test(match)) {
+      cls = 'boolean';
+    } else if (/null/.test(match)) {
+      cls = 'null';
+    }
+    
+    const colors = {
+      key: '#9ecbff',      // Light blue for keys
+      string: '#a5e075',   // Light green for strings
+      number: '#ffa657',   // Orange for numbers
+      boolean: '#ff7b72',  // Red for booleans
+      null: '#8b949e'      // Gray for null
+    };
+    
+    return `<span style="color: ${colors[cls]};">${match}</span>`;
+  });
+}
+
+/**
+ * Create Menu Details Screen for menu catalog products
+ */
+function createMenuDetailsScreen(product) {
+  const screen = document.createElement('div');
+  screen.id = 'menu-details-screen';
+  screen.className = 'screen';
+  
+  // Back button
+  const backButton = document.createElement('button');
+  backButton.innerHTML = '← Back to Shop';
+  backButton.style.cssText = `
+    background: ${appState.currentTheme.colors.secondary};
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+  `;
+  
+  backButton.addEventListener('click', () => {
+    appState.currentScreen = 'main';
+    appState.selectedProduct = null;
+    updateHUDButtons();
+    renderCurrentScreen();
+  });
+
+  // Convert product to menu catalog format
+  const menuCatalog = window.MenuUtils.convertProductToMenuCatalog(product);
+  
+  if (menuCatalog && window.MenuDisplay) {
+    // Create menu details container
+    const detailsContainer = document.createElement('div');
+    detailsContainer.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 900px;
+      margin: 0 auto;
+    `;
+
+    // Menu header with purchase info
+    const headerContainer = document.createElement('div');
+    headerContainer.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid ${appState.currentTheme.colors.primary};
+    `;
+
+    const titleContainer = document.createElement('div');
+    titleContainer.style.cssText = `flex: 1;`;
+
+    const title = document.createElement('h1');
+    title.textContent = product.title;
+    title.style.cssText = `
+      color: ${appState.currentTheme.colors.primary};
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 2.5rem;
+      margin: 0 0 10px 0;
+    `;
+
+    const description = document.createElement('p');
+    description.textContent = product.description || 'Complete restaurant menu catalog';
+    description.style.cssText = `
+      color: ${appState.currentTheme.colors.textSecondary};
+      font-size: 1.1rem;
+      margin: 0;
+      line-height: 1.5;
+    `;
+
+    const metaInfo = document.createElement('div');
+    metaInfo.style.cssText = `
+      color: ${appState.currentTheme.colors.secondary};
+      font-size: 0.9rem;
+      margin-top: 10px;
+    `;
+    const itemCount = menuCatalog.metadata?.totalProducts || 0;
+    const menuCount = menuCatalog.metadata?.menuCount || 0;
+    metaInfo.textContent = `🍽️ Menu Catalog • ${itemCount} items • ${menuCount} categories • by ${product.author}`;
+
+    titleContainer.appendChild(title);
+    titleContainer.appendChild(description);
+    titleContainer.appendChild(metaInfo);
+
+    // Purchase section
+    const purchaseContainer = document.createElement('div');
+    purchaseContainer.style.cssText = `
+      text-align: center;
+      min-width: 200px;
+    `;
+
+    if (product.price && product.price > 0) {
+      const priceElement = document.createElement('div');
+      priceElement.textContent = formatPrice(product.price);
+      priceElement.style.cssText = `
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: ${appState.currentTheme.colors.accent};
+        margin-bottom: 15px;
+      `;
+
+      const buyButton = document.createElement('button');
+      buyButton.innerHTML = '💳 Buy Menu Access';
+      buyButton.style.cssText = `
+        background: ${appState.currentTheme.colors.accent};
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-family: ${appState.currentTheme.typography.fontFamily};
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100%;
+        transition: all 0.2s ease;
+      `;
+
+      buyButton.addEventListener('click', () => {
+        initiatePurchase(product);
+      });
+
+      purchaseContainer.appendChild(priceElement);
+      purchaseContainer.appendChild(buyButton);
+    } else {
+      const freeLabel = document.createElement('div');
+      freeLabel.textContent = 'Free Menu';
+      freeLabel.style.cssText = `
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: ${appState.currentTheme.colors.secondary};
+        margin-bottom: 15px;
+      `;
+      purchaseContainer.appendChild(freeLabel);
+    }
+
+    headerContainer.appendChild(titleContainer);
+    headerContainer.appendChild(purchaseContainer);
+
+    // Artifacts section (JSON menu data)
+    if (product.artifacts && product.artifacts.length > 0) {
+      const artifactsSection = document.createElement('div');
+      artifactsSection.style.cssText = `
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-left: 4px solid ${appState.currentTheme.colors.secondary};
+      `;
+
+      const artifactsTitle = document.createElement('h3');
+      artifactsTitle.textContent = '📁 Menu Data Files';
+      artifactsTitle.style.cssText = `
+        color: ${appState.currentTheme.colors.primary};
+        margin: 0 0 15px 0;
+        font-size: 1.2rem;
+      `;
+
+      const artifactsList = document.createElement('div');
+      
+      product.artifacts.forEach(artifactId => {
+        const artifactItem = document.createElement('div');
+        artifactItem.style.cssText = `
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 10px;
+          background: white;
+          border-radius: 6px;
+          margin-bottom: 10px;
+          border: 1px solid #e0e0e0;
+        `;
+
+        const artifactInfo = document.createElement('div');
+        artifactInfo.innerHTML = `
+          <div style="font-weight: bold; color: ${appState.currentTheme.colors.text};">
+            📄 ${product.title}_menu.json
+          </div>
+          <div style="font-size: 0.9rem; color: ${appState.currentTheme.colors.textSecondary};">
+            Complete menu structure data (JSON format)
+          </div>
+        `;
+
+        const menuButton = document.createElement('button');
+        menuButton.innerHTML = '🍽️ Open Menu';
+        menuButton.style.cssText = `
+          background: ${appState.currentTheme.colors.primary};
+          color: white;
+          border: none;
+          padding: 12px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 1rem;
+          font-weight: bold;
+          transition: all 0.2s ease;
+          margin-right: 10px;
+        `;
+
+        const jsonButton = document.createElement('button');
+        jsonButton.innerHTML = '📄 View Data';
+        jsonButton.style.cssText = `
+          background: ${appState.currentTheme.colors.border};
+          color: ${appState.currentTheme.colors.text};
+          border: none;
+          padding: 8px 16px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          transition: all 0.2s ease;
+        `;
+
+        // Menu navigation container (initially hidden)
+        const menuContainer = document.createElement('div');
+        menuContainer.style.cssText = `
+          margin-top: 20px;
+          display: none;
+          border-radius: 8px;
+          overflow: hidden;
+        `;
+
+        // JSON content container (initially hidden)
+        const jsonContainer = document.createElement('div');
+        jsonContainer.style.cssText = `
+          margin-top: 15px;
+          display: none;
+          background: #2d3748;
+          color: #e2e8f0;
+          padding: 20px;
+          border-radius: 6px;
+          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+          font-size: 0.85rem;
+          line-height: 1.4;
+          overflow-x: auto;
+          max-height: 400px;
+          overflow-y: auto;
+          border: 1px solid #4a5568;
+        `;
+
+        let menuLoaded = false;
+        let jsonLoaded = false;
+        let menuData = null;
+        let menuInterface = null;
+
+        // Menu button click handler
+        menuButton.addEventListener('click', async () => {
+          if (!menuLoaded) {
+            // Fetch and create interactive menu
+            menuButton.disabled = true;
+            menuButton.innerHTML = '⏳ Loading Menu...';
+            
+            try {
+              console.log('🍽️ Fetching menu data for navigation:', {
+                uuid: product.uuid,
+                sanoraUrl: product.baseUrl || 'http://127.0.0.1:5121/',
+                productTitle: product.title,
+                artifactId: artifactId
+              });
+              
+              // Use Rust backend to fetch artifact (avoids CORS issues)
+              if (invoke) {
+                const jsonText = await invoke('get_artifact', {
+                  uuid: product.uuid,
+                  sanoraUrl: product.baseUrl || 'http://127.0.0.1:5121/',
+                  productTitle: product.title,
+                  artifactId: artifactId
+                });
+                
+                try {
+                  menuData = JSON.parse(jsonText);
+                  console.log('🍽️ Menu data loaded successfully:', menuData);
+                  
+                  // Create interactive menu navigation
+                  if (window.MenuNavigation) {
+                    menuInterface = window.MenuNavigation.createMenuInterface(menuData, {
+                      width: 600,
+                      height: 500,
+                      colors: {
+                        primary: appState.currentTheme.colors.primary,
+                        secondary: appState.currentTheme.colors.secondary,
+                        accent: appState.currentTheme.colors.accent,
+                        text: appState.currentTheme.colors.text,
+                        background: appState.currentTheme.colors.background,
+                        border: appState.currentTheme.colors.border
+                      }
+                    });
+
+                    // Set up callbacks
+                    menuInterface.onProductSelected((selectedProduct) => {
+                      console.log('🛒 Product selected:', selectedProduct);
+                      
+                      // Show purchase confirmation with product details
+                      const priceText = selectedProduct.price ? `$${(selectedProduct.price / 100).toFixed(2)}` : 'Free';
+                      const confirmMessage = `Add "${selectedProduct.name}" to cart?\n\nPrice: ${priceText}\nCategory: ${selectedProduct.category || 'menu-item'}`;
+                      
+                      if (confirm(confirmMessage)) {
+                        // Here you could integrate with the actual purchase flow
+                        alert(`✅ Added "${selectedProduct.name}" to cart!\n\n(This would integrate with the actual purchase system)`);
+                      }
+                    });
+
+                    menuInterface.onSelectionChanged((state) => {
+                      console.log('🔄 Selection changed:', {
+                        category: state.selectedCategory,
+                        timeSpan: state.selectedTimeSpan,
+                        product: state.selectedProduct?.name
+                      });
+                    });
+
+                    // Add to container
+                    menuContainer.innerHTML = '';
+                    menuContainer.appendChild(menuInterface.element);
+                  } else {
+                    throw new Error('MenuNavigation component not loaded');
+                  }
+                  
+                  menuLoaded = true;
+                  menuButton.innerHTML = '🍽️ Hide Menu';
+                  menuContainer.style.display = 'block';
+                  
+                } catch (parseError) {
+                  throw new Error(`Invalid menu data: ${parseError.message}`);
+                }
+              } else {
+                throw new Error('Tauri backend not available');
+              }
+              
+            } catch (error) {
+              console.error('Error loading menu:', error);
+              menuContainer.innerHTML = `
+                <div style="padding: 20px; background: #fee; border: 1px solid #fcc; border-radius: 8px; color: #c33;">
+                  <strong>⚠️ Error loading menu:</strong> ${error.message || error}
+                </div>
+              `;
+              menuContainer.style.display = 'block';
+            } finally {
+              menuButton.disabled = false;
+            }
+          } else {
+            // Toggle visibility
+            if (menuContainer.style.display === 'none') {
+              menuContainer.style.display = 'block';
+              menuButton.innerHTML = '🍽️ Hide Menu';
+            } else {
+              menuContainer.style.display = 'none';
+              menuButton.innerHTML = '🍽️ Open Menu';
+            }
+          }
+        });
+        
+        // JSON button click handler (for technical users who want to see raw data)
+        jsonButton.addEventListener('click', async () => {
+          if (!jsonLoaded) {
+            // Fetch and display JSON
+            jsonButton.disabled = true;
+            jsonButton.innerHTML = '⏳ Loading...';
+            
+            try {
+              // Use existing menuData if available, otherwise fetch
+              let jsonData;
+              if (menuData) {
+                jsonData = menuData;
+              } else if (invoke) {
+                const jsonText = await invoke('get_artifact', {
+                  uuid: product.uuid,
+                  sanoraUrl: product.baseUrl || 'http://127.0.0.1:5121/',
+                  productTitle: product.title,
+                  artifactId: artifactId
+                });
+                jsonData = JSON.parse(jsonText);
+              } else {
+                throw new Error('Tauri backend not available');
+              }
+              
+              const prettyJson = JSON.stringify(jsonData, null, 2);
+              jsonContainer.innerHTML = syntaxHighlightJson(prettyJson);
+              
+              jsonLoaded = true;
+              jsonButton.innerHTML = '📄 Hide Data';
+              jsonContainer.style.display = 'block';
+              
+            } catch (error) {
+              console.error('Error fetching JSON:', error);
+              jsonContainer.innerHTML = `<span style="color: #ff6b6b;">Error loading JSON: ${error.message || error}</span>`;
+              jsonContainer.style.display = 'block';
+            } finally {
+              jsonButton.disabled = false;
+            }
+          } else {
+            // Toggle visibility
+            if (jsonContainer.style.display === 'none') {
+              jsonContainer.style.display = 'block';
+              jsonButton.innerHTML = '📄 Hide Data';
+            } else {
+              jsonContainer.style.display = 'none';
+              jsonButton.innerHTML = '📄 View Data';
+            }
+          }
+        });
+
+        artifactItem.appendChild(artifactInfo);
+        artifactItem.appendChild(menuButton);
+        artifactItem.appendChild(jsonButton);
+        
+        // Add menu and JSON containers after the artifact item
+        const artifactWrapper = document.createElement('div');
+        artifactWrapper.appendChild(artifactItem);
+        artifactWrapper.appendChild(menuContainer);
+        artifactWrapper.appendChild(jsonContainer);
+        
+        artifactsList.appendChild(artifactWrapper);
+      });
+
+      artifactsSection.appendChild(artifactsTitle);
+      artifactsSection.appendChild(artifactsList);
+      detailsContainer.appendChild(artifactsSection);
+    }
+
+    // Menu structure display
+    const menuDisplay = window.MenuDisplay.createMenuStructureDisplay(menuCatalog, {
+      showPrices: true,
+      theme: appState.currentTheme,
+      onItemClick: (menuItem) => {
+        console.log('🛒 Menu item clicked:', menuItem.name);
+        alert(`Menu Item: ${menuItem.name}\nPrice: ${window.MenuDisplay.formatPrice(menuItem.price)}\n\n(Individual item ordering coming soon!)`);
+      }
+    });
+
+    detailsContainer.appendChild(headerContainer);
+    detailsContainer.appendChild(menuDisplay);
+
+    screen.appendChild(backButton);
+    screen.appendChild(detailsContainer);
+
+  } else {
+    // Fallback for when menu display isn't available
+    const fallbackContainer = document.createElement('div');
+    fallbackContainer.style.cssText = `
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    `;
+
+    fallbackContainer.innerHTML = `
+      <h1 style="color: ${appState.currentTheme.colors.primary}; margin-bottom: 20px;">
+        🍽️ ${product.title}
+      </h1>
+      <p style="color: ${appState.currentTheme.colors.textSecondary}; font-size: 1.1rem; margin-bottom: 30px;">
+        ${product.description || 'Menu catalog'}
+      </p>
+      <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p style="color: ${appState.currentTheme.colors.text};">
+          This is a menu catalog product. Menu display components are loading...
+        </p>
+      </div>
+    `;
+
+    screen.appendChild(backButton);
+    screen.appendChild(fallbackContainer);
+  }
+
   return screen;
 }
 
@@ -2716,7 +3289,7 @@ async function uploadProductToSanora(productData) {
       title: title,
       description: description,
       price: Math.round(parseFloat(price) * 100), // Ensure integer cents
-      productType: productData.productType // Add the product type: 'ebook', 'course', 'ticket', 'shippable', 'sodoto'
+      category: productData.productType || 'general' // Use product type as category
     };
     
     console.log('📋 add_product parameters:', addProductParams);
@@ -2791,6 +3364,7 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     // Extract form data
     const menuTitle = productData.formData['Menu Title'] || 'Untitled Menu';
     const menuDescription = productData.formData['Menu Description'] || '';
+    const menuType = productData.formData['Menu Type'] || 'restaurant'; // Get the menu type for category
     
     // Get CSV/JSON data from form data (catalog field)
     let menuData = '';
@@ -2869,7 +3443,7 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
           title: product.name,
           description: `Menu item from ${menuTitle}. Category: ${product.metadata?.riderType || 'N/A'}, Time span: ${product.metadata?.timeSpan || 'N/A'}`,
           price: product.price,
-          productType: 'menu-item'
+          category: menuType // Use the Menu Type from the form as category
         };
         
         const uploadResult = await invoke('add_product', productUploadData);
@@ -2961,11 +3535,38 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         title: menuTitle,
         description: `Menu catalog with ${uploadedProducts.length} products. ${menuDescription}`,
         price: 0, // Catalog itself is free, individual items have prices
-        productType: 'menu-catalog'
+        category: 'menu' // Set category as 'menu' for detection logic
       };
       
       catalogProductResult = await invoke('add_product', catalogProductData);
       console.log('✅ Catalog product created:', catalogProductResult);
+      
+      // Step 7: Upload the menu JSON structure as an artifact
+      if (catalogProductResult && (catalogProductResult.id || catalogProductResult.uuid)) {
+        console.log('📁 Uploading menu JSON as artifact...');
+        try {
+          const menuJsonData = JSON.stringify(catalogForBDO, null, 2);
+          const menuJsonBlob = new Blob([menuJsonData], { type: 'application/json' });
+          const menuJsonFile = new File([menuJsonBlob], `${menuTitle.replace(/[^a-zA-Z0-9]/g, '_')}_menu.json`, {
+            type: 'application/json'
+          });
+          
+          const artifactUploadResult = await uploadArtifactToSanora(
+            userUuid,
+            sanoraUrl,
+            menuTitle, // Use the actual product title, not a description
+            menuJsonFile
+          );
+          
+          if (artifactUploadResult.success) {
+            console.log('✅ Menu JSON artifact uploaded successfully');
+          } else {
+            console.warn('⚠️ Menu JSON artifact upload failed:', artifactUploadResult.message);
+          }
+        } catch (artifactError) {
+          console.warn('⚠️ Failed to upload menu JSON artifact:', artifactError);
+        }
+      }
       
     } catch (error) {
       console.warn('⚠️ Failed to create catalog product in Sanora:', error);

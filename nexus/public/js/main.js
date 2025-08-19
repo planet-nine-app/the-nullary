@@ -313,6 +313,183 @@ function smoothScrollTo(element) {
 }
 
 /**
+ * Menu Integration for Nexus
+ * Processes products to detect and display menus
+ */
+function processMenusForNexus(products) {
+    if (!window.MenuUtils) {
+        console.warn('⚠️ Menu utilities not loaded');
+        return { regularProducts: products, menuCatalogs: [], hasMenus: false };
+    }
+
+    const detection = window.MenuUtils.detectMenuProducts(products);
+    const reconstructedMenus = [];
+
+    // Reconstruct menus from detected menu products
+    if (detection.hasMenus) {
+        console.log('🍽️ Found menu products in Nexus, reconstructing...');
+        
+        detection.menuCatalogs.forEach((catalogData, catalogId) => {
+            if (catalogData.structure && catalogData.catalog) {
+                const menuItems = detection.menuProducts.filter(p => 
+                    p.metadata?.menuCatalogId === catalogId
+                );
+                
+                const reconstructed = window.MenuUtils.reconstructMenu(menuItems, catalogData.structure);
+                if (reconstructed) {
+                    reconstructedMenus.push({
+                        catalog: catalogData.catalog,
+                        menu: reconstructed,
+                        items: menuItems
+                    });
+                    console.log(`✅ Reconstructed menu in Nexus: ${catalogId}`);
+                }
+            }
+        });
+    }
+
+    return {
+        regularProducts: detection.regularProducts,
+        menuCatalogs: reconstructedMenus,
+        menuProducts: detection.menuProducts,
+        hasMenus: reconstructedMenus.length > 0
+    };
+}
+
+/**
+ * Display menus in the shopping portal section
+ */
+function displayMenusInShopping(menuCatalogs) {
+    if (!window.MenuDisplay || menuCatalogs.length === 0) {
+        return;
+    }
+
+    console.log(`🍽️ Displaying ${menuCatalogs.length} menus in Nexus shopping section`);
+
+    // Find or create a container for menus in the shopping portal
+    let menuContainer = document.getElementById('nexus-menu-container');
+    if (!menuContainer) {
+        menuContainer = document.createElement('div');
+        menuContainer.id = 'nexus-menu-container';
+        menuContainer.style.marginTop = '20px';
+        menuContainer.innerHTML = '<h3 style="color: #2E5C8A; margin-bottom: 15px;">🍽️ Restaurant Menus</h3>';
+        
+        // Find shopping section and add menu container
+        const shoppingSection = document.querySelector('[data-portal="shopping"]') || 
+                               document.querySelector('.portals-container');
+        if (shoppingSection) {
+            shoppingSection.appendChild(menuContainer);
+        }
+    }
+
+    // Create menu cards
+    menuCatalogs.forEach(({ catalog, menu }) => {
+        const menuCard = window.MenuDisplay.createMenuCatalogCard(menu, {
+            width: 280,
+            height: 180,
+            showPrice: true,
+            showItemCount: true,
+            onClick: (menuCatalog) => {
+                console.log('🍽️ Menu clicked in Nexus:', menuCatalog.title);
+                showMenuDetails(menuCatalog);
+            }
+        });
+        
+        menuCard.style.marginRight = '15px';
+        menuCard.style.marginBottom = '15px';
+        menuCard.style.display = 'inline-block';
+        menuContainer.appendChild(menuCard);
+    });
+}
+
+/**
+ * Show detailed menu view in a modal or expanded section
+ */
+function showMenuDetails(menuCatalog) {
+    if (!window.MenuDisplay) {
+        alert(`Menu: ${menuCatalog.title}\nItems: ${menuCatalog.metadata?.totalProducts || 0}`);
+        return;
+    }
+
+    // Create a modal overlay
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        cursor: pointer;
+    `;
+
+    // Create menu display
+    const menuDisplay = window.MenuDisplay.createMenuStructureDisplay(menuCatalog, {
+        width: Math.min(800, window.innerWidth - 40),
+        showPrices: true,
+        expandable: true
+    });
+    
+    menuDisplay.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-height: 80vh;
+        overflow-y: auto;
+        cursor: default;
+    `;
+
+    modal.appendChild(menuDisplay);
+    document.body.appendChild(modal);
+
+    // Close modal on click outside menu
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+
+    // Close modal on escape key
+    const closeHandler = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', closeHandler);
+        }
+    };
+    document.addEventListener('keydown', closeHandler);
+}
+
+/**
+ * Initialize menu integration when utilities are loaded
+ */
+function initializeMenuIntegration() {
+    if (window.MenuUtils && window.MenuDisplay) {
+        console.log('🍽️ Menu integration initialized for Nexus');
+        
+        // Enhance shopping portal with menu detection
+        window.nexusMenus = {
+            processMenusForNexus,
+            displayMenusInShopping,
+            showMenuDetails
+        };
+        
+        return true;
+    }
+    return false;
+}
+
+// Try to initialize menu integration on load
+setTimeout(() => {
+    if (!initializeMenuIntegration()) {
+        console.log('⚠️ Menu utilities not available in Nexus, skipping menu integration');
+    }
+}, 100);
+
+/**
  * Debug function to expose state for development
  */
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -320,7 +497,11 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
         state: nexusState,
         navigateToPortal,
         checkPortalServices,
-        loadConnectionStatus
+        loadConnectionStatus,
+        // Menu debugging
+        processMenusForNexus,
+        displayMenusInShopping,
+        showMenuDetails
     };
     
     console.log('🔧 Debug utilities available at window.nexusDebug');

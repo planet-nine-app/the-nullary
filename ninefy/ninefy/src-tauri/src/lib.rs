@@ -339,21 +339,22 @@ async fn add_order(uuid: &str, sanora_url: &str, order: Order) -> Result<SanoraU
     }
 }
 
-/// Create a new blog product in Sanora
 #[tauri::command]
-async fn add_product(uuid: &str, sanora_url: &str, title: &str, description: &str, price: u32) -> Result<ProductMeta, String> {
-    println!("🦀 Rust add_product called with: uuid={}, sanora_url={}, title={}, price={}", uuid, sanora_url, title, price);
+async fn add_product(uuid: &str, sanora_url: &str, title: &str, description: &str, price: u32, category: &str) -> Result<ProductMeta, String> {
+    println!("🦀 Rust add_product called with: uuid={}, sanora_url={}, title={}, price={}, category={:?}", 
+             uuid, sanora_url, title, price, category);
     
     let s = get_sessionless().await;
     match s {
         Ok(sessionless) => {
             let sanora = Sanora::new(Some(sanora_url.to_string()), Some(sessionless));
             println!("🦀 Calling sanora.add_product with sessionless authentication");
-            let product_result = sanora.add_product(&uuid, &title, &description, &price).await;
+            let product_result = sanora.add_product(&uuid, &title, &description, &price, &category).await;
 
             match product_result {
-                Ok(meta) => {
+                Ok(mut meta) => {
                     println!("🦀 ✅ Product added successfully: {:?}", meta);
+                   
                     Ok(meta)
                 },
                 Err(e) => {
@@ -524,6 +525,49 @@ async fn upload_artifact(file_data: Vec<u8>, file_name: String, url: String, mes
         let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         println!("❌ Artifact upload error {}: {}", status.as_u16(), error_body);
         Err(format!("HTTP error {}: {}", status.as_u16(), error_body))
+    }
+}
+
+/// Get artifact content from Sanora
+#[tauri::command]
+async fn get_artifact(uuid: &str, sanora_url: &str, product_title: &str, artifact_id: &str) -> Result<String, String> {
+    println!("🔍 Getting artifact: {} for product: {} from: {}", artifact_id, product_title, sanora_url);
+    
+    let client = Client::new();
+    
+    // Construct the correct artifact URL format: /artifacts/{artifact_id}
+    let artifact_url = format!("{}/artifacts/{}", 
+                              sanora_url.trim_end_matches('/'), 
+                              artifact_id);
+    
+    println!("📥 Fetching artifact from: {}", artifact_url);
+    
+    match client.get(&artifact_url).send().await {
+        Ok(response) => {
+            let status = response.status();
+            println!("📡 Artifact response status: {}", status);
+            
+            if status.is_success() {
+                match response.text().await {
+                    Ok(content) => {
+                        println!("✅ Got artifact content ({} bytes)", content.len());
+                        Ok(content)
+                    }
+                    Err(e) => {
+                        println!("❌ Failed to read artifact content: {}", e);
+                        Err(format!("Failed to read artifact content: {}", e))
+                    }
+                }
+            } else {
+                let error_body = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                println!("❌ HTTP error {}: {}", status.as_u16(), error_body);
+                Err(format!("HTTP error {}: {}", status.as_u16(), error_body))
+            }
+        }
+        Err(e) => {
+            println!("❌ Request failed: {}", e);
+            Err(format!("Request failed: {}", e))
+        }
     }
 }
 
@@ -725,6 +769,7 @@ pub fn run() {
             toggle_product_availability,
             get_base_products,
             get_all_base_products,
+            get_artifact,
             upload_image,
             upload_artifact,
             teleport_content

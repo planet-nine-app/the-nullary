@@ -588,6 +588,41 @@ async function getContentFromSanora(base, aggregatedFeed) {
     });
     
     if (userData.products && userData.products.length > 0) {
+      // Process menus if menu utilities are available
+      if (window.MenuUtils) {
+        const menuResult = window.MenuUtils.detectMenuProducts(userData.products);
+        
+        // Process menu catalogs
+        if (menuResult.hasMenus) {
+          console.log(`🍽️ Found ${menuResult.menuCatalogs.size} menu catalogs from ${base.name}`);
+          
+          // Add menu catalogs to aggregatedFeed
+          if (!aggregatedFeed.menuCatalogs) {
+            aggregatedFeed.menuCatalogs = [];
+          }
+          
+          menuResult.menuCatalogs.forEach((catalogData, catalogId) => {
+            if (catalogData.structure && catalogData.catalog) {
+              const menuItems = menuResult.menuProducts.filter(p => 
+                p.metadata?.menuCatalogId === catalogId
+              );
+              
+              const reconstructed = window.MenuUtils.reconstructMenu(menuItems, catalogData.structure);
+              if (reconstructed) {
+                aggregatedFeed.menuCatalogs.push({
+                  catalog: catalogData.catalog,
+                  menu: reconstructed,
+                  items: menuItems,
+                  baseName: base.name,
+                  baseSource: 'sanora'
+                });
+                console.log(`✅ Reconstructed menu from ${base.name}: ${reconstructed.title}`);
+              }
+            }
+          });
+        }
+      }
+      
       // Filter for blog-type content
       const blogPosts = userData.products
         .filter(product => product.tags && product.tags.some(tag => tag.toLowerCase().includes('blog')))
