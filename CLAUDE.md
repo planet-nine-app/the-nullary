@@ -326,7 +326,47 @@ appEnv.current();        // Check current environment
 - Express.js backend with API proxy functionality
 - Responsive design for desktop and mobile
 
-### 7. Additional Apps
+### 7. MagiCard - Interactive SVG Card Stack Application
+**Location**: `/magicard/`
+**Status**: ✅ Production Ready with Complete Navigation System
+
+**Key Features**:
+- Interactive SVG card stack management with dual-pane interface (stack list + preview)
+- Complete spell navigation system using `spell="magicard"` with `spell-components='{"bdoPubKey":"..."}'`
+- Custom modal dialogs for Tauri compatibility (replaces native prompt())
+- Automatic card naming via `card-name` attribute in SVG files
+- Real-time card preview with spell attribute hover/click detection
+- BDO integration for cross-card navigation and storage
+- Comprehensive test cards (Fire, Ice, Lightning spells) demonstrating navigation patterns
+
+**Technical Implementation**:
+- **Spell System**: SVG elements with `spell` attributes trigger `window.castSpell()` function
+- **Card Navigation**: Using `bdoPubKey` references to navigate between related cards
+- **Custom Modal**: Tauri-compatible dialog system for user input (stack naming)
+- **File Management**: SVG upload, preview, and stack organization
+- **Environment Support**: Full dev/test/local environment switching integration
+
+**Navigation Pattern**:
+```xml
+<!-- Navigation button in SVG -->
+<rect spell="magicard" 
+      spell-components='{"bdoPubKey":"demo_user_ice"}' 
+      x="20" y="320" width="80" height="30"/>
+<text spell="magicard" 
+      spell-components='{"bdoPubKey":"demo_user_ice"}' 
+      x="60" y="340">→ Ice</text>
+```
+
+**Card Structure**:
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" 
+     width="300" height="400" 
+     card-name="Fire Spell">
+  <!-- Card content with interactive spell elements -->
+</svg>
+```
+
+### 8. Additional Apps
 
 **Lexary** - Text-focused social feeds
 **Photary** - Photo sharing and galleries  

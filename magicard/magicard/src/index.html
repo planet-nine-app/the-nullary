@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Environment Configuration (loaded before everything) -->
+    <script src="environment-config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MagiCard - Interactive Card Stacks</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Content will be dynamically inserted here -->
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading" class="loading-screen">
+        <div class="loading-content">
+            <h1>🪄 MagiCard</h1>
+            <p>Loading your magical card stacks...</p>
+        </div>
+    </div>
+
+    <!-- Shared utilities (no modules) -->
+    <script>
+        // Placeholder shared functions for now - implement locally to avoid loading issues
+        window.createSVGElement = function(type, attributes) {
+            const element = document.createElementNS('http://www.w3.org/2000/svg', type);
+            if (attributes) {
+                Object.entries(attributes).forEach(([key, value]) => {
+                    element.setAttribute(key, value);
+                });
+            }
+            return element;
+        };
+        
+        window.createTextComponent = function(config) {
+            const text = createSVGElement('text', {
+                x: config.x || 0,
+                y: config.y || 0,
+                fill: config.color || '#333',
+                'font-family': config.fontFamily || 'Arial',
+                'font-size': config.fontSize || 14
+            });
+            text.textContent = config.text || '';
+            return text;
+        };
+        
+        window.color = function(colorName) {
+            const colors = {
+                primary: '#9b59b6',
+                secondary: '#27ae60',
+                tertiary: '#e91e63',
+                quaternary: '#f1c40f',
+                cancel: '#e74c3c',
+                inactive: '#95a5a6'
+            };
+            return colors[colorName] || '#333';
+        };
+    </script>
+    
+    <!-- JavaScript files (no modules) -->
+    <script src="main.js"></script>
+</body>
+</html>

@@ -12,7 +12,7 @@
  */
 function parseCSVToMenuTree(csvContent) {
   try {
-    console.log('🍽️ Parsing CSV content to menu tree...');
+    console.log('🍽️ Parsing CSV content with hierarchical menu structure...');
     
     const lines = csvContent.trim().split('\n');
     const catalog = {
@@ -26,12 +26,39 @@ function parseCSVToMenuTree(csvContent) {
       }
     };
 
-    // Skip header if it exists (detect by checking if first row has "rider", "time span", etc.)
-    const startIndex = lines[0].toLowerCase().includes('rider') || 
-                     lines[0].toLowerCase().includes('time') || 
-                     lines[0].toLowerCase().includes('product') ? 1 : 0;
+    if (lines.length < 2) {
+      throw new Error('CSV must have at least a header row and one data row');
+    }
 
-    for (let i = startIndex; i < lines.length; i++) {
+    // Parse header row to determine menu structure
+    const headerColumns = parseCSVLine(lines[0]);
+    const menuHeaders = [];
+    let productColumnIndex = -1;
+
+    // Find menu headers and product column
+    for (let i = 1; i < headerColumns.length; i++) {
+      const header = headerColumns[i].trim();
+      if (header.toLowerCase() === 'product') {
+        productColumnIndex = i;
+        break;
+      } else if (header) {
+        menuHeaders.push({ name: header, index: i });
+      }
+    }
+
+    if (menuHeaders.length === 0) {
+      throw new Error('No menu headers found. Expected headers like "rider", "time span", etc.');
+    }
+
+    if (productColumnIndex === -1) {
+      throw new Error('No "product" column found in header');
+    }
+
+    console.log(`📋 Found ${menuHeaders.length} menu levels:`, menuHeaders.map(h => h.name));
+    console.log(`🛍️ Product column at index ${productColumnIndex}`);
+
+    // Build menu structure from data rows
+    for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
@@ -40,9 +67,9 @@ function parseCSVToMenuTree(csvContent) {
       // Skip empty rows
       if (columns.every(col => !col.trim())) continue;
 
-      const result = parseMenuRow(columns);
+      const result = parseHierarchicalRow(columns, menuHeaders, productColumnIndex);
       if (result) {
-        addToMenuTree(catalog, result);
+        addToHierarchicalMenuTree(catalog, result, menuHeaders);
       }
     }
 
@@ -50,7 +77,8 @@ function parseCSVToMenuTree(csvContent) {
     catalog.metadata.totalProducts = catalog.products.length;
     catalog.metadata.menuCount = Object.keys(catalog.menus).length;
 
-    console.log(`✅ Parsed ${catalog.metadata.totalProducts} products across ${catalog.metadata.menuCount} menus`);
+    console.log(`✅ Parsed ${catalog.metadata.totalProducts} products across ${catalog.metadata.menuCount} menu levels`);
+    console.log('🗂️ Menu structure:', JSON.stringify(catalog.menus, null, 2));
     
     return catalog;
     
@@ -88,103 +116,154 @@ function parseCSVLine(line) {
 }
 
 /**
- * Parse a single menu row to extract hierarchy and product info
+ * Parse a hierarchical menu row to extract menu selections and product info
  * @param {Array} columns - CSV columns for this row
+ * @param {Array} menuHeaders - Menu header information
+ * @param {number} productColumnIndex - Index of the product column
  * @returns {Object|null} Parsed row data or null if invalid
  */
-function parseMenuRow(columns) {
-  // Expected format: [empty, rider_type, time_span, product_name, price, additional_cols...]
-  if (columns.length < 4) {
-    console.warn('⚠️ Skipping row with insufficient columns:', columns);
-    return null;
-  }
+function parseHierarchicalRow(columns, menuHeaders, productColumnIndex) {
+  const menuSelections = {};
+  let hasData = false;
 
-  const [, riderType, timeSpan, productName, price, ...additionalCols] = columns;
-
-  // Must have product name to be valid
-  if (!productName?.trim()) {
-    return null;
-  }
-
-  // Parse price (remove currency symbols, convert to cents)
-  let priceInCents = 0;
-  if (price?.trim()) {
-    const cleanPrice = price.replace(/[$,]/g, '');
-    const numPrice = parseFloat(cleanPrice);
-    if (!isNaN(numPrice)) {
-      priceInCents = Math.round(numPrice * 100); // Convert to cents
+  // Extract menu selections from columns
+  for (const header of menuHeaders) {
+    const value = columns[header.index]?.trim();
+    if (value) {
+      menuSelections[header.name] = value;
+      hasData = true;
     }
   }
 
+  // Extract product data if present
+  let productData = null;
+  const productValue = columns[productColumnIndex]?.trim();
+  if (productValue) {
+    productData = parseProductValue(productValue);
+    hasData = true;
+  }
+
+  if (!hasData) {
+    return null;
+  }
+
   return {
-    riderType: riderType?.trim() || '',
-    timeSpan: timeSpan?.trim() || '',
-    productName: productName.trim(),
-    price: priceInCents,
-    additionalData: additionalCols.filter(col => col?.trim())
+    menuSelections,
+    productData,
+    hasMenuData: Object.keys(menuSelections).length > 0,
+    hasProductData: productData !== null
   };
 }
 
 /**
- * Add parsed row data to the menu tree structure
+ * Parse product value in format: "selection1+selection2+...+selectionN$price"
+ * Supports "any" wildcard token for flexible matching
+ * @param {string} productValue - Product value string
+ * @returns {Object} Parsed product information
+ */
+function parseProductValue(productValue) {
+  // Expected format: "adult+two-hour$250" or "chilaquiles verdes+any+any$17"
+  const parts = productValue.split('$');
+  if (parts.length !== 2) {
+    console.warn('⚠️ Invalid product format, expected "selections$price":', productValue);
+    return null;
+  }
+
+  const [selectionsStr, priceStr] = parts;
+  const selections = selectionsStr.split('+').map(s => s.trim()).filter(s => s);
+  
+  // Parse price (convert to cents)
+  let priceInCents = 0;
+  const cleanPrice = priceStr.replace(/[$,]/g, '');
+  const numericPrice = parseFloat(cleanPrice);
+  if (!isNaN(numericPrice)) {
+    priceInCents = Math.round(numericPrice * 100);
+  }
+
+  // Generate product name from selections (replace "any" with wildcard indicator)
+  const displaySelections = selections.map(s => s === 'any' ? '*' : s);
+  const productName = displaySelections.join(' ') + ` ${priceInCents}`;
+  
+  // Generate unique product ID (use original selections including "any")
+  const productId = `menu_${selections.join('_')}_${priceInCents}_${generateRandomId()}`;
+
+  return {
+    selections,
+    productName,
+    price: priceInCents,
+    productId,
+    originalValue: productValue,
+    hasWildcards: selections.includes('any')
+  };
+}
+
+/**
+ * Add parsed row data to the hierarchical menu tree structure
  * @param {Object} catalog - The catalog object to modify
  * @param {Object} rowData - Parsed row data
+ * @param {Array} menuHeaders - Menu header information
  */
-function addToMenuTree(catalog, rowData) {
-  const { riderType, timeSpan, productName, price, additionalData } = rowData;
+function addToHierarchicalMenuTree(catalog, rowData, menuHeaders) {
+  const { menuSelections, productData, hasMenuData, hasProductData } = rowData;
 
-  // Create product object
-  const product = {
-    id: generateProductId(productName),
-    name: productName,
-    price: price,
-    category: 'menu-item',
-    metadata: {
-      riderType: riderType,
-      timeSpan: timeSpan,
-      additionalData: additionalData
+  // Process menu structure building
+  if (hasMenuData) {
+    buildMenuStructure(catalog, menuSelections, menuHeaders);
+  }
+
+  // Process product data
+  if (hasProductData && productData) {
+    const product = {
+      id: productData.productId,
+      name: productData.productName,
+      price: productData.price,
+      category: 'menu-item',
+      metadata: {
+        selections: productData.selections,
+        originalValue: productData.originalValue
+      }
+    };
+
+    // Add to products array
+    catalog.products.push(product);
+  }
+}
+
+/**
+ * Build the hierarchical menu structure based on headers and selections
+ * @param {Object} catalog - The catalog object to modify
+ * @param {Object} menuSelections - Selected menu values
+ * @param {Array} menuHeaders - Menu header information
+ */
+function buildMenuStructure(catalog, menuSelections, menuHeaders) {
+  // Create menu structure based on headers
+  for (let i = 0; i < menuHeaders.length; i++) {
+    const currentHeader = menuHeaders[i];
+    const nextHeader = menuHeaders[i + 1];
+    const headerName = currentHeader.name;
+    const selection = menuSelections[headerName];
+
+    if (!selection) continue;
+
+    // Initialize menu if it doesn't exist
+    if (!catalog.menus[headerName]) {
+      catalog.menus[headerName] = {};
     }
-  };
 
-  // Add to products array
-  catalog.products.push(product);
-
-  // Build menu hierarchy
-  if (riderType) {
-    // Initialize rider type menu if it doesn't exist
-    if (!catalog.menus[riderType]) {
-      catalog.menus[riderType] = {
-        title: riderType,
-        submenus: {},
-        products: []
-      };
-    }
-
-    if (timeSpan) {
-      // Initialize time span submenu if it doesn't exist
-      if (!catalog.menus[riderType].submenus[timeSpan]) {
-        catalog.menus[riderType].submenus[timeSpan] = {
-          title: timeSpan,
-          products: []
+    // Add the selection to this menu level
+    if (!catalog.menus[headerName][selection]) {
+      if (nextHeader) {
+        // Has next level - point to next menu
+        catalog.menus[headerName][selection] = {
+          subMenu: nextHeader.name
+        };
+      } else {
+        // Last level - point to product
+        catalog.menus[headerName][selection] = {
+          subMenu: 'product'
         };
       }
-      
-      // Add product to time span submenu
-      catalog.menus[riderType].submenus[timeSpan].products.push(product.id);
-    } else {
-      // Add product directly to rider type menu
-      catalog.menus[riderType].products.push(product.id);
     }
-  } else {
-    // Create a default menu for products without categories
-    if (!catalog.menus['uncategorized']) {
-      catalog.menus['uncategorized'] = {
-        title: 'Other Items',
-        submenus: {},
-        products: []
-      };
-    }
-    catalog.menus['uncategorized'].products.push(product.id);
   }
 }
 
@@ -200,6 +279,14 @@ function generateProductId(productName) {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '') + 
     '_' + Date.now().toString(36);
+}
+
+/**
+ * Generate a random ID for uniqueness
+ * @returns {string} Random ID
+ */
+function generateRandomId() {
+  return Math.random().toString(36).substr(2, 9);
 }
 
 /**

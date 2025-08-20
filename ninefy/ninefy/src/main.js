@@ -2755,17 +2755,35 @@ async function createFormWidgetUploadForm() {
     
     // Special message for menu catalogs
     if (result.productType === 'menu') {
+      console.log('🎯 MAGICARD_WORKFLOW: 🎉 Displaying success message with bdoPubKey:', result.bdoPubKey);
       successMessage.innerHTML = `
         <div style="font-size: 48px; margin-bottom: 15px;">🍽️✅</div>
         <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Menu Catalog Created Successfully!</h3>
         <p style="margin: 0 0 10px 0; font-size: 15px;">
           Your menu catalog "${result.title}" has been processed.<br>
-          <strong>${result.uploadResults.successful}</strong> products uploaded to Sanora.
+          <strong>${result.cardResults.successful}</strong> interactive SVG cards created for MagiCard.
         </p>
-        ${result.uploadResults.failed > 0 ? 
+        ${result.cardResults.failed > 0 ? 
           `<p style="margin: 0 0 10px 0; font-size: 13px; color: #856404; background: #fff3cd; padding: 8px; border-radius: 4px;">
-            ⚠️ ${result.uploadResults.failed} products failed to upload
+            ⚠️ ${result.cardResults.failed} cards failed to create
           </p>` : ''
+        }
+        ${result.firstCardBdoPubKey ? 
+          `<p style="margin: 0 0 10px 0; font-size: 13px; color: #155724; background: #d1e7dd; padding: 8px; border-radius: 4px;">
+            🎴 First card: ${result.firstCardBdoPubKey.substring(0, 12)}... (for direct access)
+          </p>` : ''
+        }
+        ${result.bdoPubKey ? 
+          `<div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-family: monospace;">
+            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing into MagiCard):</div>
+            <div style="font-size: 14px; word-break: break-all; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">
+              ${result.bdoPubKey}
+            </div>
+            <button onclick="navigator.clipboard.writeText('${result.bdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px;">
+              📋 Copy to Clipboard
+            </button>
+          </div>` : ''
         }
         <p style="margin: 0; font-size: 13px; opacity: 0.8;">Catalog stored in BDO • Form will reset in 3 seconds...</p>
       `;
@@ -3057,16 +3075,18 @@ function enhanceMenuForm(form) {
     
     // Load sample data handler
     loadSampleBtn.addEventListener('click', () => {
-      const sampleCSV = `,rider,time span,product,price
-,adult,two-hour,adult two-hour pass,2.50
-,adult,day,adult day pass,5.00
-,adult,month,adult month pass,100.00
-,youth,two-hour,youth two-hour pass,1.00
-,youth,day,youth day pass,2.00
-,youth,month,youth month pass,20.00
-,reduced,two-hour,reduced two-hour pass,1.50
-,reduced,day,reduced day pass,2.50
-,reduced,month,reduced month pass,25.00`;
+      const sampleCSV = `,rider,time span,product,,,
+,adult,two-hour,adult+two-hour$250,,,
+,youth,day,adult+day$500,,,
+,reduced,month,adult+month$10000,,,
+,,,youth+two-hour$100,,,
+,,,youth+day$200,,,
+,,,youth+month$2000,,,
+,,,reduced+two-hour$150,,,
+,,,reduced+day$250,,,
+,,,reduced+month$2500,,,
+,,,chilaquiles verdes+any+any$1700,,,
+,,,special combo+any+day$2500,,,`;
       
       menuDataTextarea.value = sampleCSV;
       validateMenu();
@@ -3276,7 +3296,12 @@ async function uploadProductToSanora(productData) {
     
     // Special handling for menu catalog products
     if (productData.productType === 'menu') {
-      console.log('🍽️ Processing menu catalog product...');
+      console.log('🎯 MAGICARD_WORKFLOW: 🍽️ Processing menu catalog product...');
+      console.log('🎯 MAGICARD_WORKFLOW: 📋 Menu product data:', {
+        title: productData.formData['Menu Title'],
+        hasFile: !!productData.formData['CSV or JSON File'],
+        productType: productData.productType
+      });
       return await processMenuCatalogProduct(productData, userUuid, sanoraUrl);
     }
     
@@ -3357,6 +3382,95 @@ async function uploadProductToSanora(productData) {
 /**
  * Process menu catalog product - special handling for CSV/JSON menus
  */
+/**
+ * Create SVG card content for a menu item with spell navigation
+ * @param {Object} product - The menu product data
+ * @param {Object} nextProduct - The next product for navigation (or null if last)
+ * @param {string} menuTitle - The menu title
+ * @param {number} index - Card index in sequence
+ * @param {number} total - Total number of cards
+ * @returns {string} SVG content as string
+ */
+function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
+  const cardWidth = 300;
+  const cardHeight = 400;
+  const nextBdoPubKey = nextProduct ? nextProduct.cardBdoPubKey : null;
+  
+  // Format price for display
+  const priceDisplay = product.price ? `$${(product.price / 100).toFixed(2)}` : 'Free';
+  
+  // Create navigation button if there's a next card
+  const navigationButton = nextBdoPubKey ? `
+    <g spell="magicard" spell-components='{"bdoPubKey":"${nextBdoPubKey}"}' style="cursor: pointer;">
+      <rect x="220" y="350" width="60" height="30" rx="5" fill="#9b59b6" stroke="#8e44ad" stroke-width="2"/>
+      <text x="250" y="370" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Next →</text>
+    </g>
+  ` : '';
+  
+  // Create back button if not the first card
+  const backButton = index > 0 ? `
+    <g style="cursor: pointer;">
+      <rect x="20" y="350" width="60" height="30" rx="5" fill="#95a5a6" stroke="#7f8c8d" stroke-width="2"/>
+      <text x="50" y="370" text-anchor="middle" fill="white" font-size="12" font-weight="bold">← Back</text>
+    </g>
+  ` : '';
+  
+  const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" card-name="${product.name}">
+  <defs>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e9ecef;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#27ae60;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Card background -->
+  <rect width="${cardWidth}" height="${cardHeight}" fill="url(#cardGradient)" stroke="#ddd" stroke-width="2" rx="12"/>
+  
+  <!-- Header background -->
+  <rect x="0" y="0" width="${cardWidth}" height="80" fill="url(#headerGradient)" rx="12"/>
+  <rect x="0" y="68" width="${cardWidth}" height="12" fill="url(#headerGradient)"/>
+  
+  <!-- Menu title -->
+  <text x="150" y="25" text-anchor="middle" fill="white" font-size="14" font-weight="bold">${menuTitle}</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-size="12">Card ${index + 1} of ${total}</text>
+  
+  <!-- Food emoji icon -->
+  <text x="150" y="130" text-anchor="middle" font-size="48">🍽️</text>
+  
+  <!-- Product name -->
+  <text x="150" y="180" text-anchor="middle" fill="#2c3e50" font-size="18" font-weight="bold">${product.name}</text>
+  
+  <!-- Price -->
+  <text x="150" y="210" text-anchor="middle" fill="#e74c3c" font-size="24" font-weight="bold">${priceDisplay}</text>
+  
+  <!-- Description/Details -->
+  <text x="150" y="240" text-anchor="middle" fill="#6c757d" font-size="12">
+    ${product.metadata?.riderType || 'Standard'} • ${product.metadata?.timeSpan || 'Regular'}
+  </text>
+  
+  <!-- Interactive spell element for the whole card -->
+  <rect x="50" y="260" width="200" height="60" rx="8" fill="rgba(155, 89, 182, 0.1)" 
+        stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,5"
+        spell="info" style="cursor: pointer;"/>
+  <text x="150" y="285" text-anchor="middle" fill="#9b59b6" font-size="14" font-weight="bold">🪄 Magical Menu Item</text>
+  <text x="150" y="305" text-anchor="middle" fill="#9b59b6" font-size="11">Click to cast spell!</text>
+  
+  <!-- Navigation buttons -->
+  ${backButton}
+  ${navigationButton}
+  
+  <!-- Card info -->
+  <text x="10" y="390" fill="#95a5a6" font-size="10">ID: ${product.id}</text>
+</svg>`;
+
+  return svgContent;
+}
+
 async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
   console.log('🍽️ Starting menu catalog processing...');
   
@@ -3428,77 +3542,122 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     
     console.log('📊 Menu stats:', validation.stats);
     
-    // Step 3: Upload individual products to Sanora
-    console.log('📦 Uploading leaf products to Sanora...');
-    const uploadedProducts = [];
-    const uploadErrors = [];
+    // Step 3: Create individual SVG cards for each menu item
+    console.log('🎨 Creating SVG cards for menu items...');
+    const createdCards = [];
+    const cardErrors = [];
     
-    for (const product of menuTree.products) {
+    // First pass: Generate bdoPubKeys for all cards
+    console.log('🔑 Generating bdoPubKeys for all cards...');
+    for (let i = 0; i < menuTree.products.length; i++) {
+      const product = menuTree.products[i];
+      
+      let cardBdoPubKey = null;
       try {
-        console.log(`📤 Uploading product: ${product.name} ($${(product.price / 100).toFixed(2)})`);
+        if (invoke) {
+          cardBdoPubKey = await invoke('get_public_key');
+          console.log(`🎯 MAGICARD_WORKFLOW: Generated card bdoPubKey ${i + 1}: ${cardBdoPubKey.substring(0, 12)}...`);
+        } else {
+          cardBdoPubKey = `demo_card_${Date.now().toString(36)}_${i}`;
+        }
+      } catch (error) {
+        cardBdoPubKey = `demo_card_${Date.now().toString(36)}_${i}`;
+        console.log(`🎯 MAGICARD_WORKFLOW: Using fallback card key ${i + 1}: ${cardBdoPubKey}`);
+      }
+      
+      product.cardBdoPubKey = cardBdoPubKey;
+    }
+    
+    // Second pass: Create SVG cards with proper navigation links
+    console.log('🎨 Creating SVG cards with navigation...');
+    for (let i = 0; i < menuTree.products.length; i++) {
+      const product = menuTree.products[i];
+      const nextProduct = menuTree.products[i + 1]; // For navigation
+      
+      try {
+        console.log(`🎨 Creating SVG card: ${product.name} ($${(product.price / 100).toFixed(2)})`);
         
-        const productUploadData = {
-          uuid: userUuid,
-          sanoraUrl: sanoraUrl,
-          title: product.name,
-          description: `Menu item from ${menuTitle}. Category: ${product.metadata?.riderType || 'N/A'}, Time span: ${product.metadata?.timeSpan || 'N/A'}`,
-          price: product.price,
-          category: menuType // Use the Menu Type from the form as category
-        };
+        // Create SVG card content with navigation
+        const cardSvg = createMenuItemSVG(product, nextProduct, menuTitle, i, menuTree.products.length);
         
-        const uploadResult = await invoke('add_product', productUploadData);
+        // Store the card in BDO (placeholder - would need BDO storage)
+        console.log(`💾 Storing card ${product.name} in BDO...`);
+        // TODO: Implement BDO storage for individual cards
+        // For now, store locally
+        localStorage.setItem(`menu-card-${product.cardBdoPubKey}`, cardSvg);
         
-        // Store the Sanora UUID for this product
-        product.sanoraUuid = uploadResult.id || uploadResult.uuid;
-        uploadedProducts.push({
+        createdCards.push({
           localId: product.id,
-          sanoraUuid: product.sanoraUuid,
+          cardBdoPubKey: product.cardBdoPubKey,
           name: product.name,
-          price: product.price
+          price: product.price,
+          svgContent: cardSvg
         });
         
-        console.log(`✅ Product uploaded: ${product.name} -> ${product.sanoraUuid}`);
+        console.log(`✅ Card created: ${product.name} -> ${product.cardBdoPubKey.substring(0, 12)}...`);
         
       } catch (error) {
-        console.error(`❌ Failed to upload product ${product.name}:`, error);
-        uploadErrors.push({
+        console.error(`❌ Failed to create card for ${product.name}:`, error);
+        cardErrors.push({
           product: product.name,
           error: error.message
         });
       }
     }
     
-    console.log(`📈 Upload results: ${uploadedProducts.length} successful, ${uploadErrors.length} failed`);
+    console.log(`📈 Card creation results: ${createdCards.length} successful, ${cardErrors.length} failed`);
     
-    // Step 4: Update menu tree with Sanora UUIDs
-    console.log('🔗 Mapping Sanora UUIDs to menu structure...');
-    // The products array already has the sanoraUuid added above
+    // Step 4: Update menu tree with card bdoPubKeys
+    console.log('🔗 Menu structure updated with card bdoPubKeys...');
+    // The products array already has the cardBdoPubKey added above
     
-    // Step 5: Store menu catalog in BDO as public data
+    // Step 5: Generate bdoPubKey for MagiCard integration
+    console.log('🎯 MAGICARD_WORKFLOW: Starting bdoPubKey generation for MagiCard integration...');
+    let bdoPubKey = null;
+    try {
+      if (invoke) {
+        console.log('🎯 MAGICARD_WORKFLOW: Calling invoke(get_public_key)...');
+        bdoPubKey = await invoke('get_public_key');
+        console.log('🎯 MAGICARD_WORKFLOW: ✅ Generated bdoPubKey:', bdoPubKey.substring(0, 12) + '...');
+      } else {
+        console.log('🎯 MAGICARD_WORKFLOW: ⚠️ No invoke available, using demo key');
+        bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
+      }
+    } catch (error) {
+      console.log('🎯 MAGICARD_WORKFLOW: ❌ Error generating bdoPubKey:', error);
+      // Generate a placeholder for demo purposes
+      bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
+      console.log('🎯 MAGICARD_WORKFLOW: 🔄 Using fallback demo key:', bdoPubKey);
+    }
+    
+    // Step 6: Store menu catalog in BDO as public data
     console.log('🗄️ Storing menu catalog in BDO...');
     
     const catalogForBDO = {
-      title: menuTree.title,
+      title: menuTree.title || menuTitle,
       description: menuDescription,
+      bdoPubKey: bdoPubKey, // Master bdoPubKey for MagiCard integration
       menus: menuTree.menus,
       products: menuTree.products.map(p => ({
         id: p.id,
-        sanoraUuid: p.sanoraUuid,
+        cardBdoPubKey: p.cardBdoPubKey, // Individual card bdoPubKey for navigation
         name: p.name,
         price: p.price,
         category: p.category,
         metadata: p.metadata
       })),
+      cards: createdCards, // Store the created card information
       metadata: {
         ...menuTree.metadata,
         uploadedAt: new Date().toISOString(),
-        totalProducts: uploadedProducts.length,
-        failedUploads: uploadErrors.length,
-        sanoraUrl: sanoraUrl
+        totalCards: createdCards.length,
+        failedCards: cardErrors.length,
+        bdoPubKey: bdoPubKey, // Store in metadata as well
+        firstCardBdoPubKey: createdCards.length > 0 ? createdCards[0].cardBdoPubKey : null // For easy navigation to first card
       },
-      uploadResults: {
-        successful: uploadedProducts,
-        failed: uploadErrors
+      cardResults: {
+        successful: createdCards,
+        failed: cardErrors
       }
     };
     
@@ -3514,9 +3673,21 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         //   contentType: 'application/json'
         // });
         
-        // For now, store locally as fallback
-        localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
-        bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally (BDO integration pending)' };
+        // Store to shared directory for cross-app access
+        console.log('🎯 MAGICARD_WORKFLOW: 💾 Saving menu catalog to shared directory...');
+        try {
+          const saveResult = await invoke('save_menu_catalog', {
+            bdoPubKey: bdoPubKey,
+            catalogData: JSON.stringify(catalogForBDO)
+          });
+          console.log('🎯 MAGICARD_WORKFLOW: ✅ Saved to shared directory:', saveResult);
+          bdoResult = { success: true, id: `shared-${Date.now()}`, message: 'Stored in shared directory for MagiCard access' };
+        } catch (saveError) {
+          console.log('🎯 MAGICARD_WORKFLOW: ⚠️ Shared directory save failed, using localStorage:', saveError);
+          // Fallback to localStorage as before
+          localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
+          bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally (shared directory failed)' };
+        }
       }
     } catch (error) {
       console.warn('⚠️ BDO storage failed, stored locally:', error);
@@ -3535,8 +3706,11 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         title: menuTitle,
         description: `Menu catalog with ${uploadedProducts.length} products. ${menuDescription}`,
         price: 0, // Catalog itself is free, individual items have prices
-        category: 'menu' // Set category as 'menu' for detection logic
+        category: 'menu', // Set category as 'menu' for detection logic
+        bdoPubKey: bdoPubKey // Add bdoPubKey for MagiCard integration
       };
+      
+      console.log('🎯 MAGICARD_WORKFLOW: 📋 Creating Sanora catalog product with bdoPubKey:', bdoPubKey.substring(0, 12) + '...');
       
       catalogProductResult = await invoke('add_product', catalogProductData);
       console.log('✅ Catalog product created:', catalogProductResult);
@@ -3579,17 +3753,18 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       title: menuTitle,
       catalogId: catalogProductResult?.id || 'unknown',
       bdoId: bdoResult?.id || 'unknown',
+      bdoPubKey: bdoPubKey, // Master bdoPubKey for MagiCard integration
+      firstCardBdoPubKey: createdCards.length > 0 ? createdCards[0].cardBdoPubKey : null, // First card for direct access
       menuStats: validation.stats,
-      uploadResults: {
-        successful: uploadedProducts.length,
-        failed: uploadErrors.length,
+      cardResults: {
+        successful: createdCards.length,
+        failed: cardErrors.length,
         details: {
-          uploaded: uploadedProducts,
-          errors: uploadErrors
+          created: createdCards,
+          errors: cardErrors
         }
       },
-      catalogData: catalogForBDO,
-      sanoraUrl: sanoraUrl
+      catalogData: catalogForBDO
     };
     
   } catch (error) {

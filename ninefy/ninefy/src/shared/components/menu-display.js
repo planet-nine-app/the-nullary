@@ -138,10 +138,54 @@ const MenuDisplay = {
             statsContainer.appendChild(priceElement);
         }
 
+        // Add bdoPubKey display for MagiCard integration
+        let bdoPubKeyContainer = null;
+        console.log('🎯 MAGICARD_WORKFLOW: 🎨 Menu display checking for bdoPubKey...', {
+            directBdoPubKey: menuCatalog.bdoPubKey,
+            metadataBdoPubKey: menuCatalog.metadata?.bdoPubKey,
+            menuCatalogKeys: Object.keys(menuCatalog)
+        });
+        
+        if (menuCatalog.bdoPubKey || menuCatalog.metadata?.bdoPubKey) {
+            const bdoPubKey = menuCatalog.bdoPubKey || menuCatalog.metadata?.bdoPubKey;
+            console.log('🎯 MAGICARD_WORKFLOW: 🎨 Found bdoPubKey, creating display:', bdoPubKey.substring(0, 12) + '...');
+            bdoPubKeyContainer = document.createElement('div');
+            bdoPubKeyContainer.style.cssText = `
+                background: linear-gradient(135deg, #9b59b6, #8e44ad);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                margin-top: 8px;
+                font-size: 11px;
+                font-family: monospace;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            `;
+            
+            bdoPubKeyContainer.innerHTML = `
+                <span style="font-weight: bold;">🪄 MagiCard ID:</span>
+                <span style="word-break: break-all;">${bdoPubKey.substring(0, 12)}...</span>
+                <button style="
+                    background: rgba(255,255,255,0.2);
+                    border: none;
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    cursor: pointer;
+                    font-weight: bold;
+                " onclick="navigator.clipboard.writeText('${bdoPubKey}'); this.textContent='Copied!'; setTimeout(() => this.textContent='Copy', 1000)">Copy</button>
+            `;
+        }
+
         contentContainer.appendChild(metaHeader);
         contentContainer.appendChild(titleElement);
         contentContainer.appendChild(descriptionElement);
         contentContainer.appendChild(statsContainer);
+        if (bdoPubKeyContainer) {
+            contentContainer.appendChild(bdoPubKeyContainer);
+        }
 
         cardContainer.appendChild(contentContainer);
 

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" card-name="Lightning Spell">
+  <!-- Card Background -->
+  <rect x="0" y="0" width="300" height="400" fill="#2e2e40" stroke="#FFD700" stroke-width="3" rx="15"/>
+  
+  <!-- Card Border Decoration -->
+  <rect x="10" y="10" width="280" height="380" fill="none" stroke="#FFFF00" stroke-width="2" rx="10"/>
+  
+  <!-- Card Title Background -->
+  <rect x="20" y="20" width="260" height="50" fill="#4B0082" rx="8"/>
+  
+  <!-- Card Title -->
+  <text x="150" y="50" text-anchor="middle" fill="#FFFF00" font-family="serif" font-size="18" font-weight="bold">
+    ⚡ LIGHTNING SPELL ⚡
+  </text>
+  
+  <!-- Main Spell Element - Interactive -->
+  <path spell="lightning-bolt" d="M150,100 L160,130 L145,130 L155,170 L135,140 L150,140 Z" fill="#FFFF00" stroke="#FFD700" stroke-width="2">
+    <animate attributeName="fill" values="#FFFF00;#FFFFFF;#FFD700;#FFFF00" dur="1.5s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Lightning Icon in Center -->
+  <text spell="lightning-bolt" x="150" y="160" text-anchor="middle" fill="#FFFFFF" font-size="30">⚡</text>
+  
+  <!-- Spell Description -->
+  <text x="150" y="220" text-anchor="middle" fill="#FFFF00" font-family="serif" font-size="14">
+    Strike with lightning speed and power
+  </text>
+  
+  <!-- Mana Cost -->
+  <circle x="50" y="250" r="20" fill="#0000FF" stroke="#87CEEB" stroke-width="2"/>
+  <text x="50" y="255" text-anchor="middle" fill="white" font-size="12" font-weight="bold">4</text>
+  <text x="80" y="255" fill="#87CEEB" font-size="12">Mana Cost</text>
+  
+  <!-- Shock Effect -->
+  <rect spell="shock" x="180" y="230" width="40" height="40" fill="#4B0082" stroke="#FFFF00" stroke-width="2" rx="5"/>
+  <text spell="shock" x="200" y="255" text-anchor="middle" fill="#FFFF00" font-size="12" font-weight="bold">SHOCK</text>
+  
+  <!-- Navigation to Fire Card -->
+  <rect spell="magicard" spell-components='{"bdoPubKey":"demo_user_fire"}' x="20" y="320" width="80" height="30" fill="#8B0000" stroke="#FF4500" stroke-width="2" rx="5"/>
+  <text spell="magicard" spell-components='{"bdoPubKey":"demo_user_fire"}' x="60" y="340" text-anchor="middle" fill="white" font-size="10">→ Fire</text>
+  
+  <!-- Navigation to Ice Card -->
+  <rect spell="magicard" spell-components='{"bdoPubKey":"demo_user_ice"}' x="110" y="320" width="80" height="30" fill="#4169E1" stroke="#87CEEB" stroke-width="2" rx="5"/>
+  <text spell="magicard" spell-components='{"bdoPubKey":"demo_user_ice"}' x="150" y="340" text-anchor="middle" fill="white" font-size="10">→ Ice</text>
+  
+  <!-- Spell Components -->
+  <g spell="components">
+    <text x="150" y="300" text-anchor="middle" fill="#FFD700" font-size="12">Spell Components:</text>
+    <circle cx="120" cy="280" r="8" fill="#FFFF00"/>
+    <text x="120" y="285" text-anchor="middle" fill="black" font-size="8">S</text>
+    <circle cx="150" cy="280" r="8" fill="#FFFFFF"/>
+    <text x="150" y="285" text-anchor="middle" fill="black" font-size="8">V</text>
+    <circle cx="180" cy="280" r="8" fill="#4B0082"/>
+    <text x="180" y="285" text-anchor="middle" fill="white" font-size="8">M</text>
+  </g>
+  
+  <!-- Lightning Chain Effect -->
+  <g spell="chain-lightning">
+    <path d="M20,370 L40,360 L60,370 L80,355 L100,370" stroke="#FFFF00" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M120,370 L140,360 L160,370 L180,355 L200,370" stroke="#FFFF00" stroke-width="3" fill="none" opacity="0.8"/>
+    <path d="M220,370 L240,360 L260,370 L280,355" stroke="#FFFF00" stroke-width="3" fill="none" opacity="0.8"/>
+    <text x="150" y="390" text-anchor="middle" fill="#FFFF00" font-size="12" font-weight="bold">
+      Chain Lightning Effect
+    </text>
+  </g>
+</svg>

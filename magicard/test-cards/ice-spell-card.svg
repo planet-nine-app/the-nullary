@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" card-name="Ice Spell">
+  <!-- Card Background -->
+  <rect x="0" y="0" width="300" height="400" fill="#1e3a5f" stroke="#4682B4" stroke-width="3" rx="15"/>
+  
+  <!-- Card Border Decoration -->
+  <rect x="10" y="10" width="280" height="380" fill="none" stroke="#87CEEB" stroke-width="2" rx="10"/>
+  
+  <!-- Card Title Background -->
+  <rect x="20" y="20" width="260" height="50" fill="#191970" rx="8"/>
+  
+  <!-- Card Title -->
+  <text x="150" y="50" text-anchor="middle" fill="#E0E6FF" font-family="serif" font-size="20" font-weight="bold">
+    ❄️ ICE SPELL ❄️
+  </text>
+  
+  <!-- Main Spell Element - Interactive -->
+  <polygon spell="ice-shard" points="150,110 170,140 150,190 130,140" fill="#00CED1" stroke="#E0E6FF" stroke-width="3">
+    <animateTransform attributeName="transform" type="rotate" values="0 150 150;360 150 150" dur="4s" repeatCount="indefinite"/>
+  </polygon>
+  
+  <!-- Ice Crystal in Center -->
+  <text spell="ice-shard" x="150" y="160" text-anchor="middle" fill="#E0E6FF" font-size="30">❄️</text>
+  
+  <!-- Spell Description -->
+  <text x="150" y="220" text-anchor="middle" fill="#E0E6FF" font-family="serif" font-size="14">
+    Freeze enemies with ice magic
+  </text>
+  
+  <!-- Mana Cost -->
+  <circle x="50" y="250" r="20" fill="#0000FF" stroke="#87CEEB" stroke-width="2"/>
+  <text x="50" y="255" text-anchor="middle" fill="white" font-size="12" font-weight="bold">2</text>
+  <text x="80" y="255" fill="#87CEEB" font-size="12">Mana Cost</text>
+  
+  <!-- Freeze Effect -->
+  <rect spell="freeze" x="180" y="230" width="40" height="40" fill="#4169E1" stroke="#00CED1" stroke-width="2" rx="5"/>
+  <text spell="freeze" x="200" y="255" text-anchor="middle" fill="#E0E6FF" font-size="12" font-weight="bold">FREEZE</text>
+  
+  <!-- Navigation back to Fire Card -->
+  <rect spell="magicard" spell-components='{"bdoPubKey":"demo_user_fire"}' x="20" y="320" width="80" height="30" fill="#8B0000" stroke="#FF4500" stroke-width="2" rx="5"/>
+  <text spell="magicard" spell-components='{"bdoPubKey":"demo_user_fire"}' x="60" y="340" text-anchor="middle" fill="white" font-size="10">→ Fire</text>
+  
+  <!-- Navigation to Lightning Card -->
+  <rect spell="magicard" spell-components='{"bdoPubKey":"demo_user_lightning"}' x="110" y="320" width="80" height="30" fill="#FFD700" stroke="#FFA500" stroke-width="2" rx="5"/>
+  <text spell="magicard" spell-components='{"bdoPubKey":"demo_user_lightning"}' x="150" y="340" text-anchor="middle" fill="black" font-size="10">→ Lightning</text>
+  
+  <!-- Spell Components -->
+  <g spell="components">
+    <text x="150" y="300" text-anchor="middle" fill="#87CEEB" font-size="12">Spell Components:</text>
+    <circle cx="120" cy="320" r="8" fill="#00CED1"/>
+    <text x="120" y="325" text-anchor="middle" fill="white" font-size="8">S</text>
+    <circle cx="150" cy="320" r="8" fill="#E0E6FF"/>
+    <text x="150" y="325" text-anchor="middle" fill="black" font-size="8">V</text>
+  </g>
+  
+  <!-- Ice Shards Effect -->
+  <g spell="ice-shards">
+    <polygon points="50,370 60,360 70,370 60,380" fill="#00CED1" opacity="0.7"/>
+    <polygon points="100,365 110,355 120,365 110,375" fill="#87CEEB" opacity="0.7"/>
+    <polygon points="180,370 190,360 200,370 190,380" fill="#00CED1" opacity="0.7"/>
+    <polygon points="230,365 240,355 250,365 240,375" fill="#87CEEB" opacity="0.7"/>
+    <text x="150" y="380" text-anchor="middle" fill="#E0E6FF" font-size="12" font-weight="bold">
+      Multiple Ice Shards
+    </text>
+  </g>
+  
+  <!-- Spell Duration -->
+  <rect spell="duration" x="250" y="230" width="30" height="40" fill="rgba(0,206,209,0.3)" stroke="#00CED1" stroke-width="1" rx="5"/>
+  <text spell="duration" x="265" y="255" text-anchor="middle" fill="#E0E6FF" font-size="10" font-weight="bold">3 TURNS</text>
+</svg>

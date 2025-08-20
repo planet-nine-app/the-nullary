@@ -39,9 +39,8 @@ const MenuNavigation = {
         
         // Create navigation state
         const navigationState = {
-            currentStep: 'categories',  // categories -> timeSpans -> product
-            selectedCategory: null,
-            selectedTimeSpan: null,
+            currentLevel: 0,
+            selections: {},
             selectedProduct: null,
             menuStructure: menuStructure,
             config: finalConfig,
@@ -63,8 +62,8 @@ const MenuNavigation = {
         container.appendChild(contentElement);
         container.appendChild(actionElement);
 
-        // Initialize with categories view
-        this.showCategories(navigationState, contentElement);
+        // Initialize with first menu level
+        this.showCurrentLevel(navigationState, contentElement);
 
         return {
             element: container,
@@ -76,11 +75,10 @@ const MenuNavigation = {
                 navigationState.callbacks.onSelectionChanged = callback;
             },
             reset: () => {
-                navigationState.currentStep = 'categories';
-                navigationState.selectedCategory = null;
-                navigationState.selectedTimeSpan = null;
+                navigationState.currentLevel = 0;
+                navigationState.selections = {};
                 navigationState.selectedProduct = null;
-                this.showCategories(navigationState, contentElement);
+                this.showCurrentLevel(navigationState, contentElement);
                 this.updateNavigationSteps(navigationState, navigationElement);
             },
             getSelectedProduct: () => navigationState.selectedProduct
@@ -88,12 +86,13 @@ const MenuNavigation = {
     },
 
     /**
-     * Parse menu JSON into navigation-friendly structure
+     * Parse menu JSON into navigation-friendly structure for hierarchical menus
      */
     parseMenuStructure(menuData) {
         const structure = {
-            categories: new Map(),
-            timeSpans: new Set(),
+            menuLevels: [], // Ordered list of menu levels
+            currentLevel: 0,
+            selections: {},
             products: new Map()
         };
 
@@ -104,36 +103,20 @@ const MenuNavigation = {
             });
         }
 
-        // Parse menu hierarchy
+        // Parse hierarchical menu structure
         if (menuData.menus) {
-            Object.entries(menuData.menus).forEach(([categoryKey, categoryData]) => {
-                const category = {
-                    key: categoryKey,
-                    title: categoryData.title || categoryKey,
-                    timeSpans: new Map(),
-                    directProducts: categoryData.products || []
-                };
+            // Find the menu levels and their order
+            const menuLevels = Object.keys(menuData.menus);
+            structure.menuLevels = menuLevels.map(levelName => ({
+                name: levelName,
+                options: Object.keys(menuData.menus[levelName]),
+                menuData: menuData.menus[levelName]
+            }));
 
-                // Parse submenus (time spans)
-                if (categoryData.submenus) {
-                    Object.entries(categoryData.submenus).forEach(([timeKey, timeData]) => {
-                        structure.timeSpans.add(timeKey);
-                        category.timeSpans.set(timeKey, {
-                            key: timeKey,
-                            title: timeData.title || timeKey,
-                            products: timeData.products || []
-                        });
-                    });
-                }
-
-                structure.categories.set(categoryKey, category);
-            });
+            console.log('🍽️ Found menu levels:', structure.menuLevels.map(l => l.name));
         }
 
-        // Convert timeSpans Set to sorted array
-        structure.timeSpansArray = Array.from(structure.timeSpans).sort();
-
-        console.log('🍽️ Parsed menu structure:', structure);
+        console.log('🍽️ Parsed hierarchical menu structure:', structure);
         return structure;
     },
 
@@ -173,7 +156,7 @@ const MenuNavigation = {
         titleBg.setAttribute('width', '100%');
         titleBg.setAttribute('height', '60');
         titleBg.setAttribute('fill', config.colors.primary);
-        titleBg.setAttribute('rx', `${config.borderRadius} ${config.borderRadius} 0 0`);
+        titleBg.setAttribute('rx', config.borderRadius);
         titleGroup.appendChild(titleBg);
 
         // Title text
@@ -208,25 +191,22 @@ const MenuNavigation = {
         const navGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         navGroup.setAttribute('class', 'navigation-steps');
         
-        const steps = [
-            { key: 'categories', label: '1. Choose Category', icon: '📋' },
-            { key: 'timeSpans', label: '2. Select Duration', icon: '⏰' },
-            { key: 'product', label: '3. Confirm Selection', icon: '✅' }
-        ];
+        const maxSteps = state.menuStructure.menuLevels.length + 1; // +1 for product selection
+        const stepWidth = Math.min(180, (state.config.width - 40) / maxSteps);
 
-        steps.forEach((step, index) => {
+        state.menuStructure.menuLevels.forEach((level, index) => {
             const stepGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-            const x = 20 + (index * 180);
+            const x = 20 + (index * stepWidth);
             const y = 80;
 
             // Step background
-            const isActive = this.isStepActive(step.key, state);
-            const isCompleted = this.isStepCompleted(step.key, state);
+            const isActive = state.currentLevel === index;
+            const isCompleted = state.currentLevel > index;
             
             const stepBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             stepBg.setAttribute('x', x);
             stepBg.setAttribute('y', y);
-            stepBg.setAttribute('width', '160');
+            stepBg.setAttribute('width', stepWidth - 10);
             stepBg.setAttribute('height', '30');
             stepBg.setAttribute('rx', '4');
             stepBg.setAttribute('fill', isCompleted ? state.config.colors.secondary : 
@@ -239,12 +219,39 @@ const MenuNavigation = {
             stepText.setAttribute('x', x + 10);
             stepText.setAttribute('y', y + 20);
             stepText.setAttribute('fill', isCompleted || isActive ? 'white' : state.config.colors.text);
-            stepText.setAttribute('font-size', state.config.fontSize - 2);
-            stepText.textContent = `${step.icon} ${step.label}`;
+            stepText.setAttribute('font-size', Math.min(state.config.fontSize - 2, 12));
+            stepText.textContent = `${index + 1}. ${level.name}`;
             stepGroup.appendChild(stepText);
 
             navGroup.appendChild(stepGroup);
         });
+
+        // Add final product step
+        const finalIndex = state.menuStructure.menuLevels.length;
+        const finalStepGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const finalX = 20 + (finalIndex * stepWidth);
+        const finalY = 80;
+
+        const finalBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        finalBg.setAttribute('x', finalX);
+        finalBg.setAttribute('y', finalY);
+        finalBg.setAttribute('width', stepWidth - 10);
+        finalBg.setAttribute('height', '30');
+        finalBg.setAttribute('rx', '4');
+        finalBg.setAttribute('fill', state.selectedProduct ? state.config.colors.secondary : 
+                                   state.currentLevel === finalIndex ? state.config.colors.selected : 
+                                   state.config.colors.hover);
+        finalStepGroup.appendChild(finalBg);
+
+        const finalText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        finalText.setAttribute('x', finalX + 10);
+        finalText.setAttribute('y', finalY + 20);
+        finalText.setAttribute('fill', state.selectedProduct || state.currentLevel === finalIndex ? 'white' : state.config.colors.text);
+        finalText.setAttribute('font-size', Math.min(state.config.fontSize - 2, 12));
+        finalText.textContent = `${finalIndex + 1}. Product`;
+        finalStepGroup.appendChild(finalText);
+
+        navGroup.appendChild(finalStepGroup);
 
         return navGroup;
     },
@@ -293,38 +300,25 @@ const MenuNavigation = {
     },
 
     /**
-     * Show categories selection
+     * Show current menu level
      */
-    showCategories(state, contentElement) {
+    showCurrentLevel(state, contentElement) {
         this.clearContent(contentElement);
         
-        const categories = Array.from(state.menuStructure.categories.values());
-        const title = this.createSectionTitle('Choose a Category:', 20, 20, state.config);
-        contentElement.appendChild(title);
-
-        categories.forEach((category, index) => {
-            const categoryCard = this.createCategoryCard(category, index, state);
-            contentElement.appendChild(categoryCard);
-        });
-
-        this.updateNavigationSteps(state, contentElement.parentNode.querySelector('.navigation-steps'));
-        this.updateActionButtons(state, contentElement.parentNode.querySelector('.action-buttons'));
-    },
-
-    /**
-     * Show time spans for selected category
-     */
-    showTimeSpans(state, contentElement) {
-        this.clearContent(contentElement);
+        const currentLevel = state.menuStructure.menuLevels[state.currentLevel];
         
-        const category = state.menuStructure.categories.get(state.selectedCategory);
-        const title = this.createSectionTitle(`Choose Duration for ${category.title}:`, 20, 20, state.config);
+        if (!currentLevel) {
+            // We're at the product level
+            this.showProduct(state, contentElement);
+            return;
+        }
+
+        const title = this.createSectionTitle(`Choose ${currentLevel.name}:`, 20, 20, state.config);
         contentElement.appendChild(title);
 
-        const timeSpans = Array.from(category.timeSpans.values());
-        timeSpans.forEach((timeSpan, index) => {
-            const timeSpanCard = this.createTimeSpanCard(timeSpan, index, state);
-            contentElement.appendChild(timeSpanCard);
+        currentLevel.options.forEach((option, index) => {
+            const optionCard = this.createOptionCard(currentLevel.name, option, index, state);
+            contentElement.appendChild(optionCard);
         });
 
         this.updateNavigationSteps(state, contentElement.parentNode.querySelector('.navigation-steps'));
@@ -337,23 +331,23 @@ const MenuNavigation = {
     showProduct(state, contentElement) {
         this.clearContent(contentElement);
         
-        const category = state.menuStructure.categories.get(state.selectedCategory);
-        const timeSpan = category.timeSpans.get(state.selectedTimeSpan);
+        // Find the product that matches our selections
+        const product = this.findMatchingProduct(state);
         
-        if (timeSpan.products.length > 0) {
-            const productId = timeSpan.products[0]; // Take first product
-            const product = state.menuStructure.products.get(productId);
+        if (product) {
+            state.selectedProduct = product;
+            const productCard = this.createProductCard(product, state);
+            contentElement.appendChild(productCard);
             
-            if (product) {
-                state.selectedProduct = product;
-                const productCard = this.createProductCard(product, state);
-                contentElement.appendChild(productCard);
-                
-                // Trigger callback
-                if (state.callbacks.onProductSelected) {
-                    state.callbacks.onProductSelected(product);
-                }
+            // Trigger callback
+            if (state.callbacks.onProductSelected) {
+                state.callbacks.onProductSelected(product);
             }
+        } else {
+            // No matching product found
+            const noProductMessage = this.createSectionTitle('No product found for these selections', 20, 50, state.config);
+            noProductMessage.setAttribute('fill', state.config.colors.accent);
+            contentElement.appendChild(noProductMessage);
         }
 
         this.updateNavigationSteps(state, contentElement.parentNode.querySelector('.navigation-steps'));
@@ -361,12 +355,89 @@ const MenuNavigation = {
     },
 
     /**
-     * Create category selection card
+     * Find a product that matches the current selections
+     * Supports "any" wildcard token for flexible matching
      */
-    createCategoryCard(category, index, state) {
+    findMatchingProduct(state) {
+        // Build ordered selections array based on menu level order
+        const orderedSelections = [];
+        for (const level of state.menuStructure.menuLevels) {
+            const selection = state.selections[level.name];
+            if (selection) {
+                orderedSelections.push(selection);
+            }
+        }
+        
+        console.log('🔍 Looking for product matching ordered selections:', orderedSelections);
+        console.log('📊 User selections object:', state.selections);
+        console.log('🗂️ Menu levels order:', state.menuStructure.menuLevels.map(l => l.name));
+        
+        // Look for a product whose selections match our menu choices
+        for (const [productId, product] of state.menuStructure.products) {
+            if (product.metadata && product.metadata.selections) {
+                const productSelections = product.metadata.selections;
+                
+                console.log(`🍽️ Checking product "${product.name}" with selections:`, productSelections);
+                console.log(`   User ordered: [${orderedSelections.join(', ')}]`);
+                console.log(`   Product pattern: [${productSelections.join(', ')}]`);
+                
+                // Check if selections match, considering "any" wildcards
+                if (this.selectionsMatch(orderedSelections, productSelections)) {
+                    console.log('✅ Found matching product:', product.name);
+                    return product;
+                }
+            }
+        }
+        
+        console.log('❌ No matching product found for ordered selections:', orderedSelections);
+        
+        // Debug: Let's also check what products are actually available
+        console.log('🔍 Debug - All products in structure:');
+        for (const [productId, product] of state.menuStructure.products) {
+            console.log(`   - ${product.name} (${productId}):`, product.metadata?.selections || 'no selections');
+        }
+        
+        return null;
+    },
+
+    /**
+     * Check if user selections match product selections, considering "any" wildcards
+     * @param {Array} userSelections - User's menu choices
+     * @param {Array} productSelections - Product's selection pattern (may include "any")
+     * @returns {boolean} True if selections match
+     */
+    selectionsMatch(userSelections, productSelections) {
+        // Must have same number of selections
+        if (userSelections.length !== productSelections.length) {
+            return false;
+        }
+
+        // Check each position
+        for (let i = 0; i < userSelections.length; i++) {
+            const userSelection = userSelections[i];
+            const productSelection = productSelections[i];
+
+            // "any" wildcard matches anything
+            if (productSelection === 'any') {
+                continue;
+            }
+
+            // Exact match required for non-wildcard selections
+            if (userSelection !== productSelection) {
+                return false;
+            }
+        }
+
+        return true;
+    },
+
+    /**
+     * Create option selection card for any menu level
+     */
+    createOptionCard(menuName, option, index, state) {
         const y = 50 + (index * 70);
         const cardGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        cardGroup.setAttribute('class', 'category-card');
+        cardGroup.setAttribute('class', 'option-card');
         cardGroup.style.cursor = 'pointer';
 
         // Card background
@@ -381,25 +452,29 @@ const MenuNavigation = {
         cardBg.setAttribute('stroke-width', '1');
         cardGroup.appendChild(cardBg);
 
-        // Category icon and title
+        // Option icon and title
+        const icon = this.getMenuIcon(menuName);
         const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         titleText.setAttribute('x', '40');
         titleText.setAttribute('y', y + 25);
         titleText.setAttribute('fill', state.config.colors.text);
         titleText.setAttribute('font-size', state.config.fontSize);
         titleText.setAttribute('font-weight', 'bold');
-        titleText.textContent = `👤 ${category.title.charAt(0).toUpperCase() + category.title.slice(1)}`;
+        titleText.textContent = `${icon} ${option.charAt(0).toUpperCase() + option.slice(1)}`;
         cardGroup.appendChild(titleText);
 
-        // Time spans available
-        const timeSpanCount = category.timeSpans.size;
+        // Submenu info
+        const currentLevel = state.menuStructure.menuLevels[state.currentLevel];
+        const optionData = currentLevel.menuData[option];
+        const nextMenu = optionData?.subMenu;
+        
         const subText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         subText.setAttribute('x', '40');
         subText.setAttribute('y', y + 40);
         subText.setAttribute('fill', state.config.colors.text);
         subText.setAttribute('font-size', state.config.fontSize - 2);
         subText.setAttribute('opacity', '0.7');
-        subText.textContent = `${timeSpanCount} duration${timeSpanCount !== 1 ? 's' : ''} available`;
+        subText.textContent = nextMenu === 'product' ? 'View product' : `Next: ${nextMenu}`;
         cardGroup.appendChild(subText);
 
         // Arrow indicator
@@ -413,9 +488,19 @@ const MenuNavigation = {
 
         // Click handler
         cardGroup.addEventListener('click', () => {
-            state.selectedCategory = category.key;
-            state.currentStep = 'timeSpans';
-            this.showTimeSpans(state, cardGroup.parentNode);
+            // Record the selection
+            state.selections[menuName] = option;
+            
+            // Move to next level or show product
+            if (nextMenu === 'product') {
+                // We're at the final selection, show product
+                state.currentLevel = state.menuStructure.menuLevels.length; // Beyond last level
+                this.showProduct(state, cardGroup.parentNode);
+            } else {
+                // Move to next menu level
+                state.currentLevel++;
+                this.showCurrentLevel(state, cardGroup.parentNode);
+            }
             
             if (state.callbacks.onSelectionChanged) {
                 state.callbacks.onSelectionChanged(state);
@@ -434,6 +519,21 @@ const MenuNavigation = {
         });
 
         return cardGroup;
+    },
+
+    /**
+     * Get appropriate icon for menu type
+     */
+    getMenuIcon(menuName) {
+        const icons = {
+            'rider': '👤',
+            'time span': '⏰',
+            'type': '📋',
+            'category': '📂',
+            'size': '📏',
+            'color': '🎨'
+        };
+        return icons[menuName.toLowerCase()] || '📋';
     },
 
     /**
@@ -656,8 +756,18 @@ const MenuNavigation = {
     },
 
     updateNavigationSteps(state, navigationElement) {
-        // Re-render navigation steps with current state
-        // This would update the visual state of the breadcrumb
+        // Clear existing navigation steps
+        while (navigationElement.firstChild) {
+            navigationElement.removeChild(navigationElement.firstChild);
+        }
+        
+        // Re-create navigation steps with current state
+        const newSteps = this.createNavigationSteps(state);
+        
+        // Copy all child elements from the new steps to the existing element
+        while (newSteps.firstChild) {
+            navigationElement.appendChild(newSteps.firstChild);
+        }
     },
 
     updateActionButtons(state, actionElement) {
@@ -668,14 +778,24 @@ const MenuNavigation = {
     },
 
     goBack(state) {
-        if (state.currentStep === 'timeSpans') {
-            state.currentStep = 'categories';
-            state.selectedCategory = null;
-            // Trigger re-render
-        } else if (state.currentStep === 'product') {
-            state.currentStep = 'timeSpans';
+        if (state.currentLevel > 0) {
+            // Go back one level
+            state.currentLevel--;
+            
+            // Remove the last selection
+            const currentLevelName = state.menuStructure.menuLevels[state.currentLevel]?.name;
+            if (currentLevelName && state.selections[currentLevelName]) {
+                delete state.selections[currentLevelName];
+            }
+            
+            // Clear selected product
             state.selectedProduct = null;
-            // Trigger re-render
+            
+            // Re-render current level
+            const contentElement = document.querySelector('.menu-content');
+            if (contentElement) {
+                this.showCurrentLevel(state, contentElement);
+            }
         }
     },
 

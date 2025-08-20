@@ -16,6 +16,8 @@ use sessionless::hex::IntoHex;
 use sessionless::{PrivateKey, Sessionless};
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::fs;
+use std::path::Path;
 
 /// Debug logging command for development
 #[tauri::command]
@@ -745,6 +747,29 @@ async fn get_base_products(sanora_url: &str, user_uuid: Option<String>) -> Resul
     }
 }
 
+/// Save menu catalog to shared directory for cross-app access with Ninefy
+#[tauri::command]
+async fn save_menu_catalog(bdo_pub_key: &str, catalog_data: &str) -> Result<String, String> {
+    println!("🍽️ Saving menu catalog with bdoPubKey: {}", bdo_pub_key);
+    
+    let shared_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join(".planet-nine").join("menu-catalogs"),
+        Err(_) => Path::new(".").join("planet_nine_data").join("menu-catalogs"),
+    };
+    
+    // Create directory if it doesn't exist
+    fs::create_dir_all(&shared_dir)
+        .map_err(|e| format!("Failed to create shared directory: {}", e))?;
+    
+    // Save catalog file with bdoPubKey as filename
+    let file_path = shared_dir.join(format!("{}.json", bdo_pub_key));
+    fs::write(&file_path, catalog_data)
+        .map_err(|e| format!("Failed to save menu catalog: {}", e))?;
+    
+    println!("✅ Saved menu catalog to: {:?}", file_path);
+    Ok(file_path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -772,7 +797,8 @@ pub fn run() {
             get_artifact,
             upload_image,
             upload_artifact,
-            teleport_content
+            teleport_content,
+            save_menu_catalog
         ])
         .setup(|_app| {
             println!("🛒 Ninefy backend is starting up...");

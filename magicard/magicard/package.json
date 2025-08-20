@@ -1,0 +1,52 @@
+{
+  "name": "magicard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Interactive SVG card stacks with spell casting - built on The Nullary ecosystem",
+  "author": "Planet Nine",
+  "license": "MIT",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "dev": "npm run dev:dev",
+    "build": "npm run build:dev",
+    "dev:dev": "npm run tauri:dev",
+    "dev:test": "npm run tauri:dev", 
+    "dev:local": "npm run tauri:dev",
+    "build:dev": "npm run tauri:build",
+    "build:test": "npm run tauri:build",
+    "build:local": "npm run tauri:build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .js",
+    "format": "prettier --write src/**/*.{js,html,css}"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0",
+    "vite": "^4.4.0"
+  },
+  "keywords": [
+    "svg",
+    "cards",
+    "interactive",
+    "magic",
+    "spells",
+    "tauri",
+    "allyabase",
+    "nullary",
+    "planet-nine"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/planet-nine-app/planet-nine",
+    "directory": "the-nullary/magicard/magicard"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
