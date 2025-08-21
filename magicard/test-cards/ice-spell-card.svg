@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="400" viewBox="0 0 300 400" card-name="Ice Spell">
+  <!-- Gradient Definition for SpellTest Button -->
+  <defs>
+    <radialGradient id="iceSpellTestGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3498db">
+        <animate attributeName="stop-color" values="#3498db;#2ecc71;#f39c12;#e74c3c;#9b59b6;#3498db" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#1e3a5f">
+        <animate attributeName="stop-color" values="#1e3a5f;#27ae60;#e67e22;#8e44ad;#2c3e50;#1e3a5f" dur="3s" repeatCount="indefinite"/>
+      </stop>
+    </radialGradient>
+  </defs>
+
   <!-- Card Background -->
   <rect x="0" y="0" width="300" height="400" fill="#1e3a5f" stroke="#4682B4" stroke-width="3" rx="15"/>
   
@@ -43,6 +55,15 @@
   <!-- Navigation to Lightning Card -->
   <rect spell="magicard" spell-components='{"bdoPubKey":"demo_user_lightning"}' x="110" y="320" width="80" height="30" fill="#FFD700" stroke="#FFA500" stroke-width="2" rx="5"/>
   <text spell="magicard" spell-components='{"bdoPubKey":"demo_user_lightning"}' x="150" y="340" text-anchor="middle" fill="black" font-size="10">→ Lightning</text>
+  
+  <!-- Navigation to SpellTest - FLASHY BUTTON! -->
+  <rect spell="spellTest" x="200" y="320" width="80" height="30" fill="url(#iceSpellTestGradient)" stroke="#00BFFF" stroke-width="3" rx="8">
+    <animate attributeName="stroke" values="#00BFFF;#32CD32;#FFD700;#FF1493;#00BFFF" dur="2s" repeatCount="indefinite"/>
+  </rect>
+  <text spell="spellTest" x="240" y="340" text-anchor="middle" fill="white" font-size="10" font-weight="bold">
+    ❄️ TEST ❄️
+    <animate attributeName="fill" values="white;#00BFFF;white" dur="1s" repeatCount="indefinite"/>
+  </text>
   
   <!-- Spell Components -->
   <g spell="components">
