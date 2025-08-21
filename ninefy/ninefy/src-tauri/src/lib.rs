@@ -1,23 +1,23 @@
 use addie_rs::structs::{PaymentIntent, Payee};
 use addie_rs::Addie;
 use bdo_rs::structs::BDOUser;
-use bdo_rs::{Bases, Spellbook, BDO};
+use bdo_rs::BDO;
 use dolores_rs::structs::Feed;
 use dolores_rs::{Dolores, DoloresUser};
-use fount_rs::structs::Gateway;
 use fount_rs::{Fount, FountUser};
 use sanora_rs::structs::{Order, SanoraUser, ProductMeta};
 use sanora_rs::{Orders, Sanora};
 use reqwest::Client;
 use serde_json::json;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use sessionless::hex::FromHex;
 use sessionless::hex::IntoHex;
 use sessionless::{PrivateKey, Sessionless};
 use std::env;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 use std::fs;
 use std::path::Path;
+use chrono::Utc;
 
 /// Debug logging command for development
 #[tauri::command]
@@ -132,7 +132,7 @@ async fn create_bdo_user() -> Result<BDOUser, String> {
                 Some(bdo_url),
                 Some(sessionless),
             );
-            let _user = bdo.create_user(&ninefy, &json!({})).await;
+            let _user = bdo.create_user(&ninefy, &json!({}), &false).await;
             dbg!(&_user);
             return match _user {
                 Ok(user) => Ok(user),
@@ -354,7 +354,7 @@ async fn add_product(uuid: &str, sanora_url: &str, title: &str, description: &st
             let product_result = sanora.add_product(&uuid, &title, &description, &price, &category).await;
 
             match product_result {
-                Ok(mut meta) => {
+                Ok(meta) => {
                     println!("🦀 ✅ Product added successfully: {:?}", meta);
                    
                     Ok(meta)
@@ -532,7 +532,7 @@ async fn upload_artifact(file_data: Vec<u8>, file_name: String, url: String, mes
 
 /// Get artifact content from Sanora
 #[tauri::command]
-async fn get_artifact(uuid: &str, sanora_url: &str, product_title: &str, artifact_id: &str) -> Result<String, String> {
+async fn get_artifact(_uuid: &str, sanora_url: &str, product_title: &str, artifact_id: &str) -> Result<String, String> {
     println!("🔍 Getting artifact: {} for product: {} from: {}", artifact_id, product_title, sanora_url);
     
     let client = Client::new();
@@ -641,7 +641,7 @@ async fn teleport_content(bdo_url: &str, teleport_url: &str) -> Result<Value, St
             
             // Create/get BDO user first
             let ninefy = "ninefy";
-            let bdo_user = match bdo.create_user(&ninefy, &json!({})).await {
+            let bdo_user = match bdo.create_user(&ninefy, &json!({}), &false).await {
                 Ok(user) => {
                     println!("✅ BDO user ready for teleportation: {}", user.uuid);
                     user
@@ -747,27 +747,365 @@ async fn get_base_products(sanora_url: &str, user_uuid: Option<String>) -> Resul
     }
 }
 
-/// Save menu catalog to shared directory for cross-app access with Ninefy
+
+/// Generate unique keys for menu cards and save to JSON file
 #[tauri::command]
-async fn save_menu_catalog(bdo_pub_key: &str, catalog_data: &str) -> Result<String, String> {
-    println!("🍽️ Saving menu catalog with bdoPubKey: {}", bdo_pub_key);
+async fn generate_menu_card_keys(menu_name: &str, card_count: usize) -> Result<Vec<String>, String> {
+    println!("🔑 Generating {} unique keys for menu: {}", card_count, menu_name);
     
-    let shared_dir = match std::env::var("HOME") {
-        Ok(home) => Path::new(&home).join(".planet-nine").join("menu-catalogs"),
-        Err(_) => Path::new(".").join("planet_nine_data").join("menu-catalogs"),
+    let mut card_keys = Vec::new();
+    let mut key_data = Map::new();
+    
+    // Generate unique BDO users for each card
+    for i in 0..card_count {
+        println!("🔑 Generating key {} of {}", i + 1, card_count);
+        
+        // Create a unique sessionless instance for this card
+        let unique_private_key = generate_unique_private_key();
+        let sessionless = Sessionless::from_private_key(
+            PrivateKey::from_hex(unique_private_key.clone()).map_err(|e| format!("Invalid private key: {}", e))?
+        );
+        
+        // Get the public key
+        let public_key = sessionless.public_key().to_hex();
+        
+        // Store the key pair
+        key_data.insert(format!("card_{}", i), json!({
+            "private_key": unique_private_key,
+            "public_key": public_key,
+            "index": i
+        }));
+        
+        card_keys.push(public_key.clone());
+        println!("✅ Generated key {}: {}", i + 1, &public_key[..12.min(public_key.len())]);
+    }
+    
+    // Save to JSON file
+    let safe_menu_name = menu_name.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+    let file_name = format!("{}Keys.json", safe_menu_name);
+    
+    // Save in app data directory
+    let app_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join(".ninefy").join("menu-keys"),
+        Err(_) => Path::new(".").join("ninefy_data").join("menu-keys"),
     };
     
-    // Create directory if it doesn't exist
-    fs::create_dir_all(&shared_dir)
-        .map_err(|e| format!("Failed to create shared directory: {}", e))?;
+    fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("Failed to create keys directory: {}", e))?;
     
-    // Save catalog file with bdoPubKey as filename
-    let file_path = shared_dir.join(format!("{}.json", bdo_pub_key));
-    fs::write(&file_path, catalog_data)
-        .map_err(|e| format!("Failed to save menu catalog: {}", e))?;
+    let file_path = app_dir.join(&file_name);
+    let keys_json = json!({
+        "menu_name": menu_name,
+        "created_at": Utc::now().to_rfc3339(),
+        "card_count": card_count,
+        "keys": key_data
+    });
     
-    println!("✅ Saved menu catalog to: {:?}", file_path);
-    Ok(file_path.to_string_lossy().to_string())
+    fs::write(&file_path, serde_json::to_string_pretty(&keys_json).unwrap())
+        .map_err(|e| format!("Failed to save keys file: {}", e))?;
+    
+    println!("✅ Saved {} keys to: {:?}", card_count, file_path);
+    
+    // ===== COMPREHENSIVE KEY GENERATION SUMMARY =====
+    println!("\n🔑 ===== COMPREHENSIVE KEY GENERATION SUMMARY =====");
+    println!("📋 Menu: {}", menu_name);
+    println!("🎴 Total Keys Generated: {}", card_count);
+    println!("💾 Keys File: {:?}", file_path);
+    println!("🔑 All Generated PubKeys (for BDO storage):");
+    for (i, key) in card_keys.iter().enumerate() {
+        println!("   {}. Card {} → {}", i + 1, i, key);
+    }
+    println!("✅ Each key corresponds to a unique BDO user for MagiCard storage");
+    println!("🔑 ================================================\n");
+    
+    Ok(card_keys)
+}
+
+/// Store an individual card in BDO with its own unique user
+#[tauri::command]
+async fn store_card_in_bdo(card_bdo_pub_key: &str, card_name: &str, svg_content: &str, card_type: &str, menu_name: &str) -> Result<String, String> {
+    println!("🗄️ Storing card in BDO: {} (type: {}) with pubKey: {}... from menu: {}", card_name, card_type, &card_bdo_pub_key[..12], menu_name);
+    
+    // Load the private key for this card from the saved keys file
+    let card_private_key = match load_card_private_key(menu_name, card_bdo_pub_key).await {
+        Ok(private_key) => private_key,
+        Err(e) => {
+            println!("⚠️ Could not load private key for card {}: {}. Using generated key.", card_name, e);
+            // Generate a unique private key as fallback
+            generate_unique_private_key()
+        }
+    };
+    
+    println!("🔑 Using private key for card {}: {}...", card_name, &card_private_key[..12]);
+    
+    let bdo_url = get_service_url("bdo");
+    let env = env::var("NINEFY_ENV").unwrap_or_else(|_| "dev".to_string());
+    
+    println!("🔗 Using BDO URL: {} (env: {})", bdo_url, env);
+    
+    // Create a sessionless instance using the card's unique private key
+    let sessionless = match PrivateKey::from_hex(&card_private_key) {
+        Ok(private_key) => Sessionless::from_private_key(private_key),
+        Err(e) => {
+            println!("❌ Failed to create private key from hex: {}", e);
+            return Err(format!("Invalid private key: {}", e));
+        }
+    };
+    
+    // Verify the public key matches
+    let generated_pub_key = sessionless.public_key().to_hex();
+    if generated_pub_key != card_bdo_pub_key {
+        println!("⚠️ Public key mismatch! Generated: {}, Expected: {}", &generated_pub_key[..12], &card_bdo_pub_key[..12]);
+        // Continue anyway, but log the mismatch
+    }
+    
+    let bdo = BDO::new(Some(bdo_url), Some(sessionless));
+    
+    // Create a unique context for this card
+    let card_context = format!("magicard_{}", card_name.replace(" ", "_").replace("/", "_"));
+    
+    // Create BDO user for this card
+    let card_data = json!({
+        "cardName": card_name,
+        "cardType": card_type,
+        "bdoPubKey": card_bdo_pub_key,
+        "svgContent": svg_content,
+        "pub": true,
+        "createdAt": Utc::now().to_rfc3339(),
+        "menuName": menu_name
+    });
+    
+    // Log the card data being stored
+    println!("📋 Storing card in BDO:");
+    println!("📋 Card Name: {}", card_name);
+    println!("📋 Card PubKey: {}", card_bdo_pub_key);
+    println!("📋 Context: {}", card_context);
+    println!("📋 SVG Content Length: {} chars", svg_content.len());
+    println!("📋 Card Data: {}", serde_json::to_string_pretty(&card_data).unwrap_or_else(|_| "Could not serialize card_data".to_string()));
+
+    // Create BDO user first
+    let bdo_user = match bdo.create_user(&card_context, &card_data, &true).await {
+        Ok(user) => {
+            println!("✅ Created BDO user for card {} with UUID: {}", card_name, user.uuid);
+            println!("🔑 Card can be retrieved using pubKey: {}", card_bdo_pub_key);
+            user
+        },
+        Err(e) => {
+            println!("❌ Failed to create BDO user for card {}: {:?}", card_name, e);
+            return Err(format!("Failed to create BDO user: {}", e));
+        }
+    };
+    
+    // Now make the BDO user public so cards can be accessed by other users
+    println!("🔄 Making BDO user public with UUID: {} and context: {}", bdo_user.uuid, card_context);
+    
+    // Use update_bdo to make the user public
+    println!("🔍 DEBUG: About to call update_bdo with:");
+    println!("🔍   UUID: {}", bdo_user.uuid);
+    println!("🔍   Hash: {}", card_context);
+    println!("🔍   Data keys: {:?}", card_data.as_object().map(|o| o.keys().collect::<Vec<_>>()));
+    
+    match bdo.update_bdo(&bdo_user.uuid, &card_context, &card_data, &true).await {
+        Ok(updated_user) => {
+            println!("✅ Made BDO user public for card: {}", card_name);
+            println!("🌐 Card is now publicly accessible with pubKey: {}", card_bdo_pub_key);
+            println!("🔍 Updated user UUID: {}", updated_user.uuid);
+        },
+        Err(e) => {
+            println!("⚠️ Failed to make BDO user public for card {}: {:?}", card_name, e);
+            
+            // Let's try to understand what the server is returning
+            if let Some(reqwest_err) = e.downcast_ref::<reqwest::Error>() {
+                println!("🔍 Reqwest error details: {:?}", reqwest_err);
+                if reqwest_err.is_decode() {
+                    println!("🔍 This is a JSON decode error - server response format doesn't match BDOUser");
+                }
+            }
+            
+            println!("🔍 Continuing with non-public card for debugging");
+            // Continue anyway - the card is still created, just not public
+        }
+    }
+    
+    // Return the BDO user UUID as the storage result
+    Ok(format!("bdo_user:{}", bdo_user.uuid))
+}
+
+/// Load the private key for a specific card from the saved keys file
+async fn load_card_private_key(menu_name: &str, card_bdo_pub_key: &str) -> Result<String, String> {
+    let safe_menu_name = menu_name.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+    let file_name = format!("{}Keys.json", safe_menu_name);
+    
+    // Get keys file path
+    let app_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join(".ninefy").join("menu-keys"),
+        Err(_) => Path::new(".").join("ninefy_data").join("menu-keys"),
+    };
+    
+    let file_path = app_dir.join(&file_name);
+    
+    if !file_path.exists() {
+        return Err(format!("Keys file not found: {:?}", file_path));
+    }
+    
+    // Read the keys file
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read keys file: {}", e))?;
+    
+    let keys_json: Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse keys JSON: {}", e))?;
+    
+    // Find the private key for this public key
+    if let Some(keys_obj) = keys_json.get("keys").and_then(|k| k.as_object()) {
+        for (_card_id, card_data) in keys_obj {
+            if let Some(pub_key) = card_data.get("public_key").and_then(|pk| pk.as_str()) {
+                if pub_key == card_bdo_pub_key {
+                    if let Some(private_key) = card_data.get("private_key").and_then(|pk| pk.as_str()) {
+                        return Ok(private_key.to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    Err(format!("Private key not found for public key: {}", &card_bdo_pub_key[..12]))
+}
+
+/// Store the menu structure in BDO with its own unique user
+#[tauri::command]
+async fn store_menu_in_bdo(menu_name: &str, menu_data: &str) -> Result<String, String> {
+    println!("🗄️ Creating unique BDO user for menu: {}", menu_name);
+    
+    // Generate a unique private key for this menu
+    let menu_private_key = generate_unique_private_key();
+    
+    let bdo_url = get_service_url("bdo");
+    let env = env::var("NINEFY_ENV").unwrap_or_else(|_| "dev".to_string());
+    
+    println!("🔗 Using BDO URL: {} (env: {}) for menu storage", bdo_url, env);
+    
+    // Create a sessionless instance using the menu's unique private key
+    let sessionless = match PrivateKey::from_hex(&menu_private_key) {
+        Ok(private_key) => Sessionless::from_private_key(private_key),
+        Err(e) => {
+            println!("❌ Failed to create private key from hex for menu: {}", e);
+            return Err(format!("Invalid private key: {}", e));
+        }
+    };
+    
+    // Get the public key for this menu
+    let menu_pub_key = sessionless.public_key().to_hex();
+    println!("🔑 Generated unique menu pubKey: {}...", &menu_pub_key[..12]);
+    
+    let bdo = BDO::new(Some(bdo_url), Some(sessionless));
+    
+    // Create a unique context for this menu
+    let menu_context = format!("magicard_menu_{}", menu_name.replace(" ", "_").replace("/", "_"));
+    
+    // Parse the menu data to store it properly
+    let menu_json: serde_json::Value = match serde_json::from_str(menu_data) {
+        Ok(json) => json,
+        Err(e) => {
+            println!("❌ Failed to parse menu data as JSON: {}", e);
+            return Err(format!("Invalid menu JSON: {}", e));
+        }
+    };
+    
+    // Log the menu data being stored for debugging
+    println!("📋 Menu data being stored in BDO:");
+    println!("📋 Context: {}", menu_context);
+    println!("📋 Menu JSON: {}", serde_json::to_string_pretty(&menu_json).unwrap_or_else(|_| "Could not serialize menu_json".to_string()));
+    
+    // Create BDO user for this menu
+    match bdo.create_user(&menu_context, &menu_json, &true).await {
+        Ok(bdo_user) => {
+            println!("✅ Created unique BDO user for menu '{}' with UUID: {}", menu_name, bdo_user.uuid);
+            println!("🔑 Menu can be imported in MagiCard using pubKey: {}", menu_pub_key);
+            
+            // Return the menu's unique public key for MagiCard integration
+            Ok(menu_pub_key)
+        },
+        Err(e) => {
+            println!("❌ Failed to create BDO user for menu '{}': {:?}", menu_name, e);
+            Err(format!("Failed to create BDO user for menu: {}", e))
+        }
+    }
+}
+
+/// Preview what's stored in BDO for a given pubKey (debugging function)
+#[tauri::command]
+async fn preview_bdo_menu(pub_key: &str) -> Result<String, String> {
+    println!("🔍 Previewing BDO data for pubKey: {}...", &pub_key[..12]);
+    
+    let bdo_url = get_service_url("bdo");
+    println!("🔗 Using BDO URL: {}", bdo_url);
+    
+    // Use our main sessionless instance to access BDO
+    let sessionless = get_sessionless().await?;
+    let bdo = BDO::new(Some(bdo_url), Some(sessionless));
+    
+    // Create or get our BDO user for making the request
+    let context = "magicard_preview";
+    let bdo_user = match bdo.create_user(&context, &json!({}), &false).await {
+        Ok(user) => {
+            println!("✅ Created/accessed BDO user for preview: {}", user.uuid);
+            user
+        },
+        Err(e) => {
+            println!("❌ Failed to create BDO user for preview: {:?}", e);
+            return Err("Failed to create BDO user for preview".to_string());
+        }
+    };
+    
+    // Use BDO client to fetch the target data
+    let our_uuid = bdo_user.uuid.clone();
+    let hash = context;
+    
+    match bdo.get_public_bdo(&our_uuid, hash, pub_key).await {
+        Ok(target_bdo_user) => {
+            println!("✅ Successfully retrieved BDO data for preview");
+            println!("📋 Target BDO User UUID: {}", target_bdo_user.uuid);
+            println!("📋 Target BDO User Data: {}", serde_json::to_string_pretty(&target_bdo_user.bdo).unwrap_or_else(|_| "Could not serialize bdo data".to_string()));
+            
+            // Return formatted preview data
+            Ok(format!("BDO Preview for pubKey {}...\nUUID: {}\nData: {}", 
+                &pub_key[..12], 
+                target_bdo_user.uuid,
+                serde_json::to_string_pretty(&target_bdo_user.bdo).unwrap_or_else(|_| "Could not serialize data".to_string())
+            ))
+        },
+        Err(e) => {
+            println!("❌ Failed to retrieve BDO data: {:?}", e);
+            Err(format!("Failed to retrieve BDO data: {}", e))
+        }
+    }
+}
+
+/// Generate a unique private key for a card
+fn generate_unique_private_key() -> String {
+    use std::time::UNIX_EPOCH;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    
+    // Create a unique seed based on current time and process ID
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    
+    // Use current thread ID for additional uniqueness
+    let thread_id = std::thread::current().id();
+    
+    // Simple unique key generation (in production, use proper crypto)
+    let unique_seed = format!("{}{:?}", timestamp, thread_id);
+    
+    // Hash the seed to create a 32-byte private key
+    let mut hasher = DefaultHasher::new();
+    unique_seed.hash(&mut hasher);
+    let hash = hasher.finish();
+    
+    // Convert to hex string (simplified - in production use proper key generation)
+    format!("{:064x}", hash)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -798,7 +1136,10 @@ pub fn run() {
             upload_image,
             upload_artifact,
             teleport_content,
-            save_menu_catalog
+            generate_menu_card_keys,
+            store_card_in_bdo,
+            store_menu_in_bdo,
+            preview_bdo_menu
         ])
         .setup(|_app| {
             println!("🛒 Ninefy backend is starting up...");

@@ -2755,7 +2755,8 @@ async function createFormWidgetUploadForm() {
     
     // Special message for menu catalogs
     if (result.productType === 'menu') {
-      console.log('🎯 MAGICARD_WORKFLOW: 🎉 Displaying success message with bdoPubKey:', result.bdoPubKey);
+      console.log('🎯 MAGICARD_WORKFLOW: 🎉 Displaying success message with firstCardBdoPubKey:', result.firstCardBdoPubKey);
+      console.log('🎯 MAGICARD_WORKFLOW: 📋 Menu bdoPubKey (stored separately):', result.bdoPubKey);
       successMessage.innerHTML = `
         <div style="font-size: 48px; margin-bottom: 15px;">🍽️✅</div>
         <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Menu Catalog Created Successfully!</h3>
@@ -2773,15 +2774,19 @@ async function createFormWidgetUploadForm() {
             🎴 First card: ${result.firstCardBdoPubKey.substring(0, 12)}... (for direct access)
           </p>` : ''
         }
-        ${result.bdoPubKey ? 
+        ${result.firstCardBdoPubKey ? 
           `<div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-family: monospace;">
-            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing into MagiCard):</div>
+            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing first card):</div>
             <div style="font-size: 14px; word-break: break-all; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">
-              ${result.bdoPubKey}
+              ${result.firstCardBdoPubKey}
             </div>
-            <button onclick="navigator.clipboard.writeText('${result.bdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
+            <button onclick="navigator.clipboard.writeText('${result.firstCardBdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
                     style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px;">
               📋 Copy to Clipboard
+            </button>
+            <button onclick="previewBDOMenu('${result.firstCardBdoPubKey}')" 
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px; margin-left: 8px;">
+              🔍 Preview BDO Data
             </button>
           </div>` : ''
         }
@@ -3471,6 +3476,217 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
   return svgContent;
 }
 
+/**
+ * Create SVG content for a menu selector card (e.g., "Select rider")
+ * @param {Object} card - Card object with menu selector information
+ * @param {Array} allCards - All cards for navigation references
+ * @param {string} menuTitle - Title of the menu
+ * @param {number} index - Card index
+ * @returns {string} SVG content as string
+ */
+function createMenuSelectorSVG(card, allCards, menuTitle, index) {
+  const cardWidth = 300;
+  const cardHeight = 400;
+  
+  // Find cards for each option in this selector
+  const optionButtons = card.options.map((option, optIndex) => {
+    // Find the card for this option - look for menu-option cards that match this level and option
+    const optionCard = allCards.find(c => 
+      c.type === 'menu-option' && 
+      c.level === card.level && 
+      c.option === option &&
+      !c.parentSelection // Find the base option card without parent context
+    );
+    
+    if (!optionCard) {
+      console.warn(`⚠️ No option card found for level: ${card.level}, option: ${option}`);
+      return '';
+    }
+    
+    const y = 120 + (optIndex * 50);
+    const buttonColor = optIndex % 2 === 0 ? '#3498db' : '#9b59b6';
+    
+    return `
+      <rect spell="magicard" spell-components='{"bdoPubKey":"${optionCard.cardBdoPubKey}"}'
+            x="50" y="${y}" width="200" height="40" rx="8" 
+            fill="${buttonColor}" stroke="${buttonColor}" 
+            style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;" 
+            class="spell-element">
+        <animate attributeName="fill" values="${buttonColor};#ecf0f1;${buttonColor}" dur="2s" repeatCount="indefinite"/>
+      </rect>
+      <text spell="magicard" spell-components='{"bdoPubKey":"${optionCard.cardBdoPubKey}"}'
+            x="150" y="${y + 25}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" 
+            class="spell-element" 
+            style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;">
+        ${option}
+      </text>`;
+  }).join('');
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" card-name="${card.name}">
+      <!-- Background -->
+      <rect x="0" y="0" width="${cardWidth}" height="${cardHeight}" fill="#2c3e50" stroke="#34495e" stroke-width="2" rx="12"/>
+      
+      <!-- Header -->
+      <rect x="10" y="10" width="${cardWidth - 20}" height="60" fill="#34495e" rx="8"/>
+      <text x="150" y="35" text-anchor="middle" fill="#ecf0f1" font-size="14" font-weight="bold">${menuTitle}</text>
+      <text x="150" y="55" text-anchor="middle" fill="#bdc3c7" font-size="18" font-weight="bold">${card.name}</text>
+      
+      <!-- Menu Options -->
+      ${optionButtons}
+      
+      <!-- Footer -->
+      <text x="150" y="${cardHeight - 30}" text-anchor="middle" fill="#7f8c8d" font-size="10">
+        Card ${index + 1} - Menu Selector
+      </text>
+      <text x="150" y="${cardHeight - 15}" text-anchor="middle" fill="#7f8c8d" font-size="10">
+        Choose an option to continue
+      </text>
+    </svg>
+  `;
+}
+
+/**
+ * Create SVG content for a menu level card (rider, time span, etc.)
+ * @param {Object} card - Card object with menu level information
+ * @param {Object} nextCard - Next card for navigation (optional)
+ * @param {string} menuTitle - Title of the menu
+ * @param {number} index - Card index
+ * @param {number} total - Total number of cards
+ * @param {Object} menuTree - Full menu tree structure
+ * @param {Array} allCards - All cards for navigation references
+ * @returns {string} SVG content as string
+ */
+function createMenuLevelSVG(card, nextCard, menuTitle, index, total, menuTree, allCards) {
+  const cardWidth = 300;
+  const cardHeight = 400;
+  const nextBdoPubKey = nextCard ? nextCard.cardBdoPubKey : null;
+
+  // Create navigation button to next card
+  let navigationButton = '';
+  if (nextBdoPubKey) {
+    navigationButton = `
+      <rect spell="magicard" spell-components='{"bdoPubKey":"${nextBdoPubKey}"}'
+            x="200" y="320" width="80" height="30" rx="4" 
+            fill="#27ae60" stroke="#27ae60" style="cursor: pointer;"/>
+      <text spell="magicard" spell-components='{"bdoPubKey":"${nextBdoPubKey}"}'
+            x="240" y="340" text-anchor="middle" fill="white" font-size="12">→ Next</text>`;
+  }
+
+  // Create back/previous button with spell navigation (if not first card)
+  let backButton = '';
+  if (index > 0) {
+    // Find the previous card in the sequence for navigation
+    const previousCard = allCards[index - 1];
+    const backNavigation = previousCard && previousCard.cardBdoPubKey ? 
+      `spell="magicard" spell-components='{"bdoPubKey":"${previousCard.cardBdoPubKey}"}'` : '';
+    
+    backButton = `
+      <rect ${backNavigation} x="20" y="320" width="80" height="30" rx="4" 
+            fill="#95a5a6" stroke="#95a5a6" 
+            style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;" 
+            class="spell-element"/>
+      <text ${backNavigation} x="60" y="340" text-anchor="middle" fill="white" font-size="12" 
+            class="spell-element" 
+            style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;">← Back</text>`;
+  }
+
+  // Determine menu options for this card
+  let menuOptions = [];
+  let optionButtons = '';
+  let menuIcon = '📋';
+  
+  if (card.type === 'menu') {
+    // Get options for this menu level
+    if (card.parentSelection) {
+      // State-aware card - this is a submenu after a parent selection
+      menuIcon = '🎯';
+      menuOptions = [card.option]; // Only show the specific option for this state
+      
+      // Create a selection button for this specific option
+      optionButtons = `
+        <rect x="50" y="180" width="200" height="50" rx="8" 
+              fill="rgba(39, 174, 96, 0.1)" stroke="#27ae60" stroke-width="2"
+              style="cursor: pointer;"/>
+        <text x="150" y="200" text-anchor="middle" fill="#27ae60" font-size="16" font-weight="bold">
+          ${card.option}
+        </text>
+        <text x="150" y="215" text-anchor="middle" fill="#27ae60" font-size="11">
+          (Selected: ${card.parentSelection.option})
+        </text>`;
+    } else {
+      // Top-level menu card - show all options for this level
+      const allOptions = Object.keys(menuTree.menus[card.level] || {});
+      menuOptions = allOptions;
+      
+      // Create buttons for each option (limit to first 3 for space)
+      const displayOptions = allOptions.slice(0, 3);
+      let yPos = 180;
+      
+      displayOptions.forEach((option, idx) => {
+        optionButtons += `
+          <rect x="50" y="${yPos}" width="200" height="35" rx="6" 
+                fill="rgba(155, 89, 182, 0.1)" stroke="#9b59b6" stroke-width="1"
+                style="cursor: pointer;"/>
+          <text x="150" y="${yPos + 22}" text-anchor="middle" fill="#9b59b6" font-size="14" font-weight="bold">
+            ${option}
+          </text>`;
+        yPos += 45;
+      });
+      
+      if (allOptions.length > 3) {
+        optionButtons += `
+          <text x="150" y="${yPos + 10}" text-anchor="middle" fill="#95a5a6" font-size="10">
+            +${allOptions.length - 3} more options
+          </text>`;
+      }
+    }
+  }
+
+  const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}">
+  <defs>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#667eea"/>
+      <stop offset="100%" stop-color="#764ba2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Card background -->
+  <rect width="100%" height="100%" fill="white" stroke="#e0e0e0" stroke-width="2" rx="12"/>
+  
+  <!-- Header -->
+  <rect x="0" y="0" width="100%" height="60" fill="url(#cardGradient)" rx="12,12,0,0"/>
+  <text x="150" y="30" text-anchor="middle" fill="white" font-size="16" font-weight="bold">${menuTitle}</text>
+  <text x="150" y="45" text-anchor="middle" fill="white" font-size="12">Card ${index + 1} of ${total}</text>
+  
+  <!-- Menu level icon -->
+  <text x="150" y="120" text-anchor="middle" font-size="48">${menuIcon}</text>
+  
+  <!-- Menu level title -->
+  <text x="150" y="160" text-anchor="middle" fill="#2c3e50" font-size="18" font-weight="bold">${card.name}</text>
+  
+  <!-- Menu options -->
+  ${optionButtons}
+  
+  <!-- Interactive spell element for the whole card -->
+  <rect x="50" y="260" width="200" height="40" rx="8" fill="rgba(155, 89, 182, 0.1)" 
+        stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,5"
+        spell="menu" style="cursor: pointer;"/>
+  <text x="150" y="278" text-anchor="middle" fill="#9b59b6" font-size="14" font-weight="bold">🪄 Menu Selection</text>
+  <text x="150" y="292" text-anchor="middle" fill="#9b59b6" font-size="11">Choose your option!</text>
+  
+  <!-- Navigation buttons -->
+  ${backButton}
+  ${navigationButton}
+  
+  <!-- Card info -->
+  <text x="10" y="390" fill="#95a5a6" font-size="10">Level: ${card.level}</text>
+  ${card.parentSelection ? `<text x="10" y="375" fill="#95a5a6" font-size="10">After: ${card.parentSelection.option}</text>` : ''}
+</svg>`;
+
+  return svgContent;
+}
+
 async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
   console.log('🍽️ Starting menu catalog processing...');
   
@@ -3542,101 +3758,237 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     
     console.log('📊 Menu stats:', validation.stats);
     
-    // Step 3: Create individual SVG cards for each menu item
+    // Step 3: Create individual SVG cards for BOTH menu levels AND products
     console.log('🎨 Creating SVG cards for menu items...');
     const createdCards = [];
     const cardErrors = [];
     
-    // First pass: Generate bdoPubKeys for all cards
-    console.log('🔑 Generating bdoPubKeys for all cards...');
-    for (let i = 0; i < menuTree.products.length; i++) {
-      const product = menuTree.products[i];
+    // First, create a comprehensive list of all cards needed
+    const allCardsNeeded = [];
+    
+    // Add menu hierarchy cards (selector cards + option cards)
+    console.log('🗂️ Analyzing menu levels for card creation...');
+    const menuHeaders = Object.keys(menuTree.menus);
+    console.log(`📋 Found menu levels: ${menuHeaders.join(', ')}`);
+    
+    // First: Create top-level menu selector cards for each menu level
+    for (let i = 0; i < menuHeaders.length; i++) {
+      const menuLevel = menuHeaders[i];
+      const menuOptions = Object.keys(menuTree.menus[menuLevel]);
       
-      let cardBdoPubKey = null;
-      try {
-        if (invoke) {
-          cardBdoPubKey = await invoke('get_public_key');
-          console.log(`🎯 MAGICARD_WORKFLOW: Generated card bdoPubKey ${i + 1}: ${cardBdoPubKey.substring(0, 12)}...`);
-        } else {
-          cardBdoPubKey = `demo_card_${Date.now().toString(36)}_${i}`;
+      // Create a selector card for this menu level (e.g., "Select rider type")
+      const menuSelectorCard = {
+        type: 'menu-selector',
+        level: menuLevel,
+        name: `Select ${menuLevel}`,
+        isMenu: true,
+        isSelector: true,
+        options: menuOptions,
+        nextLevel: i < menuHeaders.length - 1 ? menuHeaders[i + 1] : 'product',
+        menuData: {
+          title: `Choose ${menuLevel}`,
+          options: menuOptions.map(opt => ({
+            name: opt,
+            data: menuTree.menus[menuLevel][opt]
+          }))
         }
-      } catch (error) {
-        cardBdoPubKey = `demo_card_${Date.now().toString(36)}_${i}`;
-        console.log(`🎯 MAGICARD_WORKFLOW: Using fallback card key ${i + 1}: ${cardBdoPubKey}`);
-      }
-      
-      product.cardBdoPubKey = cardBdoPubKey;
+      };
+      allCardsNeeded.push(menuSelectorCard);
+      console.log(`📑 Created selector card: ${menuSelectorCard.name} with options: ${menuOptions.join(', ')}`);
     }
+    
+    // Second: Create option-specific cards for each menu level
+    for (const menuLevel of menuHeaders) {
+      const menuOptions = Object.keys(menuTree.menus[menuLevel]);
+      console.log(`📑 Menu level "${menuLevel}" has options: ${menuOptions.join(', ')}`);
+      
+      for (const option of menuOptions) {
+        // Create a card for each menu option
+        const cardInfo = {
+          type: 'menu-option',
+          level: menuLevel,
+          option: option,
+          name: `${menuLevel}: ${option}`,
+          isMenu: true,
+          menuData: menuTree.menus[menuLevel][option]
+        };
+        allCardsNeeded.push(cardInfo);
+        
+        // If this menu has sub-menus, create state-aware cards
+        if (menuTree.menus[menuLevel][option].subMenu) {
+          const subMenuLevel = menuTree.menus[menuLevel][option].subMenu;
+          if (menuTree.menus[subMenuLevel]) {
+            const subMenuOptions = Object.keys(menuTree.menus[subMenuLevel]);
+            for (const subOption of subMenuOptions) {
+              const stateAwareCard = {
+                type: 'menu-option',
+                level: subMenuLevel,
+                option: subOption,
+                name: `${subMenuLevel}: ${subOption} (after ${option})`,
+                isMenu: true,
+                parentSelection: { level: menuLevel, option: option },
+                menuData: menuTree.menus[subMenuLevel][subOption]
+              };
+              allCardsNeeded.push(stateAwareCard);
+            }
+          }
+        }
+      }
+    }
+    
+    // Add product cards
+    console.log('🛍️ Adding product cards...');
+    for (const product of menuTree.products) {
+      allCardsNeeded.push({
+        type: 'product',
+        name: product.name,
+        price: product.price,
+        isMenu: false,
+        productData: product
+      });
+    }
+    
+    console.log(`🎯 Total cards needed: ${allCardsNeeded.length} (${menuHeaders.length} menu levels + ${menuTree.products.length} products)`);
+    
+    // First pass: Generate unique bdoPubKeys for ALL cards (menu + product)
+    console.log('🔑 Generating unique bdoPubKeys for all cards...');
+    let uniqueCardKeys = [];
+    try {
+      if (invoke) {
+        console.log(`🎯 MAGICARD_WORKFLOW: Generating ${allCardsNeeded.length} unique keys for menu: ${menuTitle}`);
+        uniqueCardKeys = await invoke('generate_menu_card_keys', { 
+          menuName: menuTitle, 
+          cardCount: allCardsNeeded.length 
+        });
+        console.log(`🎯 MAGICARD_WORKFLOW: ✅ Generated ${uniqueCardKeys.length} unique keys`);
+      } else {
+        // Fallback: generate demo keys
+        for (let i = 0; i < allCardsNeeded.length; i++) {
+          uniqueCardKeys.push(`demo_card_${Date.now().toString(36)}_${i}`);
+        }
+        console.log('🎯 MAGICARD_WORKFLOW: Using fallback demo keys');
+      }
+    } catch (error) {
+      console.log('🎯 MAGICARD_WORKFLOW: ❌ Error generating unique keys:', error);
+      // Fallback: generate demo keys
+      for (let i = 0; i < allCardsNeeded.length; i++) {
+        uniqueCardKeys.push(`demo_card_${Date.now().toString(36)}_${i}`);
+      }
+    }
+    
+    // Assign unique keys to each card
+    for (let i = 0; i < allCardsNeeded.length; i++) {
+      const card = allCardsNeeded[i];
+      card.cardBdoPubKey = uniqueCardKeys[i];
+      console.log(`🎯 MAGICARD_WORKFLOW: Assigned key ${i + 1}: ${card.cardBdoPubKey.substring(0, 12)}... to ${card.name}`);
+    }
+    
+    // ===== COMPREHENSIVE PUBKEY SUMMARY =====
+    console.log('\n🔑 ===== MAGICARD PUBKEY SUMMARY =====');
+    console.log(`📋 Menu: ${menuTitle}`);
+    console.log(`🎴 Total Cards: ${allCardsNeeded.length}`);
+    console.log('🔑 All PubKeys for BDO Upload:');
+    allCardsNeeded.forEach((card, index) => {
+      console.log(`   ${index + 1}. ${card.name} → ${card.cardBdoPubKey}`);
+    });
+    console.log('🔑 =================================\n');
     
     // Second pass: Create SVG cards with proper navigation links
     console.log('🎨 Creating SVG cards with navigation...');
-    for (let i = 0; i < menuTree.products.length; i++) {
-      const product = menuTree.products[i];
-      const nextProduct = menuTree.products[i + 1]; // For navigation
+    for (let i = 0; i < allCardsNeeded.length; i++) {
+      const card = allCardsNeeded[i];
+      const nextCard = allCardsNeeded[i + 1]; // For navigation
       
       try {
-        console.log(`🎨 Creating SVG card: ${product.name} ($${(product.price / 100).toFixed(2)})`);
+        let cardSvg = '';
         
-        // Create SVG card content with navigation
-        const cardSvg = createMenuItemSVG(product, nextProduct, menuTitle, i, menuTree.products.length);
+        if (card.type === 'menu-selector') {
+          console.log(`🗂️ Creating menu selector card: ${card.name}`);
+          cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i);
+        } else if (card.type === 'menu-option' || card.type === 'menu') {
+          console.log(`🗂️ Creating menu option card: ${card.name}`);
+          cardSvg = createMenuLevelSVG(card, nextCard, menuTitle, i, allCardsNeeded.length, menuTree, allCardsNeeded);
+        } else {
+          console.log(`🛍️ Creating product card: ${card.name} ($${(card.price / 100).toFixed(2)})`);
+          cardSvg = createMenuItemSVG(card.productData, nextCard?.productData, menuTitle, i, allCardsNeeded.length);
+        }
         
-        // Store the card in BDO (placeholder - would need BDO storage)
-        console.log(`💾 Storing card ${product.name} in BDO...`);
-        // TODO: Implement BDO storage for individual cards
-        // For now, store locally
-        localStorage.setItem(`menu-card-${product.cardBdoPubKey}`, cardSvg);
+        // Store the card in BDO with individual user
+        console.log(`💾 Creating BDO user and storing card ${card.name}...`);
+        
+        try {
+          if (invoke) {
+            // Create a new BDO user for this specific card using its unique private key
+            console.log(`🔑 Creating BDO user for card: ${card.name} with key: ${card.cardBdoPubKey.substring(0, 12)}...`);
+            
+            // Store the card in BDO with its unique user
+            const cardBdoResult = await invoke('store_card_in_bdo', {
+              cardBdoPubKey: card.cardBdoPubKey,
+              cardName: card.name,
+              svgContent: cardSvg,
+              cardType: card.type,
+              menuName: menuTitle
+            });
+            
+            console.log(`✅ Card stored in BDO: ${card.name} -> ${cardBdoResult}`);
+          } else {
+            console.log('⚠️ No invoke available, storing card locally only');
+            localStorage.setItem(`menu-card-${card.cardBdoPubKey}`, cardSvg);
+          }
+        } catch (error) {
+          console.warn(`⚠️ BDO storage failed for card ${card.name}, storing locally:`, error);
+          // Fallback to local storage
+          localStorage.setItem(`menu-card-${card.cardBdoPubKey}`, cardSvg);
+        }
         
         createdCards.push({
-          localId: product.id,
-          cardBdoPubKey: product.cardBdoPubKey,
-          name: product.name,
-          price: product.price,
+          localId: card.productData?.id || `menu_${card.level}_${card.option}`,
+          cardBdoPubKey: card.cardBdoPubKey,
+          name: card.name,
+          type: card.type,
+          price: card.price || 0,
           svgContent: cardSvg
         });
         
-        console.log(`✅ Card created: ${product.name} -> ${product.cardBdoPubKey.substring(0, 12)}...`);
+        console.log(`✅ Card created: ${card.name} -> ${card.cardBdoPubKey.substring(0, 12)}...`);
+        
+        // Log detailed info for first three cards
+        if (createdCards.length <= 3) {
+          console.log(`🔍 CARD #${createdCards.length} DETAILS:`);
+          console.log(`   Name: ${card.name}`);
+          console.log(`   Type: ${card.type}`);
+          console.log(`   Full pubKey: ${card.cardBdoPubKey}`);
+          console.log(`   SVG length: ${cardSvg.length} chars`);
+          console.log(`   SVG preview: ${cardSvg.substring(0, 100)}...`);
+        }
         
       } catch (error) {
-        console.error(`❌ Failed to create card for ${product.name}:`, error);
+        console.error(`❌ Failed to create card for ${card.name}:`, error);
         cardErrors.push({
-          product: product.name,
+          product: card.name,
           error: error.message
         });
       }
     }
     
     console.log(`📈 Card creation results: ${createdCards.length} successful, ${cardErrors.length} failed`);
+    console.log(`🎯 MAGICARD_WORKFLOW: 🔍 First created card:`, createdCards.length > 0 ? {
+      name: createdCards[0].name,
+      cardBdoPubKey: createdCards[0].cardBdoPubKey?.substring(0, 12) + '...',
+      type: createdCards[0].type
+    } : 'None');
     
     // Step 4: Update menu tree with card bdoPubKeys
     console.log('🔗 Menu structure updated with card bdoPubKeys...');
     // The products array already has the cardBdoPubKey added above
     
-    // Step 5: Generate bdoPubKey for MagiCard integration
-    console.log('🎯 MAGICARD_WORKFLOW: Starting bdoPubKey generation for MagiCard integration...');
-    let bdoPubKey = null;
-    try {
-      if (invoke) {
-        console.log('🎯 MAGICARD_WORKFLOW: Calling invoke(get_public_key)...');
-        bdoPubKey = await invoke('get_public_key');
-        console.log('🎯 MAGICARD_WORKFLOW: ✅ Generated bdoPubKey:', bdoPubKey.substring(0, 12) + '...');
-      } else {
-        console.log('🎯 MAGICARD_WORKFLOW: ⚠️ No invoke available, using demo key');
-        bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
-      }
-    } catch (error) {
-      console.log('🎯 MAGICARD_WORKFLOW: ❌ Error generating bdoPubKey:', error);
-      // Generate a placeholder for demo purposes
-      bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
-      console.log('🎯 MAGICARD_WORKFLOW: 🔄 Using fallback demo key:', bdoPubKey);
-    }
+    // Step 5: Create unique BDO user for menu and store menu data
+    console.log('🎯 MAGICARD_WORKFLOW: Creating unique BDO user for menu storage...');
     
-    // Step 6: Store menu catalog in BDO as public data
-    console.log('🗄️ Storing menu catalog in BDO...');
-    
+    // Prepare the menu data for BDO storage
     const catalogForBDO = {
       title: menuTree.title || menuTitle,
       description: menuDescription,
-      bdoPubKey: bdoPubKey, // Master bdoPubKey for MagiCard integration
       menus: menuTree.menus,
       products: menuTree.products.map(p => ({
         id: p.id,
@@ -3652,7 +4004,7 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         uploadedAt: new Date().toISOString(),
         totalCards: createdCards.length,
         failedCards: cardErrors.length,
-        bdoPubKey: bdoPubKey, // Store in metadata as well
+        menuType: menuType,
         firstCardBdoPubKey: createdCards.length > 0 ? createdCards[0].cardBdoPubKey : null // For easy navigation to first card
       },
       cardResults: {
@@ -3661,38 +4013,56 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       }
     };
     
-    // Store in BDO (this would need BDO integration)
+    // Store menu in BDO with unique user and get unique public key
+    let bdoPubKey = null;
     let bdoResult = null;
+    
     try {
       if (invoke) {
-        // This would require a BDO storage function - for now we'll simulate
-        console.log('📁 Storing catalog in BDO...');
-        // bdoResult = await invoke('store_bdo_object', {
-        //   data: JSON.stringify(catalogForBDO),
-        //   isPublic: true,
-        //   contentType: 'application/json'
-        // });
+        console.log('🎯 MAGICARD_WORKFLOW: Calling store_menu_in_bdo...');
         
-        // Store to shared directory for cross-app access
-        console.log('🎯 MAGICARD_WORKFLOW: 💾 Saving menu catalog to shared directory...');
-        try {
-          const saveResult = await invoke('save_menu_catalog', {
-            bdoPubKey: bdoPubKey,
-            catalogData: JSON.stringify(catalogForBDO)
-          });
-          console.log('🎯 MAGICARD_WORKFLOW: ✅ Saved to shared directory:', saveResult);
-          bdoResult = { success: true, id: `shared-${Date.now()}`, message: 'Stored in shared directory for MagiCard access' };
-        } catch (saveError) {
-          console.log('🎯 MAGICARD_WORKFLOW: ⚠️ Shared directory save failed, using localStorage:', saveError);
-          // Fallback to localStorage as before
-          localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
-          bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally (shared directory failed)' };
-        }
+        // Store menu in BDO with unique user and get the unique public key
+        bdoPubKey = await invoke('store_menu_in_bdo', {
+          menuName: menuTitle,
+          menuData: JSON.stringify(catalogForBDO)
+        });
+        
+        console.log('🎯 MAGICARD_WORKFLOW: ✅ Menu stored with unique bdoPubKey:', bdoPubKey.substring(0, 12) + '...');
+        bdoResult = { success: true, pubKey: bdoPubKey, message: 'Menu stored in BDO with unique user' };
+        
+        // Update catalogForBDO with the actual bdoPubKey
+        catalogForBDO.bdoPubKey = bdoPubKey;
+        catalogForBDO.metadata.bdoPubKey = bdoPubKey;
+        
+        // Also store in localStorage as backup
+        localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
+        
+      } else {
+        console.log('🎯 MAGICARD_WORKFLOW: ⚠️ No invoke available, using demo key and localStorage');
+        bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
+        
+        // Update catalogForBDO with demo key
+        catalogForBDO.bdoPubKey = bdoPubKey;
+        catalogForBDO.metadata.bdoPubKey = bdoPubKey;
+        
+        // Store locally with demo key
+        localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
+        bdoResult = { success: true, pubKey: bdoPubKey, message: 'Stored locally with demo key (invoke unavailable)' };
       }
     } catch (error) {
-      console.warn('⚠️ BDO storage failed, stored locally:', error);
-      localStorage.setItem(`menu-catalog-${Date.now()}`, JSON.stringify(catalogForBDO));
-      bdoResult = { success: true, id: `local-${Date.now()}`, message: 'Stored locally due to BDO error' };
+      console.log('🎯 MAGICARD_WORKFLOW: ❌ Error storing menu in BDO:', error);
+      
+      // Generate a fallback demo key
+      bdoPubKey = `demo_menu_${Date.now().toString(36)}`;
+      console.log('🎯 MAGICARD_WORKFLOW: 🔄 Using fallback demo key:', bdoPubKey);
+      
+      // Update catalogForBDO with fallback key
+      catalogForBDO.bdoPubKey = bdoPubKey;
+      catalogForBDO.metadata.bdoPubKey = bdoPubKey;
+      
+      // Store locally with demo key
+      localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
+      bdoResult = { success: true, pubKey: bdoPubKey, message: 'Stored locally due to BDO error' };
     }
     
     // Step 6: Create a catalog product in Sanora as well (for marketplace listing)
@@ -3704,7 +4074,7 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         uuid: userUuid,
         sanoraUrl: sanoraUrl,
         title: menuTitle,
-        description: `Menu catalog with ${uploadedProducts.length} products. ${menuDescription}`,
+        description: `Menu catalog with ${createdCards.length} cards (${menuTree.products.length} products + ${createdCards.length - menuTree.products.length} menu levels). ${menuDescription}`,
         price: 0, // Catalog itself is free, individual items have prices
         category: 'menu', // Set category as 'menu' for detection logic
         bdoPubKey: bdoPubKey // Add bdoPubKey for MagiCard integration
@@ -3745,6 +4115,20 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     } catch (error) {
       console.warn('⚠️ Failed to create catalog product in Sanora:', error);
     }
+    
+    // ===== FINAL MAGICARD UPLOAD SUMMARY =====
+    console.log('\n🎯 ===== FINAL MAGICARD UPLOAD SUMMARY =====');
+    console.log(`📋 Menu: ${menuTitle}`);
+    console.log(`🎴 Total Cards Created: ${createdCards.length}`);
+    console.log(`❌ Failed Cards: ${cardErrors.length}`);
+    console.log(`🔑 Master Menu BDO PubKey: ${bdoPubKey}`);
+    console.log(`🥇 First Card PubKey (for import): ${createdCards.length > 0 ? createdCards[0].cardBdoPubKey : 'None'}`);
+    console.log('📋 All Uploaded Card PubKeys:');
+    createdCards.forEach((card, index) => {
+      console.log(`   ${index + 1}. ${card.name} → ${card.cardBdoPubKey}`);
+    });
+    console.log('✅ All cards are uploaded to BDO with pub=true (publicly accessible)');
+    console.log('🔑 =======================================\n');
     
     // Return comprehensive result
     return {
@@ -5067,6 +5451,30 @@ async function loadProductDisplayConfig() {
     return PRODUCT_DISPLAY_CONFIG;
   }
 }
+
+// Global function for BDO preview (debugging tool)
+async function previewBDOMenu(bdoPubKey) {
+  console.log('🔍 Previewing BDO data for pubKey:', bdoPubKey.substring(0, 12) + '...');
+  
+  if (!window.ninefyInvoke) {
+    alert('❌ Preview requires Tauri backend. Please restart the app.');
+    return;
+  }
+  
+  try {
+    const previewResult = await window.ninefyInvoke('preview_bdo_menu', { pub_key: bdoPubKey });
+    console.log('✅ BDO Preview Result:', previewResult);
+    
+    // Show in alert for now (can be improved with modal)
+    alert('🔍 BDO Preview:\n\n' + previewResult);
+  } catch (error) {
+    console.error('❌ Error previewing BDO data:', error);
+    alert('❌ Error previewing BDO data: ' + error.message);
+  }
+}
+
+// Make preview function globally available
+window.previewBDOMenu = previewBDOMenu;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);

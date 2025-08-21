@@ -57,6 +57,40 @@ async fn get_sessionless() -> Result<Sessionless, String> {
     Ok(sessionless)
 }
 
+/// Create a seed MagiStack for testing
+#[tauri::command]
+async fn create_seed_magistack() -> Result<String, String> {
+    println!("🌱 Creating seed MagiStack for testing");
+    
+    // Read the actual test card SVG files
+    let fire_svg = include_str!("../../../test-cards/fire-spell-card.svg");
+    let ice_svg = include_str!("../../../test-cards/ice-spell-card.svg");
+    let lightning_svg = include_str!("../../../test-cards/lightning-spell-card.svg");
+    
+    let seed_cards = json!([
+        {
+            "name": "Fire Spell",
+            "type": "spell",
+            "content": "Cast a powerful fireball spell with interactive navigation to other spells.",
+            "svg": fire_svg
+        },
+        {
+            "name": "Ice Spell", 
+            "type": "spell",
+            "content": "Freeze enemies with ice magic and spell component interactions.",
+            "svg": ice_svg
+        },
+        {
+            "name": "Lightning Spell",
+            "type": "spell", 
+            "content": "Strike with lightning speed and power, featuring chain lightning effects.",
+            "svg": lightning_svg
+        }
+    ]);
+    
+    save_magistack("spell_test_stack", seed_cards).await
+}
+
 /// Create a new BDO user for card storage
 #[tauri::command]
 async fn create_bdo_user() -> Result<BDOUser, String> {
@@ -74,7 +108,7 @@ async fn create_bdo_user() -> Result<BDOUser, String> {
                 Some(bdo_url),
                 Some(sessionless),
             );
-            let _user = bdo.create_user(&magicard, &json!({})).await;
+            let _user = bdo.create_user(&magicard, &json!({}), &false).await;
             dbg!(&_user);
             return match _user {
                 Ok(user) => Ok(user),
@@ -247,13 +281,13 @@ async fn post_card_to_bdo(stack_name: &str, card_name: &str, svg_content: &str) 
     let bdo = BDO::new(Some(bdo_url), Some(s));
     
     // Create or get BDO user
-    let bdo_user = match bdo.create_user(&magicard, &json!({})).await {
+    let _bdo_user = match bdo.create_user(&magicard, &json!({}), &false).await {
         Ok(user) => user,
         Err(_) => return Err("Failed to create BDO user".to_string()),
     };
     
     // Create card object for BDO
-    let card_object = json!({
+    let _card_object = json!({
         "svg": svg_content
     });
     
@@ -293,29 +327,140 @@ async fn load_card_svg(stack_name: &str, card_name: &str) -> Result<String, Stri
     Ok(content)
 }
 
-/// Get a card from BDO by key
+/// Get a card from BDO by public key (bdoPubKey)
 #[tauri::command]
-async fn get_card_from_bdo(card_key: &str) -> Result<Value, String> {
-    println!("🌐 Getting card from BDO: {}", card_key);
+async fn get_card_from_bdo(bdo_pub_key: &str) -> Result<Value, String> {
+    println!("🌐 Getting card from BDO using pubKey: {}...", &bdo_pub_key[..12]);
     
-    let s = get_sessionless().await?;
-    let magicard = "magicard";
     let bdo_url = get_service_url("bdo");
+    println!("🔗 Using BDO URL: {}", bdo_url);
     
-    let bdo = BDO::new(Some(bdo_url), Some(s));
+    // Create sessionless instances for BDO access (we use our own key to access public data)
+    let sessionless_for_bdo = get_sessionless().await?;
+    let sessionless_for_manual = get_sessionless().await?;
+    let bdo = BDO::new(Some(bdo_url.clone()), Some(sessionless_for_bdo));
     
-    // Create or get BDO user
-    let bdo_user = match bdo.create_user(&magicard, &json!({})).await {
-        Ok(user) => user,
-        Err(_) => return Err("Failed to create BDO user".to_string()),
+    // Create or get our BDO user for making the request
+    let context = "magicard_access";
+    let _bdo_user = match bdo.create_user(&context, &json!({}), &false).await {
+        Ok(user) => {
+            println!("✅ Created/accessed BDO user: {}", user.uuid);
+            user
+        },
+        Err(e) => {
+            println!("❌ Failed to create BDO user: {:?}", e);
+            return Err("Failed to create BDO user for card access".to_string());
+        }
     };
     
-    // Get card from BDO using HTTP-based approach (since get method is private)
-    // For now, return placeholder data - this functionality can be implemented later
-    println!("⚠️ BDO integration placeholder - returning empty data");
+    // Use BDO client to fetch card data using proper authentication
+    println!("🔍 Using BDO client to fetch card data for pubKey: {}...", &bdo_pub_key[..12]);
+    
+    // Get the BDO data using the target pubKey as a query parameter
+    // This will make authenticated request: /user/{our_uuid}/bdo?pubKey={target_pubKey}
+    let our_bdo_user_uuid = _bdo_user.uuid.clone();
+    let hash = "magicard_access"; // Use the same hash as we used for user creation
+    
+    match bdo.get_public_bdo(&our_bdo_user_uuid, hash, bdo_pub_key).await {
+        Ok(bdo_user) => {
+            println!("✅ Successfully retrieved card data from BDO via client");
+            println!("📋 BDO User Response - UUID: {}", bdo_user.uuid);
+            println!("📋 BDO User BDO Data: {}", serde_json::to_string_pretty(&bdo_user.bdo).unwrap_or_else(|_| "Could not serialize bdo data".to_string()));
+            
+            // Extract relevant card information from the BDO user's bdo field
+            return Ok(json!({
+                "success": true,
+                "card": {
+                    "data": bdo_user.bdo,
+                    "uuid": bdo_user.uuid,
+                    "pubKey": bdo_pub_key,
+                    "source": "BDO_CLIENT"
+                }
+            }));
+        },
+        Err(e) => {
+            let error_msg = format!("{}", e);
+            println!("❌ BDO client request failed: {}", error_msg);
+        }
+    }
+    
+    // Fall back to manual HTTP request with proper authentication
+    println!("🔄 Falling back to manual authenticated HTTP request...");
+    
+    // We need to construct the authenticated request manually
+    // First get our BDO user info to get the UUID
+    let our_bdo_user_uuid = _bdo_user.uuid.clone();
+    
+    // Create authenticated request with sessionless
+    use sessionless::hex::IntoHex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis()
+        .to_string();
+    
+    let hash = format!("{}GET/user/{}/bdo", timestamp, our_bdo_user_uuid);
+    let signature = sessionless_for_manual.sign(&hash).to_hex();
+    let pub_key = sessionless_for_manual.public_key().to_hex();
+    
+    // Construct the authenticated BDO request URL
+    let auth_url = format!(
+        "{}/user/{}/bdo?pubKey={}&timestamp={}&signature={}&pubKey={}", 
+        bdo_url.trim_end_matches('/'),
+        our_bdo_user_uuid,
+        bdo_pub_key,
+        timestamp,
+        signature,
+        pub_key
+    );
+    
+    println!("🌐 Making authenticated BDO request to: {}...", &auth_url[..80]);
+    
+    let client = reqwest::Client::new();
+    match client.get(&auth_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.json::<Value>().await {
+                    Ok(bdo_data) => {
+                        println!("✅ Successfully retrieved card data via authenticated HTTP");
+                        println!("📋 BDO Response Structure: {}", serde_json::to_string_pretty(&bdo_data).unwrap_or_else(|_| "Could not serialize response".to_string()));
+                        
+                        return Ok(json!({
+                            "success": true,
+                            "card": {
+                                "data": bdo_data,
+                                "pubKey": bdo_pub_key,
+                                "source": "BDO_AUTH_HTTP"
+                            }
+                        }));
+                    },
+                    Err(e) => {
+                        println!("❌ Failed to parse authenticated BDO response as JSON: {}", e);
+                    }
+                }
+            } else {
+                println!("❌ Authenticated BDO HTTP request failed with status: {}", response.status());
+                // Try to get the error response body
+                if let Ok(error_text) = response.text().await {
+                    println!("❌ BDO Error Response: {}", error_text);
+                }
+            }
+        },
+        Err(e) => {
+            println!("❌ Authenticated BDO HTTP request failed: {}", e);
+        }
+    }
+    
+    // If all approaches fail, return failure response
+    println!("🔄 All BDO access methods failed");
     Ok(json!({
-        "svg": "<svg><text x='50' y='50'>Card not found in BDO</text></svg>",
-        "message": "BDO integration not yet implemented"
+        "success": false,
+        "error": "Card not found in BDO using any method",
+        "pubKey": bdo_pub_key,
+        "attempted_methods": ["bdo_client_get_public_bdo", "manual_authenticated_http"],
+        "bdo_url": bdo_url
     }))
 }
 
@@ -331,7 +476,7 @@ async fn navigate_to_card(base_url: &str, card_key: &str) -> Result<Value, Strin
     let bdo = BDO::new(Some(base_url.to_string()), Some(s));
     
     // Create or get BDO user
-    let bdo_user = match bdo.create_user(&magicard, &json!({})).await {
+    let _bdo_user = match bdo.create_user(&magicard, &json!({}), &false).await {
         Ok(user) => user,
         Err(_) => return Err("Failed to create BDO user".to_string()),
     };
@@ -359,7 +504,7 @@ async fn list_cards_in_bdo() -> Result<Vec<String>, String> {
     let bdo = BDO::new(Some(bdo_url), Some(s));
     
     // Create or get BDO user
-    let bdo_user = match bdo.create_user(&magicard, &json!({})).await {
+    let _bdo_user = match bdo.create_user(&magicard, &json!({}), &false).await {
         Ok(user) => user,
         Err(_) => return Err("Failed to create BDO user".to_string()),
     };
@@ -370,51 +515,6 @@ async fn list_cards_in_bdo() -> Result<Vec<String>, String> {
     Ok(vec![])
 }
 
-/// Save menu catalog to shared directory for cross-app access
-#[tauri::command]
-async fn save_menu_catalog(bdo_pub_key: &str, catalog_data: &str) -> Result<String, String> {
-    println!("🍽️ Saving menu catalog with bdoPubKey: {}", bdo_pub_key);
-    
-    let shared_dir = match std::env::var("HOME") {
-        Ok(home) => Path::new(&home).join(".planet-nine").join("menu-catalogs"),
-        Err(_) => Path::new(".").join("planet_nine_data").join("menu-catalogs"),
-    };
-    
-    // Create directory if it doesn't exist
-    fs::create_dir_all(&shared_dir)
-        .map_err(|e| format!("Failed to create shared directory: {}", e))?;
-    
-    // Save catalog file with bdoPubKey as filename
-    let file_path = shared_dir.join(format!("{}.json", bdo_pub_key));
-    fs::write(&file_path, catalog_data)
-        .map_err(|e| format!("Failed to save menu catalog: {}", e))?;
-    
-    println!("✅ Saved menu catalog to: {:?}", file_path);
-    Ok(file_path.to_string_lossy().to_string())
-}
-
-/// Load menu catalog from shared directory by bdoPubKey
-#[tauri::command]
-async fn load_menu_catalog(bdo_pub_key: &str) -> Result<String, String> {
-    println!("🔍 Loading menu catalog with bdoPubKey: {}", bdo_pub_key);
-    
-    let shared_dir = match std::env::var("HOME") {
-        Ok(home) => Path::new(&home).join(".planet-nine").join("menu-catalogs"),
-        Err(_) => Path::new(".").join("planet_nine_data").join("menu-catalogs"),
-    };
-    
-    let file_path = shared_dir.join(format!("{}.json", bdo_pub_key));
-    
-    if !file_path.exists() {
-        return Err(format!("Menu catalog not found for bdoPubKey: {}", bdo_pub_key));
-    }
-    
-    let catalog_data = fs::read_to_string(&file_path)
-        .map_err(|e| format!("Failed to load menu catalog: {}", e))?;
-    
-    println!("✅ Loaded menu catalog from: {:?}", file_path);
-    Ok(catalog_data)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -425,6 +525,7 @@ pub fn run() {
             dbg,
             get_public_key,
             get_env_config,
+            create_seed_magistack,
             create_bdo_user,
             save_magistack,
             load_magistack,
@@ -434,9 +535,7 @@ pub fn run() {
             load_card_svg,
             get_card_from_bdo,
             navigate_to_card,
-            list_cards_in_bdo,
-            save_menu_catalog,
-            load_menu_catalog
+            list_cards_in_bdo
         ])
         .setup(|_app| {
             println!("🪄 MagiCard backend is starting up...");

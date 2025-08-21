@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Menu Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 15px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>MagiCard Menu Upload Test</h1>
+    
+    <div class="test-section">
+        <h2>Sample CSV Data</h2>
+        <textarea id="csvData" rows="10" cols="60">
+,rider,time span,product
+,adult,two-hour,adult+two-hour$250
+,adult,day,adult+day$500
+,youth,two-hour,youth+two-hour$100
+,youth,day,youth+day$200
+        </textarea>
+        <br>
+        <button onclick="testMenuProcessing()">Test Menu Processing</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <script src="utils/menu-catalog-utils.js"></script>
+    <script>
+        function testMenuProcessing() {
+            const csvData = document.getElementById('csvData').value;
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                console.log('📋 Testing menu processing with CSV data...');
+                
+                // Parse CSV to menu tree
+                const catalog = window.MenuCatalogUtils.parseCSVToMenuTree(csvData);
+                
+                // Display results
+                resultsDiv.innerHTML = `
+                    <h3>✅ Parsing Successful</h3>
+                    <p><strong>Total Products:</strong> ${catalog.metadata.totalProducts}</p>
+                    <p><strong>Menu Levels:</strong> ${catalog.metadata.menuCount}</p>
+                    
+                    <h4>Menu Structure:</h4>
+                    <pre>${JSON.stringify(catalog.menus, null, 2)}</pre>
+                    
+                    <h4>Products List:</h4>
+                    <pre>${JSON.stringify(catalog.products, null, 2)}</pre>
+                    
+                    <h4>Expected Card Count:</h4>
+                    <p>Cards will be created for menu navigation + products = <strong>${Object.keys(catalog.menus).length + catalog.products.length} cards</strong></p>
+                    
+                    <h4>Expected BDO Users:</h4>
+                    <ul>
+                        ${catalog.products.map(product => 
+                            `<li>Card: "${product.name}" → Unique BDO user with private key</li>`
+                        ).join('')}
+                    </ul>
+                `;
+                
+                // Log to console for debugging
+                console.log('🍽️ Parsed catalog:', catalog);
+                console.log('📊 Expected cards:', Object.keys(catalog.menus).length + catalog.products.length);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <h3>❌ Parsing Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <pre>${error.stack || error}</pre>
+                `;
+                console.error('❌ Menu processing error:', error);
+            }
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('🧪 Menu upload test page loaded');
+            testMenuProcessing();
+        });
+    </script>
+</body>
+</html>

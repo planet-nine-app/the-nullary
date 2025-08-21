@@ -138,6 +138,9 @@ function createHeader() {
             <button class="btn btn-success" onclick="createNewStack()">
                 ➕ New Stack
             </button>
+            <button class="btn btn-tertiary" onclick="createSeedStack()">
+                🌱 Seed Stack
+            </button>
             <button class="btn btn-secondary" onclick="importFromBdoPubKey()">
                 🍽️ Import Menu
             </button>
@@ -191,6 +194,13 @@ function createMainContent() {
                     <div class="empty-preview-text">Select a stack to preview</div>
                     <div class="empty-preview-subtext">Choose a MagiStack from the left to see its cards</div>
                 </div>
+            </div>
+            <div id="bdo-pubkey-display" class="bdo-pubkey-display" style="display: none;">
+                <div class="bdo-pubkey-label">🔑 BDO Import Key:</div>
+                <div class="bdo-pubkey-value" id="bdo-pubkey-value">Loading...</div>
+                <button class="btn btn-small btn-tertiary" onclick="copyBdoPubKey()" id="copy-bdo-key-btn">
+                    📋 Copy Key
+                </button>
             </div>
             <div id="action-buttons" class="action-buttons" style="display: none;">
                 <button class="btn" onclick="editCurrentStack()">
@@ -274,6 +284,9 @@ async function selectStack(stack) {
     if (actionButtons) {
         actionButtons.style.display = 'flex';
     }
+    
+    // Show and update BDO pubkey display
+    await updateBdoPubKeyDisplay();
 }
 
 /**
@@ -298,9 +311,15 @@ async function updatePreviewArea() {
     
     // Show first card as preview
     const firstCard = cards[0];
+    console.log('🖼️ updatePreviewArea - First card exists:', !!firstCard);
+    console.log('🖼️ updatePreviewArea - First card has SVG:', !!firstCard?.svg);
+    console.log('🖼️ updatePreviewArea - First card SVG length:', firstCard?.svg?.length || 0);
+    
     if (firstCard && firstCard.svg) {
+        console.log('🖼️ updatePreviewArea - Displaying card preview');
         await displayCardPreview(firstCard.svg);
     } else {
+        console.log('🖼️ updatePreviewArea - No SVG content, showing empty preview');
         previewContent.innerHTML = `
             <div class="empty-preview">
                 <div class="empty-preview-icon">🎨</div>
@@ -308,6 +327,89 @@ async function updatePreviewArea() {
                 <div class="empty-preview-subtext">Upload SVG files to see interactive cards</div>
             </div>
         `;
+    }
+}
+
+/**
+ * Update BDO pubkey display for current stack
+ */
+async function updateBdoPubKeyDisplay() {
+    const bdoPubKeyDisplay = document.getElementById('bdo-pubkey-display');
+    const bdoPubKeyValue = document.getElementById('bdo-pubkey-value');
+    
+    if (!bdoPubKeyDisplay || !bdoPubKeyValue || !currentStack) {
+        if (bdoPubKeyDisplay) bdoPubKeyDisplay.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Generate a BDO pubkey for this stack
+        // For now, use the stack name to generate a consistent key
+        let stackPubKey = '';
+        
+        if (window.__TAURI__) {
+            // Get the actual public key from sessionless
+            const sessionlessPubKey = await window.__TAURI__.core.invoke('get_public_key');
+            // Create a stack-specific key by combining sessionless key with stack name
+            stackPubKey = `${sessionlessPubKey.substring(0, 20)}_${currentStack.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+        } else {
+            // Fallback for browser-only mode
+            stackPubKey = `demo_${currentStack.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${Date.now().toString(36)}`;
+        }
+        
+        // Display the pubkey
+        bdoPubKeyValue.textContent = stackPubKey;
+        bdoPubKeyDisplay.style.display = 'block';
+        
+        console.log(`🔑 Generated BDO pubkey for stack "${currentStack.name}": ${stackPubKey}`);
+        
+    } catch (error) {
+        console.error('❌ Error generating BDO pubkey:', error);
+        bdoPubKeyValue.textContent = 'Error generating key';
+        bdoPubKeyDisplay.style.display = 'block';
+    }
+}
+
+/**
+ * Copy BDO pubkey to clipboard
+ */
+async function copyBdoPubKey() {
+    const bdoPubKeyValue = document.getElementById('bdo-pubkey-value');
+    if (!bdoPubKeyValue) return;
+    
+    const pubKey = bdoPubKeyValue.textContent;
+    
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(pubKey);
+            console.log('📋 Copied BDO pubkey to clipboard:', pubKey);
+            
+            // Visual feedback
+            const copyBtn = document.getElementById('copy-bdo-key-btn');
+            if (copyBtn) {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ Copied!';
+                copyBtn.style.background = '#27ae60';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '';
+                }, 2000);
+            }
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = pubKey;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            alert('📋 BDO pubkey copied to clipboard!');
+        }
+    } catch (error) {
+        console.error('❌ Failed to copy to clipboard:', error);
+        alert('Failed to copy to clipboard. Please manually copy the key.');
     }
 }
 
@@ -461,26 +563,134 @@ async function navigateToCardInCurrentStack(bdoPubKey) {
     
     console.log(`🎯 Looking for card with bdoPubKey: ${bdoPubKey}`);
     
-    // Extract the card identifier from the pubKey (demo logic)
-    const cardIdentifier = bdoPubKey.split('_').pop(); // Get 'fire', 'ice', or 'lightning' from 'demo_user_fire'
-    console.log(`🔍 Looking for card with identifier: ${cardIdentifier}`);
-    
-    // Find the card by name pattern
+    // First, try to find the card locally by bdoPubKey
     const targetCard = currentStack.cards.find(card => {
-        const cardName = card.name.toLowerCase();
-        return cardName.includes(cardIdentifier);
+        return card.metadata?.cardBdoPubKey === bdoPubKey || 
+               card.bdoPubKey === bdoPubKey ||
+               card.metadata?.bdoPubKey === bdoPubKey;
     });
     
     if (targetCard) {
-        console.log(`✨ Found target card: ${targetCard.name}`);
+        console.log(`✨ Found target card locally: ${targetCard.name}`);
         // Update the preview to show the target card
         updatePreview(targetCard.svg);
         
         // Show success message
         alert(`🪄 Navigated to ${targetCard.name}! Check the preview area.`);
     } else {
-        console.log(`❌ Card not found with identifier: ${cardIdentifier}`);
-        alert(`⚠️ Navigation failed: Could not find card with identifier "${cardIdentifier}" in current stack`);
+        console.log(`🌐 Card not found locally, fetching from BDO: ${bdoPubKey.substring(0, 12)}...`);
+        
+        // Try to fetch the card from BDO
+        await fetchAndDisplayCardFromBDO(bdoPubKey);
+    }
+}
+
+/**
+ * Fetch and display a card from BDO by pubKey
+ * @param {string} bdoPubKey - The BDO public key to fetch
+ */
+async function fetchAndDisplayCardFromBDO(bdoPubKey) {
+    console.log(`🌐 Fetching card from BDO with pubKey: ${bdoPubKey.substring(0, 12)}...`);
+    
+    try {
+        // Show loading state in preview
+        const previewContainer = document.getElementById('card-preview');
+        if (previewContainer) {
+            previewContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">🌐</div>
+                        <div>Loading card from BDO...</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Call Tauri backend to fetch card from BDO
+        const result = await window.__TAURI__.core.invoke('get_card_from_bdo', { 
+            bdoPubKey: bdoPubKey 
+        });
+        
+        console.log(`📦 BDO fetch result:`, result);
+        
+        if (result.success && result.card && result.card.data) {
+            // Extract SVG content from the BDO response
+            let svgContent = result.card.data.svg || result.card.data.svgContent;
+            
+            if (svgContent) {
+                console.log(`✅ Successfully fetched card SVG from BDO`);
+                console.log(`📏 SVG content length: ${svgContent.length} characters`);
+                
+                // Display the SVG in the preview area
+                updatePreview(svgContent);
+                
+                // Optionally add the card to current stack for future navigation
+                if (currentStack) {
+                    const cardName = extractCardNameFromSVG(svgContent) || `Card_${bdoPubKey.substring(0, 8)}`;
+                    const newCard = {
+                        name: cardName,
+                        svg: svgContent,
+                        created_at: new Date().toISOString(),
+                        metadata: {
+                            cardBdoPubKey: bdoPubKey,
+                            source: 'BDO_FETCH',
+                            fetchedAt: new Date().toISOString()
+                        }
+                    };
+                    
+                    // Add to current stack if not already present
+                    const existingCard = currentStack.cards.find(card => 
+                        card.metadata?.cardBdoPubKey === bdoPubKey
+                    );
+                    
+                    if (!existingCard) {
+                        currentStack.cards.push(newCard);
+                        console.log(`📚 Added fetched card to current stack: ${cardName}`);
+                        
+                        // Update the stack in storage
+                        await window.__TAURI__.core.invoke('save_magistack', {
+                            name: currentStack.name,
+                            cards: currentStack.cards
+                        });
+                        
+                        // Refresh the UI if we're in edit mode
+                        if (isEditMode) {
+                            displayCardsInList();
+                        }
+                    } else {
+                        console.log(`📚 Card already exists in current stack: ${cardName}`);
+                    }
+                }
+                
+                // Show success message
+                alert(`🪄 Navigated to card from BDO! Check the preview area.`);
+            } else {
+                throw new Error('No SVG content found in BDO response');
+            }
+        } else {
+            throw new Error(result.error || 'Failed to fetch card from BDO');
+        }
+        
+    } catch (error) {
+        console.error(`❌ Failed to fetch card from BDO:`, error);
+        
+        // Show error state in preview
+        const previewContainer = document.getElementById('card-preview');
+        if (previewContainer) {
+            previewContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">❌</div>
+                        <div style="font-weight: bold; margin-bottom: 5px;">Card Not Found</div>
+                        <div style="font-size: 12px; color: #666;">Could not fetch card with pubKey: ${bdoPubKey.substring(0, 12)}...</div>
+                        <div style="font-size: 11px; color: #999; margin-top: 10px;">${error.message}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Show error alert
+        alert(`❌ Failed to fetch card from BDO: ${error.message}`);
     }
 }
 
@@ -587,6 +797,62 @@ async function createNewStack() {
 }
 
 /**
+ * Create a seed MagiStack for testing
+ */
+async function createSeedStack() {
+    console.log('🌱 Creating seed stack - function called!');
+    
+    try {
+        if (window.__TAURI__) {
+            const result = await window.__TAURI__.core.invoke('create_seed_magistack');
+            console.log('✅ Seed stack created:', result);
+        } else {
+            console.log('⚠️ Tauri not available, creating seed stack locally');
+            
+            // Simplified spell cards for fallback (when Tauri isn't available)
+            const seedStack = {
+                name: 'spell_test_stack',
+                cards: [
+                    {
+                        name: 'Fire Spell',
+                        type: 'spell',
+                        content: 'Cast a powerful fireball spell with interactive navigation to other spells.',
+                        svg: '<svg width="300" height="400" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="300" height="400" fill="#2c1810" stroke="#8B4513" stroke-width="3" rx="15"/><text x="150" y="50" text-anchor="middle" fill="#FFD700" font-family="serif" font-size="20" font-weight="bold">🔥 FIRE SPELL 🔥</text><circle spell="fireball" cx="150" cy="150" r="40" fill="#FF4500" stroke="#FFD700" stroke-width="3"/><text spell="fireball" x="150" y="160" text-anchor="middle" fill="#FFD700" font-size="30">🔥</text></svg>'
+                    },
+                    {
+                        name: 'Ice Spell',
+                        type: 'spell', 
+                        content: 'Freeze enemies with ice magic and spell component interactions.',
+                        svg: '<svg width="300" height="400" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="300" height="400" fill="#1e3a5f" stroke="#4682B4" stroke-width="3" rx="15"/><text x="150" y="50" text-anchor="middle" fill="#E0E6FF" font-family="serif" font-size="20" font-weight="bold">❄️ ICE SPELL ❄️</text><polygon spell="ice-shard" points="150,110 170,140 150,190 130,140" fill="#00CED1" stroke="#E0E6FF" stroke-width="3"/><text spell="ice-shard" x="150" y="160" text-anchor="middle" fill="#E0E6FF" font-size="30">❄️</text></svg>'
+                    },
+                    {
+                        name: 'Lightning Spell',
+                        type: 'spell',
+                        content: 'Strike with lightning speed and power, featuring chain lightning effects.',
+                        svg: '<svg width="300" height="400" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="300" height="400" fill="#2e2e40" stroke="#FFD700" stroke-width="3" rx="15"/><text x="150" y="50" text-anchor="middle" fill="#FFFF00" font-family="serif" font-size="18" font-weight="bold">⚡ LIGHTNING SPELL ⚡</text><path spell="lightning-bolt" d="M150,100 L160,130 L145,130 L155,170 L135,140 L150,140 Z" fill="#FFFF00" stroke="#FFD700" stroke-width="2"/><text spell="lightning-bolt" x="150" y="160" text-anchor="middle" fill="#FFFFFF" font-size="30">⚡</text></svg>'
+                    }
+                ],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            
+            stacks.push(seedStack);
+            await saveStacks();
+        }
+        
+        await loadStacks();
+        updateStackList();
+        
+        console.log('✅ Seed stack created successfully');
+        alert('🌱 Spell test stack created! Look for "spell_test_stack" with Fire, Ice, and Lightning spells in your stack list.');
+        
+    } catch (error) {
+        console.error('❌ Error creating seed stack:', error);
+        alert('Failed to create seed stack. Please try again.');
+    }
+}
+
+/**
  * Import a menu from Ninefy using bdoPubKey
  */
 async function importFromBdoPubKey() {
@@ -636,10 +902,14 @@ async function importFromBdoPubKey() {
 
 // Export global functions immediately for HTML onclick handlers
 window.createNewStack = createNewStack;
+window.createSeedStack = createSeedStack;
 window.importFromBdoPubKey = importFromBdoPubKey;
+window.copyBdoPubKey = copyBdoPubKey;
 console.log('🔗 Global functions exported:', { 
     createNewStack: typeof window.createNewStack,
-    importFromBdoPubKey: typeof window.importFromBdoPubKey
+    createSeedStack: typeof window.createSeedStack,
+    importFromBdoPubKey: typeof window.importFromBdoPubKey,
+    copyBdoPubKey: typeof window.copyBdoPubKey
 });
 
 /**
@@ -1215,10 +1485,14 @@ async function deleteCurrentStack() {
             `;
         }
         
-        // Hide action buttons
+        // Hide action buttons and BDO pubkey display
         const actionButtons = document.getElementById('action-buttons');
+        const bdoPubKeyDisplay = document.getElementById('bdo-pubkey-display');
         if (actionButtons) {
             actionButtons.style.display = 'none';
+        }
+        if (bdoPubKeyDisplay) {
+            bdoPubKeyDisplay.style.display = 'none';
         }
         
         console.log(`✅ Deleted stack`);
@@ -1443,8 +1717,12 @@ async function showBDOCardBrowser() {
 
 // Global function exports for HTML onclick handlers
 window.createNewStack = createNewStack;
+window.createSeedStack = createSeedStack;
+window.copyBdoPubKey = copyBdoPubKey;
 console.log('🔗 Global functions exported to window:', { 
     createNewStack: typeof window.createNewStack,
+    createSeedStack: typeof window.createSeedStack,
+    copyBdoPubKey: typeof window.copyBdoPubKey,
     editCurrentStack: typeof window.editCurrentStack 
 });
 window.importStack = importStack;
@@ -1475,30 +1753,67 @@ async function fetchMenuFromBDO(bdoPubKey) {
             return createDemoMenuData(bdoPubKey);
         }
         
-        // Try to load from shared directory first
-        if (window.__TAURI__) {
-            console.log('🎯 MAGICARD_WORKFLOW: 📁 Loading from shared directory...');
+        // Try to fetch card data from BDO using bdoPubKey
+        console.log('🎯 MAGICARD_WORKFLOW: 🌐 Attempting BDO API call...');
+        if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
             try {
-                const catalogData = await window.__TAURI__.core.invoke('load_menu_catalog', {
+                // Try to fetch the card from BDO using the bdoPubKey
+                console.log('🔍 Calling get_card_from_bdo with pubKey:', bdoPubKey.substring(0, 12) + '...');
+                
+                const cardResult = await window.__TAURI__.core.invoke('get_card_from_bdo', {
                     bdoPubKey: bdoPubKey
                 });
-                const parsedData = JSON.parse(catalogData);
-                console.log('🎯 MAGICARD_WORKFLOW: ✅ Found menu in shared directory');
-                return parsedData;
+                
+                if (cardResult && cardResult.success && cardResult.card) {
+                    console.log('✅ Successfully fetched card from BDO:', cardResult.card?.name || cardResult.card?.data?.cardName || 'Unnamed card');
+                    console.log('🔍 Full BDO cardResult structure:', JSON.stringify(cardResult, null, 2));
+                    
+                    // Transform BDO response into expected menu format
+                    const cardData = cardResult.card.data || cardResult.card;
+                    console.log('🔍 Extracted cardData for transformation:', JSON.stringify(cardData, null, 2));
+                    
+                    // Extract and log SVG content
+                    const svgContent = cardData.svgContent || cardData.svg;
+                    console.log('🎨 SVG Content found:', !!svgContent);
+                    console.log('🎨 SVG Content length:', svgContent ? svgContent.length : 0);
+                    console.log('🎨 SVG Content preview:', svgContent ? svgContent.substring(0, 100) + '...' : 'None');
+                    
+                    const transformedData = {
+                        title: cardData.cardName || 'Imported Card',
+                        bdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                        svgContent: svgContent,
+                        source: 'BDO',
+                        cards: [{
+                            name: cardData.cardName || 'Card',
+                            svg: svgContent,
+                            bdoPubKey: cardResult.card.pubKey || bdoPubKey
+                        }]
+                    };
+                    
+                    console.log('🔄 Final transformed data:', JSON.stringify(transformedData, null, 2));
+                    return transformedData;
+                } else {
+                    console.log('⚠️ BDO call succeeded but no card found:', cardResult?.error || 'Unknown error');
+                }
             } catch (error) {
-                console.log('🎯 MAGICARD_WORKFLOW: ⚠️ Shared directory load failed:', error);
+                console.log('❌ Error calling BDO API:', error);
             }
+        } else {
+            console.log('⚠️ Tauri API not available, skipping BDO call');
         }
-        
-        // Fallback: check localStorage for development
-        console.log('🎯 MAGICARD_WORKFLOW: 📦 Checking localStorage fallback...');
+
+        // Fallback: Check localStorage for development
+        console.log('🎯 MAGICARD_WORKFLOW: 📦 Checking localStorage as fallback...');
         const keys = Object.keys(localStorage);
         for (const key of keys) {
-            if (key.startsWith('menu-catalog-')) {
+            if (key.startsWith('menu-catalog-') || key.startsWith('menu-card-')) {
                 try {
                     const catalogData = JSON.parse(localStorage.getItem(key));
-                    if (catalogData.bdoPubKey === bdoPubKey || catalogData.metadata?.bdoPubKey === bdoPubKey) {
-                        console.log('✅ Found menu in localStorage');
+                    // Check if this is card data with the matching bdoPubKey
+                    if (catalogData.bdoPubKey === bdoPubKey || 
+                        catalogData.metadata?.bdoPubKey === bdoPubKey ||
+                        key.includes(bdoPubKey.substring(0, 12))) {
+                        console.log('✅ Found card in localStorage:', key);
                         return catalogData;
                     }
                 } catch (e) {
@@ -1507,7 +1822,7 @@ async function fetchMenuFromBDO(bdoPubKey) {
             }
         }
         
-        console.log('❌ Menu not found');
+        console.log('❌ Card not found in BDO or localStorage');
         return null;
         
     } catch (error) {
@@ -1521,11 +1836,14 @@ async function fetchMenuFromBDO(bdoPubKey) {
  */
 async function convertMenuToMagiStack(menuData) {
     console.log('🔄 Converting menu catalog to MagiStack:', menuData.title);
-    console.log('🎯 MAGICARD_WORKFLOW: 📋 Menu catalog structure:', {
+    console.log('🎯 MAGICARD_WORKFLOW: 📋 Full menuData structure received:', JSON.stringify(menuData, null, 2));
+    console.log('🎯 MAGICARD_WORKFLOW: 📋 Menu catalog structure summary:', {
         hasCards: !!menuData.cards,
         cardCount: menuData.cards?.length || 0,
         hasProducts: !!menuData.products,
-        productCount: menuData.products?.length || 0
+        productCount: menuData.products?.length || 0,
+        source: menuData.source,
+        allKeys: Object.keys(menuData)
     });
     
     try {
@@ -1541,8 +1859,8 @@ async function convertMenuToMagiStack(menuData) {
                 console.log(`🎯 MAGICARD_WORKFLOW: Loading card ${i + 1}: ${cardInfo.name}`);
                 
                 try {
-                    // Load the SVG content from localStorage (or BDO in the future)
-                    let svgContent = cardInfo.svgContent;
+                    // Load the SVG content from the card data
+                    let svgContent = cardInfo.svg || cardInfo.svgContent;
                     
                     // If SVG content is not in the card info, try to load from localStorage
                     if (!svgContent) {
@@ -1564,6 +1882,8 @@ async function convertMenuToMagiStack(menuData) {
                         
                         cards.push(card);
                         console.log(`✅ Loaded card: ${cardInfo.name}`);
+                        console.log(`🎨 Card SVG length: ${svgContent.length}`);
+                        console.log(`🎨 Card SVG preview: ${svgContent.substring(0, 100)}...`);
                     } else {
                         console.warn(`⚠️ Could not load SVG for card: ${cardInfo.name}`);
                     }
@@ -1634,6 +1954,9 @@ async function convertMenuToMagiStack(menuData) {
         }
         
         console.log('✅ MagiStack created successfully:', magistack.name);
+        console.log('📊 MagiStack card count:', magistack.cards.length);
+        console.log('🎨 First card SVG exists:', !!magistack.cards[0]?.svg);
+        console.log('🎨 First card SVG length:', magistack.cards[0]?.svg?.length || 0);
         console.log('🎯 MAGICARD_WORKFLOW: 🎉 Cards loaded with spell navigation enabled');
         
         return magistack;

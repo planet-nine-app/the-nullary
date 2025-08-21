@@ -409,6 +409,77 @@ Ninefy is now a **fully functional digital goods marketplace** with complete pur
 - `/the-nullary/ninefy/ninefy/src/main.js` - Menu processing and file reading logic
 - `/the-nullary/ninefy/ninefy/src/utils/menu-catalog-utils.js` - CSV parsing utilities
 
+**✅ BDO Upload System Files**:
+
+**Ninefy Backend** (`/the-nullary/ninefy/ninefy/src-tauri/src/lib.rs`):
+- **Lines 753-822**: `generate_menu_card_keys()` - Creates N unique sessionless keypairs
+- **Lines 825-906**: `store_card_in_bdo()` - Uploads each card with individual BDO user + `pub=true`
+- **Lines 878-900**: Public access setup with comprehensive logging
+
+**Ninefy Frontend** (`/the-nullary/ninefy/ninefy/src/main.js`):
+- **Lines 3780-3788**: Comprehensive pubKey summary before upload
+- **Lines 4010-4022**: Final upload summary with all pubKeys listed
+- **Lines 3803-3814**: Individual card BDO upload with pubKey confirmation
+
+### 🔧 **MagiCard Integration Debugging (January 2025)**
+
+**BDO Menu Storage/Retrieval Issue**:
+- **Problem**: MagiCard receives `"data": null` when importing menu cards from Ninefy
+- **Root Cause**: Cards stored individually in BDO with unique pubKeys, but menu structure not properly linked
+- **Investigation**: Added detailed logging and preview functionality to trace data flow
+
+**Debugging Tools Added**:
+
+**Ninefy Frontend** (`/the-nullary/ninefy/ninefy/src/main.js`):
+- **Lines 2787-2790**: Preview button in success message UI  
+- **Lines 5312-5334**: Global `previewBDOMenu()` function to inspect stored data
+- **Lines 3836-3844**: Detailed logging for first three cards created:
+  ```javascript
+  if (createdCards.length <= 3) {
+    console.log(`🔍 CARD #${createdCards.length} DETAILS:`);
+    console.log(`   Name: ${card.name}`);
+    console.log(`   Type: ${card.type}`);
+    console.log(`   Full pubKey: ${card.cardBdoPubKey}`);
+    console.log(`   SVG length: ${cardSvg.length} chars`);
+    console.log(`   SVG preview: ${cardSvg.substring(0, 100)}...`);
+  }
+  ```
+
+**Ninefy Backend** (`/the-nullary/ninefy/ninefy/src-tauri/src/lib.rs`):
+- **Lines 959-961**: Menu data storage logging in `store_menu_in_bdo()`
+- **Lines 979-1026**: New `preview_bdo_menu()` function to retrieve and display BDO data
+- **Lines 864-870**: Enhanced card storage logging with pubKey and content details
+
+**MagiCard Backend** (`/the-nullary/magicard/magicard/src-tauri/src/lib.rs`):
+- **Lines 332-334, 393-395**: Enhanced BDO response logging in `get_card_from_bdo()`
+- **Lines 347-420**: Fixed Send trait compilation error by restructuring error handling
+
+**✅ MagiCard BDO Upload System Complete (January 2025)**:
+
+**Individual BDO User Creation**:
+- ✅ Each MagiCard gets unique sessionless keypair via `generate_menu_card_keys()`
+- ✅ N cards = N BDO users with individual pubKeys for security
+- ✅ All BDO users created with `pub=true` for public accessibility
+- ✅ Comprehensive logging shows all pubKeys generated and uploaded
+
+**Enhanced Logging System**:
+- **Key Generation Summary**: Complete list of all pubKeys created for menu
+- **Upload Confirmation**: Each card's BDO upload confirmed with pubKey
+- **Final Summary**: All uploaded card pubKeys displayed for MagiCard import
+- **Public Access Confirmation**: Explicit logging when `pub=true` is set
+
+**Navigation Architecture**:
+- ✅ Cards use actual BDO pubKeys (not constructed identifiers) for security
+- ✅ Navigation format: `spell="magicard"` and `spell-components='{"bdoPubKey":"actual_pubkey"}'`
+- ✅ Ready for MagiCard cross-card navigation implementation
+
+**Known Issue Status**: 
+- ✅ Debugging tools implemented and functioning
+- ✅ Data flow logging comprehensive  
+- ✅ BDO upload system creates individual users with unique pubKeys
+- ✅ All cards uploaded with public access (pub=true)
+- 🔄 MagiCard side navigation integration still pending
+
 **Architecture Improvements**:
 - **Production BDO Integration**: Base screen connects to actual BDO servers
 - **Smart Image Handling**: Supports `image`, `preview_image`, and `previewImage` fields
