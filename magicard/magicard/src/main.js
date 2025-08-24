@@ -41,6 +41,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             if (spellType === 'magicard' && spellComponents) {
                 await handleMagicardNavigation(element, spellComponents);
+            } else if (spellType === 'fade-transition') {
+                handleFadeTransition(element);
+            } else if (spellType === 'slide-transition') {
+                handleSlideTransition(element);
+            } else if (spellType === 'master-transition') {
+                handleMasterTransition(element);
+            } else if (spellType === 'fadeTest' || spellType === 'slideTest' || spellType === 'finalTest') {
+                handleTransitionTest(spellType, element);
+            } else if (spellType === 'fade-demo' || spellType === 'slide-demo' || spellType === 'final-demo') {
+                handleTransitionDemo(spellType, element);
+            } else if (spellType.endsWith('-info')) {
+                handleInfoSpell(spellType, element);
             } else {
                 // Default behavior for other spells
                 alert(`🪄 Spell cast: ${spellType || 'unknown'} on ${element.tagName.toLowerCase()}`);
@@ -348,13 +360,13 @@ async function updateBdoPubKeyDisplay() {
         let stackPubKey = '';
         
         if (window.__TAURI__) {
-            // Get the actual public key from sessionless
-            const sessionlessPubKey = await window.__TAURI__.core.invoke('get_public_key');
-            // Create a stack-specific key by combining sessionless key with stack name
-            stackPubKey = `${sessionlessPubKey.substring(0, 20)}_${currentStack.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}`;
+            // Get the real public key from sessionless (no fake keys!)
+            stackPubKey = await window.__TAURI__.core.invoke('get_public_key');
         } else {
-            // Fallback for browser-only mode
-            stackPubKey = `demo_${currentStack.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${Date.now().toString(36)}`;
+            // Web fallback - show error message instead of fake key
+            bdoPubKeyValue.textContent = 'BDO integration requires Tauri backend';
+            bdoPubKeyDisplay.style.display = 'block';
+            return;
         }
         
         // Display the pubkey
@@ -2099,4 +2111,165 @@ function createDemoMenuData(bdoPubKey) {
             bdoPubKey: bdoPubKey
         }
     };
+}
+
+/**
+ * Transition Spell Handlers
+ * These functions handle the interactive transition animations
+ */
+
+/**
+ * Handle fade transition spell
+ */
+function handleFadeTransition(element) {
+    console.log('✨ Casting fade transition spell');
+    
+    // Find the SVG container
+    const svg = element.closest('svg');
+    if (!svg) return;
+    
+    // Find all fade demo elements
+    const fadeOrbs = svg.querySelectorAll('#fadeDemo circle');
+    
+    // Trigger fade animations on each orb with staggered timing
+    fadeOrbs.forEach((orb, index) => {
+        const animations = orb.querySelectorAll('animate[attributeName="opacity"]');
+        if (animations.length >= 2) {
+            // Trigger fade out, then fade in after delay
+            setTimeout(() => {
+                animations[0].beginElement(); // Fade out
+                setTimeout(() => {
+                    animations[1].beginElement(); // Fade in
+                }, 500);
+            }, index * 200); // Stagger by 200ms
+        }
+    });
+}
+
+/**
+ * Handle slide transition spell
+ */
+function handleSlideTransition(element) {
+    console.log('➡️ Casting slide transition spell');
+    
+    // Find the SVG container
+    const svg = element.closest('svg');
+    if (!svg) return;
+    
+    // Find all slide demo elements
+    const slideOrbs = svg.querySelectorAll('#slideDemo circle');
+    
+    // Trigger slide animations on each orb with staggered timing
+    slideOrbs.forEach((orb, index) => {
+        const animation = orb.querySelector('animateTransform[attributeName="transform"]');
+        if (animation) {
+            setTimeout(() => {
+                animation.beginElement();
+            }, index * 100); // Stagger by 100ms
+        }
+    });
+}
+
+/**
+ * Handle master transition spell (combines multiple effects)
+ */
+function handleMasterTransition(element) {
+    console.log('🎭 Casting master transition spell');
+    
+    // Find the SVG container
+    const svg = element.closest('svg');
+    if (!svg) return;
+    
+    // Find all master demo elements
+    const masterOrbs = svg.querySelectorAll('#masterDemo circle');
+    
+    // Trigger all animations on each orb with staggered timing
+    masterOrbs.forEach((orb, index) => {
+        const rotateAnimation = orb.querySelector('animateTransform[attributeName="transform"]');
+        const fadeAnimation = orb.querySelector('animate[attributeName="opacity"]');
+        
+        setTimeout(() => {
+            if (rotateAnimation) rotateAnimation.beginElement();
+            if (fadeAnimation) fadeAnimation.beginElement();
+        }, index * 250); // Stagger by 250ms
+    });
+}
+
+/**
+ * Handle transition test spells (the flashy test buttons)
+ */
+function handleTransitionTest(spellType, element) {
+    console.log(`🧪 Testing ${spellType} transition`);
+    
+    switch (spellType) {
+        case 'fadeTest':
+            // Trigger the main fade transition
+            const fadeElement = element.closest('svg').querySelector('[spell="fade-transition"]');
+            if (fadeElement) handleFadeTransition(fadeElement);
+            break;
+        case 'slideTest':
+            // Trigger the main slide transition
+            const slideElement = element.closest('svg').querySelector('[spell="slide-transition"]');
+            if (slideElement) handleSlideTransition(slideElement);
+            break;
+        case 'finalTest':
+            // Trigger the main master transition
+            const masterElement = element.closest('svg').querySelector('[spell="master-transition"]');
+            if (masterElement) handleMasterTransition(masterElement);
+            break;
+    }
+}
+
+/**
+ * Handle transition demo spells (clicking on demo elements directly)
+ */
+function handleTransitionDemo(spellType, element) {
+    console.log(`🎨 Demo ${spellType} transition`);
+    
+    // Find the SVG container
+    const svg = element.closest('svg');
+    if (!svg) return;
+    
+    switch (spellType) {
+        case 'fade-demo':
+            // Trigger fade on this specific element
+            const fadeAnimation = element.querySelector('animate[attributeName="opacity"]');
+            if (fadeAnimation) {
+                fadeAnimation.beginElement();
+            }
+            break;
+        case 'slide-demo':
+            // Trigger slide on this specific element
+            const slideAnimation = element.querySelector('animateTransform[attributeName="transform"]');
+            if (slideAnimation) {
+                slideAnimation.beginElement();
+            }
+            break;
+        case 'final-demo':
+            // Trigger all animations on this specific element
+            const rotateAnim = element.querySelector('animateTransform[attributeName="transform"]');
+            const fadeAnim = element.querySelector('animate[attributeName="opacity"]');
+            if (rotateAnim) rotateAnim.beginElement();
+            if (fadeAnim) fadeAnim.beginElement();
+            break;
+    }
+}
+
+/**
+ * Handle info spells (informational buttons)
+ */
+function handleInfoSpell(spellType, element) {
+    console.log(`ℹ️ Info spell: ${spellType}`);
+    
+    const infoMessages = {
+        'fade-info': 'This demonstrates fade in/out transition effects using SVG animations.',
+        'chain-info': 'Transition cards can be chained together for complex animation sequences.',
+        'slide-info': 'This demonstrates sliding transition effects using transform animations.',
+        'motion-info': 'Motion effects combine translation, scaling, and rotation transforms.',
+        'master-info': 'Master transitions combine multiple animation types simultaneously.',
+        'complete-info': 'Complete demo showcasing all transition capabilities in MagiCard.'
+    };
+    
+    const message = infoMessages[spellType] || 'Informational element about transition effects.';
+    alert(`ℹ️ ${message}`);
 }

@@ -257,17 +257,26 @@ async fn save_card_svg(stack_name: &str, card_name: &str, svg_content: &str) -> 
         .map_err(|e| format!("Failed to save SVG: {}", e))?;
     
     // Post card to BDO for navigation
-    match post_card_to_bdo(stack_name, card_name, svg_content).await {
-        Ok(bdo_response) => {
-            println!("✅ Posted card to BDO: {}", bdo_response);
+    let bdo_pub_key = match post_card_to_bdo(stack_name, card_name, svg_content).await {
+        Ok(pub_key) => {
+            println!("✅ Posted card to BDO with pubKey: {}...", &pub_key[..12]);
+            Some(pub_key)
         }
         Err(e) => {
             println!("⚠️ Failed to post to BDO (continuing anyway): {}", e);
+            None
         }
-    }
+    };
     
     println!("✅ Saved SVG to: {:?}", file_path);
-    Ok(file_path.to_string_lossy().to_string())
+    
+    // Return both file path and BDO pubKey if available
+    let result = json!({
+        "filePath": file_path.to_string_lossy().to_string(),
+        "bdoPubKey": bdo_pub_key
+    });
+    
+    Ok(result.to_string())
 }
 
 /// Post a card to BDO for cross-card navigation
@@ -280,28 +289,48 @@ async fn post_card_to_bdo(stack_name: &str, card_name: &str, svg_content: &str) 
     
     let bdo = BDO::new(Some(bdo_url), Some(s));
     
-    // Create or get BDO user
-    let _bdo_user = match bdo.create_user(&magicard, &json!({}), &false).await {
+    // Create BDO user for this card
+    let bdo_user = match bdo.create_user(&magicard, &json!({}), &false).await {
         Ok(user) => user,
-        Err(_) => return Err("Failed to create BDO user".to_string()),
+        Err(e) => return Err(format!("Failed to create BDO user: {}", e)),
     };
     
-    // Create card object for BDO
-    let _card_object = json!({
-        "svg": svg_content
-    });
+    println!("✅ Created BDO user: {}", bdo_user.uuid);
     
-    // Create a unique key for this card
-    let card_key = format!("{}_{}", stack_name, card_name)
+    // Create a unique card type identifier
+    let card_type = format!("{}_{}", stack_name, card_name)
         .replace(" ", "_")
         .replace("/", "_")
-        .replace("\\", "_");
+        .replace("\\", "_")
+        .to_lowercase();
     
-    // Post to BDO using HTTP-based approach (since put/get methods are private)
-    // For now, return success - this functionality can be implemented later
-    // with proper BDO API integration or HTTP calls
-    println!("⚠️ BDO integration placeholder - card stored locally only");
-    Ok(card_key)
+    // Get our public key for the BDO object
+    let sessionless_instance = get_sessionless().await?;
+    let our_pub_key = sessionless_instance.public_key().to_hex();
+    
+    // Create card data with proper structure and pub: true
+    let card_data = json!({
+        "cardName": card_name,
+        "cardType": card_type,
+        "bdoPubKey": our_pub_key.clone(),
+        "svgContent": svg_content,
+        "pub": true,
+        "createdAt": chrono::Utc::now().to_rfc3339(),
+        "stackName": stack_name
+    });
+    
+    // Put the card data to BDO
+    match bdo.put(&bdo_user.uuid, &card_type, &card_data, &true).await {
+        Ok(_) => {
+            println!("✅ Successfully posted card to BDO with pubKey: {}...", &our_pub_key[..12]);
+            Ok(our_pub_key)
+        }
+        Err(e) => {
+            let error_msg = format!("Failed to post card to BDO: {}", e);
+            println!("❌ {}", error_msg);
+            Err(error_msg)
+        }
+    }
 }
 
 /// Load SVG content for a card (local fallback)
