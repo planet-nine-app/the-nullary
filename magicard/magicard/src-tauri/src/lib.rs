@@ -217,24 +217,47 @@ async fn list_magistacks() -> Result<Vec<Value>, String> {
 /// Delete a MagiStack
 #[tauri::command]
 async fn delete_magistack(name: &str) -> Result<String, String> {
-    println!("🗑️ Deleting MagiStack: {}", name);
+    println!("🗑️ Deleting MagiStack: '{}'", name);
     
     let app_dir = match std::env::var("HOME") {
         Ok(home) => Path::new(&home).join(".magicard").join("stacks"),
         Err(_) => Path::new(".").join("magicard_data").join("stacks"),
     };
     
+    println!("📁 Looking for stack in directory: {:?}", app_dir);
+    
     let file_path = app_dir.join(format!("{}.json", name));
+    println!("📄 Target file path: {:?}", file_path);
     
     if !file_path.exists() {
-        return Err(format!("Stack '{}' not found", name));
+        println!("❌ Stack file not found at: {:?}", file_path);
+        return Err(format!("Stack '{}' not found at path: {:?}", name, file_path));
     }
     
-    fs::remove_file(&file_path)
-        .map_err(|e| format!("Failed to delete stack: {}", e))?;
-    
-    println!("✅ Deleted MagiStack: {}", name);
-    Ok(format!("Stack '{}' deleted successfully", name))
+    match fs::remove_file(&file_path) {
+        Ok(()) => {
+            println!("✅ Successfully deleted MagiStack file: {:?}", file_path);
+            
+            // Also try to delete associated card directory if it exists
+            let cards_dir = match std::env::var("HOME") {
+                Ok(home) => Path::new(&home).join(".magicard").join("cards").join(name),
+                Err(_) => Path::new(".").join("magicard_data").join("cards").join(name),
+            };
+            
+            if cards_dir.exists() {
+                match fs::remove_dir_all(&cards_dir) {
+                    Ok(()) => println!("✅ Also deleted associated cards directory: {:?}", cards_dir),
+                    Err(e) => println!("⚠️ Could not delete cards directory (continuing anyway): {}", e),
+                }
+            }
+            
+            Ok(format!("Stack '{}' deleted successfully", name))
+        }
+        Err(e) => {
+            println!("❌ Failed to delete file: {}", e);
+            Err(format!("Failed to delete stack: {}", e))
+        }
+    }
 }
 
 /// Save SVG content for a card and post to BDO

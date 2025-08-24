@@ -117,7 +117,7 @@ export function createAppScaffolding(config = {}) {
         posts: appState.posts,
         timestamp: new Date().toISOString()
       };
-      localStorage.setItem(finalConfig.storage.key, JSON.stringify(data));
+      // Skip localStorage to avoid quota issues
     } catch (error) {
       console.warn('⚠️ Could not save to storage:', error);
     }

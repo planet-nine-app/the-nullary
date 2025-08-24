@@ -172,9 +172,8 @@ export async function saveTheme(themeName) {
       await window.allyabase.savePref('rhapsold-theme', themeName);
       console.log(`💾 Saved theme preference: ${themeName}`);
     } else {
-      // Fallback to localStorage
-      localStorage.setItem('rhapsold-theme', themeName);
-      console.log(`💾 Saved theme to localStorage: ${themeName}`);
+      // Skip localStorage to avoid quota issues
+      console.log(`⚠️ Theme not saved - service unavailable and localStorage disabled`);
     }
   } catch (error) {
     console.error('❌ Could not save theme preference:', error);

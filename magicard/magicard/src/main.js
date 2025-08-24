@@ -1466,9 +1466,9 @@ async function deleteCurrentStack() {
     
     try {
         if (window.__TAURI__) {
-            await window.__TAURI__.core.invoke('delete_magistack', {
-                name: currentStack.name
-            });
+            console.log(`🗑️ Attempting to delete stack: "${currentStack.name}"`);
+            const result = await window.__TAURI__.core.invoke('delete_magistack', { name: currentStack.name });
+            console.log('✅ Delete result:', result);
         }
         
         // Remove from local array
@@ -1484,6 +1484,10 @@ async function deleteCurrentStack() {
         
         // Update UI
         updateStackList();
+        
+        // Also clear the stack list selection styling
+        const stackItems = document.querySelectorAll('.stack-item');
+        stackItems.forEach(item => item.classList.remove('selected'));
         
         // Clear preview
         const previewContent = document.getElementById('preview-content');

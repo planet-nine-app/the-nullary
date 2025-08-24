@@ -83,7 +83,7 @@ async function initializeEnvironment() {
       const envFromRust = await invoke('get_env_config');
       if (envFromRust && ['dev', 'test', 'local'].includes(envFromRust)) {
         console.log(`🌍 Environment from Rust: ${envFromRust}`);
-        localStorage.setItem('nullary-env', envFromRust);
+        // Removed localStorage to avoid quota issues
         return envFromRust;
       }
     }
@@ -3932,13 +3932,13 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
             
             console.log(`✅ Card stored in BDO: ${card.name} -> ${cardBdoResult}`);
           } else {
-            console.log('⚠️ No invoke available, storing card locally only');
-            localStorage.setItem(`menu-card-${card.cardBdoPubKey}`, cardSvg);
+            console.log('⚠️ No invoke available, skipping local storage (quota limits)');
+            // Skip localStorage to avoid quota exceeded errors
           }
         } catch (error) {
-          console.warn(`⚠️ BDO storage failed for card ${card.name}, storing locally:`, error);
-          // Fallback to local storage
-          localStorage.setItem(`menu-card-${card.cardBdoPubKey}`, cardSvg);
+          console.warn(`⚠️ BDO storage failed for card ${card.name}:`, error);
+          // Skip localStorage fallback to avoid quota exceeded errors
+          console.log('Skipping localStorage fallback due to quota limits');
         }
         
         createdCards.push({
@@ -4034,8 +4034,8 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         catalogForBDO.bdoPubKey = bdoPubKey;
         catalogForBDO.metadata.bdoPubKey = bdoPubKey;
         
-        // Also store in localStorage as backup
-        localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
+        // Skip localStorage backup to avoid quota exceeded errors
+        console.log('Skipping localStorage backup due to quota limits');
         
       } else {
         console.log('🎯 MAGICARD_WORKFLOW: ⚠️ No invoke available, using demo key and localStorage');
@@ -4045,8 +4045,8 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         catalogForBDO.bdoPubKey = bdoPubKey;
         catalogForBDO.metadata.bdoPubKey = bdoPubKey;
         
-        // Store locally with demo key
-        localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
+        // Skip localStorage to avoid quota exceeded errors
+        console.log('Skipping localStorage (demo mode) due to quota limits');
         bdoResult = { success: true, pubKey: bdoPubKey, message: 'Stored locally with demo key (invoke unavailable)' };
       }
     } catch (error) {
@@ -4060,9 +4060,9 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       catalogForBDO.bdoPubKey = bdoPubKey;
       catalogForBDO.metadata.bdoPubKey = bdoPubKey;
       
-      // Store locally with demo key
-      localStorage.setItem(`menu-catalog-${menuTitle}-${Date.now()}`, JSON.stringify(catalogForBDO));
-      bdoResult = { success: true, pubKey: bdoPubKey, message: 'Stored locally due to BDO error' };
+      // Skip localStorage to avoid quota exceeded errors
+      console.log('Skipping localStorage (error fallback) due to quota limits');
+      bdoResult = { success: true, pubKey: bdoPubKey, message: 'BDO error, localStorage skipped for quota' };
     }
     
     // Step 6: Create a catalog product in Sanora as well (for marketplace listing)

@@ -237,9 +237,8 @@ function createClient(config) {
         return response;
       } catch (error) {
         console.error('❌ Failed to save preference:', error);
-        // Fallback to localStorage
-        localStorage.setItem(`rhapsold-${key}`, JSON.stringify(value));
-        return { success: true, fallback: true };
+        // Skip localStorage fallback to avoid quota issues
+        return { success: false, error: 'Service unavailable' };
       }
     },
     
@@ -273,9 +272,8 @@ function createClient(config) {
       } catch (error) {
         console.error('❌ Failed to save BDO:', error);
         // Fallback to localStorage
-        const id = Date.now().toString();
-        localStorage.setItem(`rhapsold-post-${id}`, JSON.stringify(data));
-        return { success: true, id, fallback: true };
+        // Skip localStorage fallback to avoid quota issues
+        return { success: false, error: 'Service unavailable' };
       }
     },
     
@@ -337,8 +335,8 @@ function createOfflineClient() {
   
   return {
     async savePref(key, value) {
-      localStorage.setItem(`rhapsold-${key}`, JSON.stringify(value));
-      return { success: true, offline: true };
+      // Skip localStorage to avoid quota issues
+      return { success: false, error: 'Offline storage disabled' };
     },
     
     async getPref(key) {
@@ -347,14 +345,8 @@ function createOfflineClient() {
     },
     
     async saveBDO(data) {
-      const id = Date.now().toString();
-      localStorage.setItem(`rhapsold-post-${id}`, JSON.stringify({
-        ...data,
-        id,
-        created: new Date().toISOString(),
-        offline: true
-      }));
-      return { success: true, id, offline: true };
+      // Skip localStorage to avoid quota issues
+      return { success: false, error: 'Offline storage disabled' };
     },
     
     async getBDO(id) {
