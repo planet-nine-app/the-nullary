@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Menu CSV Processing</title>
+</head>
+<body>
+    <h1>Test Menu CSV Processing</h1>
+    <div id="results"></div>
+
+    <script src="ninefy/src/utils/menu-catalog-utils.js"></script>
+    <script>
+        // Your exact CSV data
+        const csvData = `,rider,time span,product,,,
+,adult,two-hour,adult+two-hour$250,,,
+,youth,day,adult+day$500,,,
+,reduced,month,adult+month$10000,,,
+,,,youth+two-hour$100,,,
+,,,youth+day$200,,,
+,,,youth+month$2000,,,
+,,,reduced+two-hour$150,,,
+,,,reduced+day$250,,,
+,,,reduced+month$2500,,,`;
+
+        console.log('🧪 Testing CSV parsing with your data...');
+        console.log('📄 Input CSV:');
+        console.log(csvData);
+
+        try {
+            const menuTree = window.MenuCatalogUtils.parseCSVToMenuTree(csvData);
+            console.log('✅ Parsed menu tree:', menuTree);
+            
+            // Display results
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <h2>Parsed Menu Structure:</h2>
+                <pre>${JSON.stringify(menuTree, null, 2)}</pre>
+            `;
+            
+            // Test validation
+            const validation = window.MenuCatalogUtils.validateMenuTree(menuTree);
+            console.log('🔍 Validation result:', validation);
+            
+        } catch (error) {
+            console.error('❌ Error parsing CSV:', error);
+            document.getElementById('results').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+    </script>
+</body>
+</html>

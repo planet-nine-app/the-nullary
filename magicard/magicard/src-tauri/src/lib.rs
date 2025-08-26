@@ -342,8 +342,8 @@ async fn post_card_to_bdo(stack_name: &str, card_name: &str, svg_content: &str) 
         "stackName": stack_name
     });
     
-    // Put the card data to BDO
-    match bdo.put(&bdo_user.uuid, &card_type, &card_data, &true).await {
+    // Update BDO with the card data using the proper public method
+    match bdo.update_bdo(&bdo_user.uuid, &card_type, &card_data, &true).await {
         Ok(_) => {
             println!("✅ Successfully posted card to BDO with pubKey: {}...", &our_pub_key[..12]);
             Ok(our_pub_key)

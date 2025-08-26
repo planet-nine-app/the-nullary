@@ -36,6 +36,31 @@ MagiCard is a **fully functional interactive SVG card stack application** built 
 4. **Display card** in preview with spell interactions enabled
 5. **Auto-add to stack** for future local access
 
+### **🆕 Menu Navigation System (January 2025)**:
+**Streamlined Selector-to-Selector Navigation** for hierarchical menu cards:
+
+- **Direct Column Navigation**: Menu selector cards navigate directly to the next column selector
+- **No Intermediate Cards**: Eliminated "selection confirmation" cards for cleaner flow
+- **Option Button Integration**: Each selector displays all options (adult, youth, reduced) as clickable buttons
+- **Unified Navigation Target**: All options on a selector navigate to the same next column
+- **Sequential Flow**: Left-to-right column progression: Selector → Next Selector → Products
+
+**Menu Card Types**:
+- **🗂️ Menu Selector Cards**: Display options with navigation to next column
+- **🛍️ Product Cards**: Final destination showing purchasable items
+
+**Navigation Example**:
+```xml
+<!-- Menu selector card with options -->
+<rect spell="magicard" spell-components='{"bdoPubKey":"next_selector_pubkey"}'
+      x="50" y="120" width="200" height="40" rx="8" 
+      fill="#3498db" class="spell-element">
+  <animate attributeName="fill" values="#3498db;#ecf0f1;#3498db" dur="2s" repeatCount="indefinite"/>
+</rect>
+<text spell="magicard" spell-components='{"bdoPubKey":"next_selector_pubkey"}'
+      x="150" y="145" text-anchor="middle" fill="white" font-weight="bold">adult</text>
+```
+
 ### **Technical Implementation**:
 - **Backend Function**: `get_card_from_bdo(bdoPubKey)` with comprehensive authentication
 - **Frontend Function**: `fetchAndDisplayCardFromBDO(bdoPubKey)` with error handling

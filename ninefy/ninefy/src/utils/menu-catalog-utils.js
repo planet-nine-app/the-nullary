@@ -77,6 +77,9 @@ function parseCSVToMenuTree(csvContent) {
     catalog.metadata.totalProducts = catalog.products.length;
     catalog.metadata.menuCount = Object.keys(catalog.menus).length;
 
+    // Store the original menuHeaders order for proper navigation
+    catalog.menuHeaders = menuHeaders;
+
     console.log(`✅ Parsed ${catalog.metadata.totalProducts} products across ${catalog.metadata.menuCount} menu levels`);
     console.log('🗂️ Menu structure:', JSON.stringify(catalog.menus, null, 2));
     
@@ -206,13 +209,16 @@ function parseProductValue(productValue) {
 function addToHierarchicalMenuTree(catalog, rowData, menuHeaders) {
   const { menuSelections, productData, hasMenuData, hasProductData } = rowData;
 
-  // Process menu structure building
+  // Process menu structure building from explicit menu columns
   if (hasMenuData) {
     buildMenuStructure(catalog, menuSelections, menuHeaders);
   }
 
-  // Process product data
+  // Process product data and build menu structure from product selections
   if (hasProductData && productData) {
+    // Build menu structure from product selections
+    buildMenuStructureFromProductSelections(catalog, productData, menuHeaders);
+
     const product = {
       id: productData.productId,
       name: productData.productName,
@@ -262,6 +268,57 @@ function buildMenuStructure(catalog, menuSelections, menuHeaders) {
         catalog.menus[headerName][selection] = {
           subMenu: 'product'
         };
+      }
+    }
+  }
+}
+
+/**
+ * Build menu structure from product selections (e.g. "adult+two-hour" creates both rider and time span menus)
+ * @param {Object} catalog - The catalog object to modify
+ * @param {Object} productData - Parsed product data with selections array
+ * @param {Array} menuHeaders - Menu header information (e.g., [{name: "rider", index: 1}, {name: "time span", index: 2}])
+ */
+function buildMenuStructureFromProductSelections(catalog, productData, menuHeaders) {
+  const { selections } = productData;
+  
+  // Map product selections to menu headers based on position
+  // E.g., "adult+two-hour$250" -> selections: ["adult", "two-hour"]
+  // menuHeaders: [{name: "rider", index: 1}, {name: "time span", index: 2}]
+  // Result: rider="adult", time span="two-hour"
+  
+  console.log(`🔗 Building menu structure from product selections: [${selections.join(', ')}]`);
+  
+  for (let i = 0; i < menuHeaders.length && i < selections.length; i++) {
+    const currentHeader = menuHeaders[i];
+    const nextHeader = menuHeaders[i + 1];
+    const headerName = currentHeader.name;
+    const selection = selections[i];
+
+    if (!selection || selection === 'any') continue;
+
+    console.log(`📋 Processing menu level "${headerName}" with selection "${selection}"`);
+
+    // Initialize menu if it doesn't exist
+    if (!catalog.menus[headerName]) {
+      catalog.menus[headerName] = {};
+      console.log(`🆕 Created new menu level: ${headerName}`);
+    }
+
+    // Add the selection to this menu level
+    if (!catalog.menus[headerName][selection]) {
+      if (nextHeader && i + 1 < selections.length) {
+        // Has next level - point to next menu
+        catalog.menus[headerName][selection] = {
+          subMenu: nextHeader.name
+        };
+        console.log(`🔗 ${headerName}["${selection}"] -> points to next menu: ${nextHeader.name}`);
+      } else {
+        // Last level - point to product
+        catalog.menus[headerName][selection] = {
+          subMenu: 'product'
+        };
+        console.log(`🛍️ ${headerName}["${selection}"] -> points to product`);
       }
     }
   }

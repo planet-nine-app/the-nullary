@@ -388,6 +388,15 @@ Ninefy is now a **fully functional digital goods marketplace** with complete pur
 - ✅ **BDO Storage**: Complete menu JSON stored as public data in BDO
 - ✅ **Visual Menu Display**: Tree structure display in product details view
 
+**🆕 Streamlined Menu Navigation System (Latest - January 2025)**:
+- ✅ **Direct Selector-to-Selector Navigation**: Menu cards navigate directly between column selectors
+- ✅ **No Intermediate Option Cards**: Removed unnecessary "selection confirmation" cards  
+- ✅ **Clean Sequential Flow**: Selector → Next Selector → Products (left-to-right column sequence)
+- ✅ **Unified Option Navigation**: All options on a selector card navigate to the same next selector
+- ✅ **Preserved Menu Choices**: Selector cards display all options (adult, youth, reduced) as clickable buttons
+- ✅ **Consistent Data Structure**: Fixed menuHeaders format mismatch between CSV parser and navigation logic
+- ✅ **Enhanced Debug Logging**: Complete card indexing and navigation flow tracking for development
+
 ## 🆕 **Latest Update - January 2025: Complete MagiCard Integration**
 
 **🪄 Revolutionary MagiCard Menu Navigation System**: The menu catalog system now generates **beautiful, interactive MagiCard-compatible SVG cards** for seamless cross-platform navigation!
@@ -425,10 +434,11 @@ function createMenuLevelSVG(card, nextCard, menuTitle, index, total, menuTree, a
 - **Loading States**: Beautiful loading UI during BDO operations
 
 ### **Navigation Hierarchy**:
-1. **"Select rider"** → Links to individual rider cards (adult, youth, reduced)
-2. **"rider: adult"** → Shows time span options specific to adult pricing
-3. **"time span: two-hour"** → Displays matching products with purchase options
-4. **Back Navigation** → Returns to previous level with spell-powered navigation
+1. **"Select rider"** → Navigate directly to **"Select time span"** (all rider options lead to same destination)
+2. **"Select time span"** → Navigate directly to **Products** (all time span options lead to final products)
+3. **Back Navigation** → Returns to previous level with spell-powered navigation
+
+**Streamlined Flow**: No intermediate "rider: adult" or "time span: two-hour" confirmation cards - users make selections directly on selector cards and navigate seamlessly to the next column.
 
 ### **Technical Achievements**:
 - **✅ Fixed Navigation Errors**: Resolved `ReferenceError` issues with `allCards` parameter
@@ -443,6 +453,13 @@ function createMenuLevelSVG(card, nextCard, menuTitle, index, total, menuTree, a
 - **CSV Parser**: Menu-catalog-utils.js with parseCSVToMenuTree() and validation
 - **Display System**: createMenuStructureDisplay() for visual menu trees
 - **Form Configuration**: Updated product-forms-config.json and product-display-config.json
+
+**🔧 Navigation System Technical Fixes**:
+- **Data Structure Consistency**: Fixed menuHeaders format mismatch (array of strings vs objects with .name property)
+- **Direct Option Display**: Updated `createMenuSelectorSVG()` to generate option buttons directly from selector data
+- **Column Order Preservation**: Enhanced CSV parser to maintain left-to-right column sequence via `catalog.menuHeaders`
+- **Simplified Card Logic**: Removed intermediate option card creation, keeping only selectors and products
+- **Unified Navigation**: All options on a selector card navigate to the same next column selector
 
 **CSV Format Example**:
 ```csv

@@ -67,6 +67,27 @@ document.addEventListener('DOMContentLoaded', async function() {
         await initializeMainScreen();
         
         console.log('✅ MagiCard initialization complete!');
+        
+        // Add cleanup utility to window for browser console access
+        window.cleanupMagiCardStorage = function() {
+            console.log('🧹 Cleaning up all MagiCard localStorage...');
+            const count = cleanupAllMenuLocalStorage();
+            console.log(`✅ Cleaned up ${count} localStorage entries`);
+            return count;
+        };
+        
+        // Add delete test utility for debugging
+        window.testDeleteFunction = function() {
+            console.log('🧪 Testing delete function...');
+            console.log('Current stacks:', stacks);
+            console.log('Current stack:', currentStack);
+            deleteCurrentStack();
+        };
+        
+        console.log('💡 Browser console utilities available:');
+        console.log('  - cleanupMagiCardStorage()');
+        console.log('  - testDeleteFunction()');
+        
     } catch (error) {
         console.error('❌ Error during initialization:', error);
         // Try to continue with basic functionality
@@ -74,6 +95,253 @@ document.addEventListener('DOMContentLoaded', async function() {
         await initializeMainScreen();
     }
 });
+
+/**
+ * Show a custom confirmation dialog (Tauri-compatible)
+ * @param {string} title - Dialog title
+ * @param {string} message - Dialog message
+ * @param {string} confirmText - Confirm button text
+ * @param {string} cancelText - Cancel button text
+ * @returns {Promise<boolean>} - True if confirmed, false if cancelled
+ */
+function showCustomConfirm(title, message, confirmText = 'OK', cancelText = 'Cancel') {
+    return new Promise((resolve) => {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        `;
+
+        // Create modal dialog
+        const modal = document.createElement('div');
+        modal.className = 'custom-modal';
+        modal.style.cssText = `
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 400px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+
+        modal.innerHTML = `
+            <div class="modal-title" style="
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 16px;
+            ">${title}</div>
+            <div class="modal-message" style="
+                color: #f8f9fa;
+                font-size: 16px;
+                line-height: 1.5;
+                margin-bottom: 24px;
+            ">${message}</div>
+            <div class="modal-buttons" style="
+                display: flex;
+                gap: 12px;
+                justify-content: center;
+            ">
+                <button class="modal-cancel-btn" style="
+                    background: #95a5a6;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: background 0.2s;
+                ">${cancelText}</button>
+                <button class="modal-confirm-btn" style="
+                    background: #e74c3c;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: background 0.2s;
+                ">${confirmText}</button>
+            </div>
+        `;
+
+        // Add hover effects
+        const cancelBtn = modal.querySelector('.modal-cancel-btn');
+        const confirmBtn = modal.querySelector('.modal-confirm-btn');
+        
+        cancelBtn.addEventListener('mouseenter', () => cancelBtn.style.background = '#7f8c8d');
+        cancelBtn.addEventListener('mouseleave', () => cancelBtn.style.background = '#95a5a6');
+        
+        confirmBtn.addEventListener('mouseenter', () => confirmBtn.style.background = '#c0392b');
+        confirmBtn.addEventListener('mouseleave', () => confirmBtn.style.background = '#e74c3c');
+
+        // Handle button clicks
+        const cleanup = () => {
+            document.body.removeChild(overlay);
+        };
+
+        cancelBtn.addEventListener('click', () => {
+            cleanup();
+            resolve(false);
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            cleanup();
+            resolve(true);
+        });
+
+        // Handle escape key
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') {
+                cleanup();
+                document.removeEventListener('keydown', handleKeydown);
+                resolve(false);
+            }
+        };
+        document.addEventListener('keydown', handleKeydown);
+
+        // Handle overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup();
+                resolve(false);
+            }
+        });
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        // Focus the confirm button for keyboard navigation
+        confirmBtn.focus();
+    });
+}
+
+/**
+ * Show a custom alert dialog (Tauri-compatible)
+ * @param {string} title - Dialog title
+ * @param {string} message - Dialog message
+ * @param {string} buttonText - Button text
+ * @returns {Promise<void>}
+ */
+function showCustomAlert(title, message, buttonText = 'OK') {
+    return new Promise((resolve) => {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        `;
+
+        // Create modal dialog
+        const modal = document.createElement('div');
+        modal.className = 'custom-modal';
+        modal.style.cssText = `
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 300px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+
+        modal.innerHTML = `
+            <div class="modal-title" style="
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 16px;
+            ">${title}</div>
+            <div class="modal-message" style="
+                color: #f8f9fa;
+                font-size: 16px;
+                line-height: 1.5;
+                margin-bottom: 24px;
+            ">${message}</div>
+            <div class="modal-buttons" style="
+                display: flex;
+                justify-content: center;
+            ">
+                <button class="modal-ok-btn" style="
+                    background: #3498db;
+                    color: white;
+                    border: none;
+                    padding: 10px 24px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: background 0.2s;
+                ">${buttonText}</button>
+            </div>
+        `;
+
+        // Add hover effect
+        const okBtn = modal.querySelector('.modal-ok-btn');
+        okBtn.addEventListener('mouseenter', () => okBtn.style.background = '#2980b9');
+        okBtn.addEventListener('mouseleave', () => okBtn.style.background = '#3498db');
+
+        // Handle button clicks
+        const cleanup = () => {
+            document.body.removeChild(overlay);
+        };
+
+        okBtn.addEventListener('click', () => {
+            cleanup();
+            resolve();
+        });
+
+        // Handle escape key and enter key
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+                cleanup();
+                document.removeEventListener('keydown', handleKeydown);
+                resolve();
+            }
+        };
+        document.addEventListener('keydown', handleKeydown);
+
+        // Handle overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                cleanup();
+                resolve();
+            }
+        });
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        
+        // Focus the OK button for keyboard navigation
+        okBtn.focus();
+    });
+}
 
 /**
  * Load all MagiStacks from storage
@@ -295,6 +563,9 @@ async function selectStack(stack) {
     const actionButtons = document.getElementById('action-buttons');
     if (actionButtons) {
         actionButtons.style.display = 'flex';
+        console.log('✅ Action buttons shown (delete button should be visible)');
+    } else {
+        console.log('❌ Action buttons element not found');
     }
     
     // Show and update BDO pubkey display
@@ -1460,9 +1731,31 @@ async function duplicateCurrentStack() {
  * Delete the current stack
  */
 async function deleteCurrentStack() {
-    if (!currentStack) return;
+    console.log('🎯 DELETE: Function called');
+    console.log('🎯 DELETE: Current stack:', currentStack);
     
-    if (!confirm(`Are you sure you want to delete "${currentStack.name}"? This action cannot be undone.`)) return;
+    if (!currentStack) {
+        console.log('❌ DELETE: No current stack selected');
+        await showCustomAlert('No Stack Selected', 'Please select a stack to delete first.');
+        return;
+    }
+    
+    console.log(`🎯 DELETE: Confirming deletion of stack: "${currentStack.name}"`);
+    
+    // Use custom modal instead of confirm() for Tauri compatibility
+    const confirmed = await showCustomConfirm(
+        'Delete Stack', 
+        `Are you sure you want to delete "${currentStack.name}"? This action cannot be undone.`,
+        'Delete',
+        'Cancel'
+    );
+    
+    if (!confirmed) {
+        console.log('🎯 DELETE: User cancelled deletion');
+        return;
+    }
+    
+    console.log('🎯 DELETE: User confirmed deletion, proceeding...');
     
     try {
         if (window.__TAURI__) {
@@ -1470,6 +1763,10 @@ async function deleteCurrentStack() {
             const result = await window.__TAURI__.core.invoke('delete_magistack', { name: currentStack.name });
             console.log('✅ Delete result:', result);
         }
+        
+        // Clean up localStorage entries related to this stack
+        console.log(`🧹 Cleaning up localStorage for stack: "${currentStack.name}"`);
+        cleanupLocalStorageForStack(currentStack.name);
         
         // Remove from local array
         const index = stacks.findIndex(s => s.name === currentStack.name);
@@ -1517,6 +1814,87 @@ async function deleteCurrentStack() {
         console.error('❌ Error deleting stack:', error);
         alert('Failed to delete stack. Please try again.');
     }
+}
+
+/**
+ * Clean up localStorage entries related to a specific stack
+ * @param {string} stackName - The name of the stack being deleted
+ */
+function cleanupLocalStorageForStack(stackName) {
+    const keysToDelete = [];
+    
+    // Find all localStorage keys related to this stack
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        
+        // Check for various patterns that might be related to this stack
+        if (key && (
+            // Menu catalog data
+            key.startsWith('menu-catalog-') ||
+            // Menu card data  
+            key.startsWith('menu-card-') ||
+            // Stack name references
+            key.includes(stackName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()) ||
+            // Any key containing the stack name
+            key.includes(stackName)
+        )) {
+            // Verify this key is actually related to our stack
+            try {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    const parsedData = JSON.parse(data);
+                    
+                    // Check if the data references this stack
+                    if (parsedData.stackName === stackName ||
+                        parsedData.metadata?.stackName === stackName ||
+                        parsedData.title === stackName) {
+                        keysToDelete.push(key);
+                        console.log(`🗑️ Marking localStorage key for deletion: ${key}`);
+                    }
+                }
+            } catch (e) {
+                // If it's not JSON, check if the key pattern strongly suggests it's related
+                if (key.includes(stackName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase())) {
+                    keysToDelete.push(key);
+                    console.log(`🗑️ Marking non-JSON localStorage key for deletion: ${key}`);
+                }
+            }
+        }
+    }
+    
+    // Delete all identified keys
+    keysToDelete.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`✅ Deleted localStorage key: ${key}`);
+    });
+    
+    console.log(`🧹 Cleaned up ${keysToDelete.length} localStorage entries for stack: "${stackName}"`);
+}
+
+/**
+ * Clean up all menu-related localStorage entries (utility function)
+ */
+function cleanupAllMenuLocalStorage() {
+    const keysToDelete = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        
+        if (key && (
+            key.startsWith('menu-catalog-') ||
+            key.startsWith('menu-card-')
+        )) {
+            keysToDelete.push(key);
+        }
+    }
+    
+    keysToDelete.forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`✅ Deleted menu localStorage key: ${key}`);
+    });
+    
+    console.log(`🧹 Cleaned up ${keysToDelete.length} menu localStorage entries`);
+    return keysToDelete.length;
 }
 
 /**

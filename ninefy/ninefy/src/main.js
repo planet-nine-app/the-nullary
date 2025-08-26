@@ -3488,33 +3488,37 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index) {
   const cardWidth = 300;
   const cardHeight = 400;
   
-  // Find cards for each option in this selector
+  // Find the next selector card for navigation (all options go to the same next selector)
+  const nextSelectorCard = allCards.find(c => 
+    c.type === 'menu-selector' && 
+    c !== card && 
+    allCards.indexOf(c) > allCards.indexOf(card)
+  );
+  
+  const nextBdoPubKey = nextSelectorCard ? nextSelectorCard.cardBdoPubKey : null;
+  console.log(`🔗 Selector "${card.name}" will navigate to: ${nextSelectorCard ? nextSelectorCard.name : 'products'}`);
+  
+  // Create option buttons directly from the selector card's options (no need for option cards)
   const optionButtons = card.options.map((option, optIndex) => {
-    // Find the card for this option - look for menu-option cards that match this level and option
-    const optionCard = allCards.find(c => 
-      c.type === 'menu-option' && 
-      c.level === card.level && 
-      c.option === option &&
-      !c.parentSelection // Find the base option card without parent context
-    );
-    
-    if (!optionCard) {
-      console.warn(`⚠️ No option card found for level: ${card.level}, option: ${option}`);
-      return '';
-    }
+    console.log(`🔘 Creating option button for: ${option}`);
     
     const y = 120 + (optIndex * 50);
     const buttonColor = optIndex % 2 === 0 ? '#3498db' : '#9b59b6';
     
+    // All options navigate to the next selector (or products if this is the last selector)
+    const navigationComponents = nextBdoPubKey 
+      ? `spell="magicard" spell-components='{"bdoPubKey":"${nextBdoPubKey}"}'`
+      : ''; // No navigation if no next card
+    
     return `
-      <rect spell="magicard" spell-components='{"bdoPubKey":"${optionCard.cardBdoPubKey}"}'
+      <rect ${navigationComponents}
             x="50" y="${y}" width="200" height="40" rx="8" 
             fill="${buttonColor}" stroke="${buttonColor}" 
             style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;" 
             class="spell-element">
         <animate attributeName="fill" values="${buttonColor};#ecf0f1;${buttonColor}" dur="2s" repeatCount="indefinite"/>
       </rect>
-      <text spell="magicard" spell-components='{"bdoPubKey":"${optionCard.cardBdoPubKey}"}'
+      <text ${navigationComponents}
             x="150" y="${y + 25}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" 
             class="spell-element" 
             style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;">
@@ -3687,6 +3691,67 @@ function createMenuLevelSVG(card, nextCard, menuTitle, index, total, menuTree, a
   return svgContent;
 }
 
+/**
+ * Find the next logical card for navigation based on menu hierarchy
+ * @param {Object} currentCard - The current card
+ * @param {Array} allCards - All available cards
+ * @param {Array} menuHeaders - Menu header information
+ * @returns {Object|null} Next card for navigation
+ */
+function findNextLogicalCard(currentCard, allCards, menuHeaders) {
+  // For selector cards, navigate directly to next selector or products
+  if (currentCard.type === 'menu-selector') {
+    // Find the current menu level index in menuHeaders (these are ordered left to right)
+    const currentLevelIndex = menuHeaders.findIndex(h => h.name === currentCard.level);
+    
+    console.log(`🔍 Current selector "${currentCard.name}" is at menu level index ${currentLevelIndex} (${currentCard.level})`);
+    console.log(`🔍 Menu headers sequence:`, menuHeaders.map(h => h.name));
+    
+    // Navigate to the next menu column (left to right)
+    if (currentLevelIndex !== -1 && currentLevelIndex + 1 < menuHeaders.length) {
+      // Find the selector for the next menu column
+      const nextLevelName = menuHeaders[currentLevelIndex + 1].name;
+      const nextSelector = allCards.find(c => 
+        c.type === 'menu-selector' && c.level === nextLevelName
+      );
+      
+      if (nextSelector) {
+        console.log(`🔗 ${currentCard.name} → ${nextSelector.name} (next menu column)`);
+        return nextSelector;
+      } else {
+        console.log(`⚠️ Could not find selector for next menu level: ${nextLevelName}`);
+        console.log(`🔍 Available selectors:`, allCards.filter(c => c.type === 'menu-selector').map(c => `"${c.name}" (level: ${c.level})`));
+      }
+    } else {
+      // Last menu column - navigate to product(s)
+      const firstProduct = allCards.find(c => c.type === 'product');
+      if (firstProduct) {
+        console.log(`🔗 ${currentCard.name} → ${firstProduct.name} (reached product column)`);
+        return firstProduct;
+      } else {
+        console.log(`⚠️ No products found after last menu column`);
+      }
+    }
+  }
+  
+  // For product cards, navigate to next product or back to menu
+  if (currentCard.type === 'product') {
+    // Find next product in sequence
+    const currentIndex = allCards.findIndex(c => c === currentCard);
+    const nextProduct = allCards.find((c, index) => 
+      index > currentIndex && c.type === 'product'
+    );
+    
+    if (nextProduct) {
+      console.log(`🔗 ${currentCard.name} → ${nextProduct.name} (next product)`);
+      return nextProduct;
+    }
+  }
+  
+  console.log(`🔗 ${currentCard.name} → no next card found`);
+  return null;
+}
+
 async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
   console.log('🍽️ Starting menu catalog processing...');
   
@@ -3768,12 +3833,15 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     
     // Add menu hierarchy cards (selector cards + option cards)
     console.log('🗂️ Analyzing menu levels for card creation...');
-    const menuHeaders = Object.keys(menuTree.menus);
-    console.log(`📋 Found menu levels: ${menuHeaders.join(', ')}`);
+    
+    // Extract menu headers in proper order from the original CSV metadata
+    // Use the preserved menuHeaders order from the CSV parser to maintain left-to-right column sequence
+    const menuHeaders = menuTree.menuHeaders || Object.keys(menuTree.menus).map(menuLevel => ({ name: menuLevel }));
+    console.log(`📋 Found menu levels in order: ${menuHeaders.map(h => h.name).join(', ')}`);
     
     // First: Create top-level menu selector cards for each menu level
     for (let i = 0; i < menuHeaders.length; i++) {
-      const menuLevel = menuHeaders[i];
+      const menuLevel = menuHeaders[i].name;
       const menuOptions = Object.keys(menuTree.menus[menuLevel]);
       
       // Create a selector card for this menu level (e.g., "Select rider type")
@@ -3797,44 +3865,8 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       console.log(`📑 Created selector card: ${menuSelectorCard.name} with options: ${menuOptions.join(', ')}`);
     }
     
-    // Second: Create option-specific cards for each menu level
-    for (const menuLevel of menuHeaders) {
-      const menuOptions = Object.keys(menuTree.menus[menuLevel]);
-      console.log(`📑 Menu level "${menuLevel}" has options: ${menuOptions.join(', ')}`);
-      
-      for (const option of menuOptions) {
-        // Create a card for each menu option
-        const cardInfo = {
-          type: 'menu-option',
-          level: menuLevel,
-          option: option,
-          name: `${menuLevel}: ${option}`,
-          isMenu: true,
-          menuData: menuTree.menus[menuLevel][option]
-        };
-        allCardsNeeded.push(cardInfo);
-        
-        // If this menu has sub-menus, create state-aware cards
-        if (menuTree.menus[menuLevel][option].subMenu) {
-          const subMenuLevel = menuTree.menus[menuLevel][option].subMenu;
-          if (menuTree.menus[subMenuLevel]) {
-            const subMenuOptions = Object.keys(menuTree.menus[subMenuLevel]);
-            for (const subOption of subMenuOptions) {
-              const stateAwareCard = {
-                type: 'menu-option',
-                level: subMenuLevel,
-                option: subOption,
-                name: `${subMenuLevel}: ${subOption} (after ${option})`,
-                isMenu: true,
-                parentSelection: { level: menuLevel, option: option },
-                menuData: menuTree.menus[subMenuLevel][subOption]
-              };
-              allCardsNeeded.push(stateAwareCard);
-            }
-          }
-        }
-      }
-    }
+    // Skip creating individual option cards - navigation goes directly from selector to selector
+    console.log('🚫 Skipping individual option cards - using selector-to-selector navigation');
     
     // Add product cards
     console.log('🛍️ Adding product cards...');
@@ -3897,7 +3929,16 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     console.log('🎨 Creating SVG cards with navigation...');
     for (let i = 0; i < allCardsNeeded.length; i++) {
       const card = allCardsNeeded[i];
-      const nextCard = allCardsNeeded[i + 1]; // For navigation
+      const nextCard = findNextLogicalCard(card, allCardsNeeded, menuHeaders); // Smart navigation
+      
+      // Debug: Show card position and navigation
+      console.log(`🎯 Card ${i}: "${card.name}" (type: ${card.type}, level: ${card.level || 'none'})`);
+      if (nextCard) {
+        const nextIndex = allCardsNeeded.findIndex(c => c === nextCard);
+        console.log(`🎯   → Links to card ${nextIndex}: "${nextCard.name}" (type: ${nextCard.type})`);
+      } else {
+        console.log(`🎯   → Links to: none`);
+      }
       
       try {
         let cardSvg = '';
@@ -3905,12 +3946,12 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         if (card.type === 'menu-selector') {
           console.log(`🗂️ Creating menu selector card: ${card.name}`);
           cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i);
-        } else if (card.type === 'menu-option' || card.type === 'menu') {
-          console.log(`🗂️ Creating menu option card: ${card.name}`);
-          cardSvg = createMenuLevelSVG(card, nextCard, menuTitle, i, allCardsNeeded.length, menuTree, allCardsNeeded);
-        } else {
+        } else if (card.type === 'product') {
           console.log(`🛍️ Creating product card: ${card.name} ($${(card.price / 100).toFixed(2)})`);
           cardSvg = createMenuItemSVG(card.productData, nextCard?.productData, menuTitle, i, allCardsNeeded.length);
+        } else {
+          console.log(`⚠️ Unknown card type: ${card.type} for card: ${card.name}`);
+          continue;
         }
         
         // Store the card in BDO with individual user
