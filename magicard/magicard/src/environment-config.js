@@ -69,7 +69,26 @@ const ENVIRONMENT_CONFIGS = {
  * @returns {Object} Environment configuration with { env, name, description, services }
  */
 function getEnvironmentConfig() {
-  const env = localStorage.getItem('nullary-env') || 'dev';
+  // First try to get environment from Tauri backend (MAGICARD_ENV)
+  let env = 'dev';
+  
+  if (typeof window !== 'undefined' && window.__TAURI__) {
+    try {
+      // Try to get environment from Rust backend synchronously via cache
+      if (window._magicardEnvCache) {
+        env = window._magicardEnvCache;
+      } else {
+        // Fall back to localStorage for browser console switching
+        env = localStorage.getItem('nullary-env') || 'dev';
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not get environment from Tauri backend, using localStorage');
+      env = localStorage.getItem('nullary-env') || 'dev';
+    }
+  } else {
+    // Not in Tauri environment, use localStorage
+    env = localStorage.getItem('nullary-env') || 'dev';
+  }
   
   console.log(`🔍 MagiCard environment: ${env}`);
   const config = ENVIRONMENT_CONFIGS[env] || ENVIRONMENT_CONFIGS.dev;
@@ -136,16 +155,46 @@ function createEnvironmentControls(appName = 'magicard') {
   };
 }
 
+/**
+ * Initialize environment configuration from Tauri backend
+ */
+async function initializeEnvironmentFromBackend() {
+  if (typeof window !== 'undefined' && window.__TAURI__) {
+    try {
+      const backendEnv = await window.__TAURI__.core.invoke('get_env_config');
+      console.log(`🔧 MagiCard backend environment: ${backendEnv}`);
+      
+      // Cache the backend environment
+      window._magicardEnvCache = backendEnv;
+      
+      console.log(`✅ MagiCard environment synchronized with backend: ${backendEnv}`);
+      return backendEnv;
+    } catch (error) {
+      console.warn('⚠️ Could not get environment from Tauri backend:', error);
+      console.warn('📝 Make sure MAGICARD_ENV environment variable is set if not using default');
+      
+      // Fall back to localStorage
+      const fallbackEnv = localStorage.getItem('nullary-env') || 'dev';
+      window._magicardEnvCache = fallbackEnv;
+      return fallbackEnv;
+    }
+  }
+  return 'dev';
+}
+
 // Initialize environment controls for MagiCard
 if (typeof window !== 'undefined') {
   window.ENVIRONMENT_CONFIGS = ENVIRONMENT_CONFIGS;
   window.getEnvironmentConfig = getEnvironmentConfig;
   window.getServiceUrl = getServiceUrl;
   window.createEnvironmentControls = createEnvironmentControls;
+  window.initializeEnvironmentFromBackend = initializeEnvironmentFromBackend;
 
   // Create MagiCard-specific environment controls
   window.magicardEnv = createEnvironmentControls('magicard');
   
   console.log('🪄 MagiCard environment controls initialized');
   console.log('🔧 Available in console: magicardEnv.switch("test"), magicardEnv.current(), magicardEnv.list()');
+  
+  // Note: Environment initialization is now handled explicitly in HTML before castSpell loading
 }

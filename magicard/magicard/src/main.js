@@ -29,35 +29,54 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }, 1000);
         
-        // Initialize spell casting window function
-        window.castSpell = async function(element) {
-            console.log('🪄 Spell cast on element:', element);
-            
-            const spellType = element.getAttribute('spell');
-            const spellComponents = element.getAttribute('spell-components');
-            
-            console.log(`🎭 Spell type: ${spellType}`);
-            console.log(`🧪 Spell components: ${spellComponents}`);
-            
-            if (spellType === 'magicard' && spellComponents) {
-                await handleMagicardNavigation(element, spellComponents);
-            } else if (spellType === 'fade-transition') {
-                handleFadeTransition(element);
-            } else if (spellType === 'slide-transition') {
-                handleSlideTransition(element);
-            } else if (spellType === 'master-transition') {
-                handleMasterTransition(element);
-            } else if (spellType === 'fadeTest' || spellType === 'slideTest' || spellType === 'finalTest') {
-                handleTransitionTest(spellType, element);
-            } else if (spellType === 'fade-demo' || spellType === 'slide-demo' || spellType === 'final-demo') {
-                handleTransitionDemo(spellType, element);
-            } else if (spellType.endsWith('-info')) {
-                handleInfoSpell(spellType, element);
+        // Override magicard spell handler after fount castSpell loads
+        function initializeMagiCardSpellSystem() {
+            if (window.castSpell) {
+                console.log('🪄 Setting up MagiCard spell system integration...');
+                
+                // Store original fount castSpell function
+                const originalCastSpell = window.castSpell;
+                
+                // Create MagiCard-enhanced castSpell function
+                window.castSpell = async function(element) {
+                    const spellType = element.getAttribute('spell');
+                    const spellComponents = element.getAttribute('spell-components');
+                    
+                    console.log(`🪄 MagiCard enhanced spell cast: ${spellType}`);
+                    
+                    // Handle MagiCard-specific navigation
+                    if (spellType === 'magicard' && spellComponents) {
+                        await handleMagicardNavigation(element, spellComponents);
+                    } 
+                    // Handle MagiCard-specific transition spells
+                    else if (spellType === 'fade-transition') {
+                        handleFadeTransition(element);
+                    } else if (spellType === 'slide-transition') {
+                        handleSlideTransition(element);
+                    } else if (spellType === 'master-transition') {
+                        handleMasterTransition(element);
+                    } else if (spellType === 'fadeTest' || spellType === 'slideTest' || spellType === 'finalTest') {
+                        handleTransitionTest(spellType, element);
+                    } else if (spellType === 'fade-demo' || spellType === 'slide-demo' || spellType === 'final-demo') {
+                        handleTransitionDemo(spellType, element);
+                    } else if (spellType.endsWith('-info')) {
+                        handleInfoSpell(spellType, element);
+                    }
+                    // Fall back to fount's original castSpell for other spell types
+                    else {
+                        return originalCastSpell(element);
+                    }
+                };
+                
+                console.log('✅ MagiCard spell system integrated with fount castSpell');
             } else {
-                // Default behavior for other spells
-                alert(`🪄 Spell cast: ${spellType || 'unknown'} on ${element.tagName.toLowerCase()}`);
+                console.warn('⚠️ fount castSpell not available, retrying...');
+                setTimeout(initializeMagiCardSpellSystem, 100);
             }
-        };
+        }
+        
+        // Initialize MagiCard spell system after a brief delay to ensure fount script loads
+        setTimeout(initializeMagiCardSpellSystem, 500);
         
         console.log('📂 Loading stacks...');
         // Load saved stacks and initialize UI
@@ -719,34 +738,20 @@ async function displayCardPreview(svgContent) {
         </div>
     `;
     
-    // Apply spell handlers to elements with spell attributes
-    applySpellHandlers(previewContent);
+    // Apply spell handlers to elements with spell attributes (using fount system)
+    if (window.applySpellHandlers) {
+        window.applySpellHandlers(previewContent);
+    } else {
+        console.warn('⚠️ fount spell system not yet loaded, handlers will be applied later');
+    }
 }
 
 /**
- * Apply spell handlers to SVG elements with spell attributes
+ * Legacy spell handlers - now handled by fount castSpell.js
+ * Keeping card-navigate functionality for MagiCard-specific navigation
  */
-function applySpellHandlers(container) {
-    const spellElements = container.querySelectorAll('[spell]');
-    
-    spellElements.forEach(element => {
-        // Add spell cursor class
-        element.classList.add('spell-element');
-        
-        // Add hover effect for wand cursor
-        element.addEventListener('mouseenter', () => {
-            element.style.cursor = `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🪄</text></svg>') 16 16, pointer`;
-        });
-        
-        // Add click handler
-        element.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            window.castSpell(element);
-        });
-    });
-    
-    // Also check for card navigation attributes
+function applyLegacyCardNavigation(container) {
+    // Handle MagiCard-specific card navigation attributes (not handled by fount)
     const navigateElements = container.querySelectorAll('[card-navigate]');
     navigateElements.forEach(element => {
         element.style.cursor = 'pointer';
@@ -759,7 +764,20 @@ function applySpellHandlers(container) {
         });
     });
     
-    console.log(`✨ Applied spell handlers to ${spellElements.length} elements and navigation to ${navigateElements.length} elements`);
+    console.log(`✨ Applied legacy card navigation to ${navigateElements.length} elements`);
+}
+
+// Alias for backward compatibility - will use fount system when available
+function applySpellHandlers(container) {
+    if (window.applySpellHandlers && window.applySpellHandlers !== applySpellHandlers) {
+        // Use fount's applySpellHandlers if available
+        window.applySpellHandlers(container);
+    } else {
+        console.warn('⚠️ fount spell system not available, using fallback');
+    }
+    
+    // Always apply MagiCard-specific navigation
+    applyLegacyCardNavigation(container);
 }
 
 
@@ -1460,7 +1478,9 @@ function updateCardEditor(card, index) {
         setTimeout(() => {
             const preview = document.getElementById(`svg-preview-${index}`);
             if (preview) {
-                applySpellHandlers(preview);
+                if (window.applySpellHandlers) {
+                    window.applySpellHandlers(preview);
+                }
             }
         }, 100);
     }
@@ -1993,9 +2013,11 @@ async function displayNavigatedCard(cardKey, svgContent, baseUrl) {
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
     
-    // Apply spell handlers to the navigated card
+    // Apply spell handlers to the navigated card (using fount system)
     setTimeout(() => {
-        applySpellHandlers(modalContent);
+        if (window.applySpellHandlers) {
+            window.applySpellHandlers(modalContent);
+        }
     }, 100);
     
     // Close on click outside
@@ -2007,7 +2029,7 @@ async function displayNavigatedCard(cardKey, svgContent, baseUrl) {
 }
 
 /**
- * Get a card from current base's BDO
+ * Get a card from current base's BDO using cardKey (legacy function)
  */
 async function getCardFromBDO(cardKey) {
     console.log(`🌐 Getting card from BDO: ${cardKey}`);
@@ -2028,6 +2050,38 @@ async function getCardFromBDO(cardKey) {
     } catch (error) {
         console.error('❌ Failed to get card from BDO:', error);
         throw new Error(`Failed to get card: ${error}`);
+    }
+}
+
+/**
+ * Fetch a card from BDO using bdoPubKey (used for menu card import)
+ */
+async function fetchCardFromBDO(bdoPubKey) {
+    console.log(`🌐 Fetching card from BDO with bdoPubKey: ${bdoPubKey?.substring(0, 12)}...`);
+    
+    try {
+        if (!window.__TAURI__) {
+            console.warn('⚠️ Tauri not available - cannot fetch from BDO');
+            return null;
+        }
+        
+        if (!bdoPubKey) {
+            console.warn('⚠️ No bdoPubKey provided');
+            return null;
+        }
+        
+        const cardData = await window.__TAURI__.core.invoke('get_card_from_bdo', {
+            bdoPubKey: bdoPubKey
+        });
+        
+        console.log(`✅ Fetched card from BDO using bdoPubKey: ${bdoPubKey.substring(0, 12)}...`);
+        console.log('🎯 BDO Response:', cardData);
+        
+        return cardData;
+        
+    } catch (error) {
+        console.error(`❌ Failed to fetch card from BDO using bdoPubKey ${bdoPubKey?.substring(0, 12)}:`, error);
+        return null;
     }
 }
 
@@ -2159,33 +2213,60 @@ async function fetchMenuFromBDO(bdoPubKey) {
                 });
                 
                 if (cardResult && cardResult.success && cardResult.card) {
-                    console.log('✅ Successfully fetched card from BDO:', cardResult.card?.name || cardResult.card?.data?.cardName || 'Unnamed card');
+                    console.log('✅ Successfully fetched data from BDO');
                     console.log('🔍 Full BDO cardResult structure:', JSON.stringify(cardResult, null, 2));
                     
-                    // Transform BDO response into expected menu format
-                    const cardData = cardResult.card.data || cardResult.card;
-                    console.log('🔍 Extracted cardData for transformation:', JSON.stringify(cardData, null, 2));
+                    // Extract the data from BDO response
+                    const bdoData = cardResult.card.data || cardResult.card;
+                    console.log('🔍 Extracted BDO data:', JSON.stringify(bdoData, null, 2));
                     
-                    // Extract and log SVG content
-                    const svgContent = cardData.svgContent || cardData.svg;
-                    console.log('🎨 SVG Content found:', !!svgContent);
-                    console.log('🎨 SVG Content length:', svgContent ? svgContent.length : 0);
-                    console.log('🎨 SVG Content preview:', svgContent ? svgContent.substring(0, 100) + '...' : 'None');
-                    
-                    const transformedData = {
-                        title: cardData.cardName || 'Imported Card',
-                        bdoPubKey: cardResult.card.pubKey || bdoPubKey,
-                        svgContent: svgContent,
-                        source: 'BDO',
-                        cards: [{
-                            name: cardData.cardName || 'Card',
-                            svg: svgContent,
-                            bdoPubKey: cardResult.card.pubKey || bdoPubKey
-                        }]
-                    };
-                    
-                    console.log('🔄 Final transformed data:', JSON.stringify(transformedData, null, 2));
-                    return transformedData;
+                    // Check if this is a menu catalog (has cards array) or individual card
+                    if (bdoData.cards && Array.isArray(bdoData.cards)) {
+                        console.log('🍽️ Found menu catalog with cards array:', bdoData.cards.length);
+                        
+                        // This is a complete menu catalog - return it directly
+                        const menuCatalogData = {
+                            title: bdoData.title || 'Imported Menu',
+                            description: bdoData.description,
+                            bdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                            source: 'BDO_MENU_CATALOG',
+                            cards: bdoData.cards,
+                            products: bdoData.products,
+                            menus: bdoData.menus,
+                            metadata: bdoData.metadata
+                        };
+                        
+                        console.log('🔄 Returning complete menu catalog data:', {
+                            title: menuCatalogData.title,
+                            cardCount: menuCatalogData.cards?.length || 0,
+                            productCount: menuCatalogData.products?.length || 0,
+                            hasMenus: !!menuCatalogData.menus
+                        });
+                        return menuCatalogData;
+                        
+                    } else {
+                        console.log('🎴 Found individual card, not menu catalog');
+                        
+                        // This is an individual card - extract SVG content
+                        const svgContent = bdoData.svgContent || bdoData.svg;
+                        console.log('🎨 Individual card SVG:', !!svgContent, svgContent ? svgContent.length + ' chars' : 'No SVG');
+                        
+                        const individualCardData = {
+                            title: bdoData.cardName || 'Imported Card',
+                            bdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                            svgContent: svgContent,
+                            source: 'BDO_INDIVIDUAL_CARD',
+                            cards: [{
+                                name: bdoData.cardName || 'Card',
+                                svg: svgContent,
+                                cardBdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                                type: bdoData.cardType || 'unknown'
+                            }]
+                        };
+                        
+                        console.log('🔄 Returning individual card data:', individualCardData.title);
+                        return individualCardData;
+                    }
                 } else {
                     console.log('⚠️ BDO call succeeded but no card found:', cardResult?.error || 'Unknown error');
                 }
@@ -2250,15 +2331,48 @@ async function convertMenuToMagiStack(menuData) {
             
             for (let i = 0; i < menuData.cards.length; i++) {
                 const cardInfo = menuData.cards[i];
-                console.log(`🎯 MAGICARD_WORKFLOW: Loading card ${i + 1}: ${cardInfo.name}`);
+                console.log(`🎯 MAGICARD_WORKFLOW: Loading card ${i + 1}: ${cardInfo.name} with bdoPubKey: ${cardInfo.cardBdoPubKey?.substring(0, 12)}...`);
                 
                 try {
-                    // Load the SVG content from the card data
+                    // Load the SVG content from the card data (first try direct content)
                     let svgContent = cardInfo.svg || cardInfo.svgContent;
                     
-                    // If SVG content is not in the card info, try to load from localStorage
+                    if (svgContent) {
+                        console.log(`📋 Found SVG content directly in card info: ${svgContent.length} chars`);
+                    } else {
+                        console.log(`🔍 No direct SVG content in card info. Available fields:`, Object.keys(cardInfo));
+                    }
+                    
+                    // If SVG content is not in the card info, fetch from BDO using the card's bdoPubKey
+                    if (!svgContent && cardInfo.cardBdoPubKey) {
+                        console.log(`🌐 Fetching SVG from BDO for card: ${cardInfo.name}`);
+                        
+                        // Fetch the individual card from BDO using its unique pubkey
+                        const cardFromBDO = await fetchCardFromBDO(cardInfo.cardBdoPubKey);
+                        
+                        if (cardFromBDO && cardFromBDO.card && cardFromBDO.card.data) {
+                            // Extract SVG content from the BDO card data structure
+                            const bdoData = cardFromBDO.card.data;
+                            svgContent = bdoData.svgContent || bdoData.svg || bdoData.cardSvg;
+                            console.log(`🌐 Successfully fetched card SVG from BDO: ${svgContent ? svgContent.length + ' chars' : 'no content'}`);
+                            console.log(`🔍 BDO card data keys:`, Object.keys(bdoData));
+                        } else if (cardFromBDO && cardFromBDO.data) {
+                            // Alternative structure - data directly
+                            svgContent = cardFromBDO.data.svgContent || cardFromBDO.data.svg || cardFromBDO.data.cardSvg;
+                            console.log(`🌐 Successfully fetched card SVG from BDO (alt structure): ${svgContent ? svgContent.length + ' chars' : 'no content'}`);
+                            console.log(`🔍 BDO data keys:`, Object.keys(cardFromBDO.data));
+                        } else {
+                            console.warn(`⚠️ Unexpected BDO response structure for card: ${cardInfo.name}`);
+                            console.log(`🔍 Full BDO response:`, cardFromBDO);
+                        }
+                    }
+                    
+                    // Fallback: try localStorage
                     if (!svgContent) {
                         svgContent = localStorage.getItem(`menu-card-${cardInfo.cardBdoPubKey}`);
+                        if (svgContent) {
+                            console.log(`📱 Loaded card SVG from localStorage: ${svgContent.length} chars`);
+                        }
                     }
                     
                     if (svgContent) {
@@ -2275,11 +2389,10 @@ async function convertMenuToMagiStack(menuData) {
                         };
                         
                         cards.push(card);
-                        console.log(`✅ Loaded card: ${cardInfo.name}`);
-                        console.log(`🎨 Card SVG length: ${svgContent.length}`);
+                        console.log(`✅ Loaded card: ${cardInfo.name} (SVG: ${svgContent.length} chars)`);
                         console.log(`🎨 Card SVG preview: ${svgContent.substring(0, 100)}...`);
                     } else {
-                        console.warn(`⚠️ Could not load SVG for card: ${cardInfo.name}`);
+                        console.warn(`⚠️ Could not load SVG for card: ${cardInfo.name} - no content found in BDO, localStorage, or card data`);
                     }
                 } catch (cardError) {
                     console.error(`❌ Failed to load card ${cardInfo.name}:`, cardError);

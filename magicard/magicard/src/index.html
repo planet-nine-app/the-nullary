@@ -59,6 +59,46 @@
         };
     </script>
     
+    <!-- Load castSpell system from fount server -->
+    <script>
+        // Load castSpell.js after environment is properly initialized
+        async function loadCastSpellFromEnvironment() {
+            try {
+                // Wait for environment initialization from backend
+                await window.initializeEnvironmentFromBackend();
+                
+                // Get the fount URL from the properly initialized environment
+                const fountUrl = getServiceUrl('fount');
+                console.log(`🪄 Loading castSpell.js from environment-specific fount: ${fountUrl}`);
+                
+                const castSpellScript = document.createElement('script');
+                castSpellScript.src = `${fountUrl.replace(/\/$/, '')}/castSpell.js`;
+                castSpellScript.onload = function() {
+                    console.log('✅ castSpell.js loaded from fount server:', fountUrl);
+                };
+                castSpellScript.onerror = function() {
+                    console.warn('⚠️ Failed to load castSpell.js from fount, using fallback');
+                    // Initialize basic fallback castSpell function
+                    window.castSpell = function(element) {
+                        console.log('🪄 Fallback spell cast on element:', element);
+                        alert(`🪄 Spell cast: ${element.getAttribute('spell')} (fallback mode - fount server unavailable)`);
+                    };
+                };
+                document.head.appendChild(castSpellScript);
+            } catch (error) {
+                console.error('❌ Failed to load castSpell.js:', error);
+                // Initialize fallback castSpell function
+                window.castSpell = function(element) {
+                    console.log('🪄 Error fallback spell cast on element:', element);
+                    alert(`🪄 Spell cast: ${element.getAttribute('spell')} (error fallback - could not determine environment)`);
+                };
+            }
+        }
+        
+        // Load castSpell after DOM and environment are ready
+        document.addEventListener('DOMContentLoaded', loadCastSpellFromEnvironment);
+    </script>
+    
     <!-- JavaScript files (no modules) -->
     <script src="main.js"></script>
 </body>

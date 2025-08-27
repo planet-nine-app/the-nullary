@@ -2769,22 +2769,22 @@ async function createFormWidgetUploadForm() {
             ⚠️ ${result.cardResults.failed} cards failed to create
           </p>` : ''
         }
-        ${result.firstCardBdoPubKey ? 
+        ${result.bdoPubKey ? 
           `<p style="margin: 0 0 10px 0; font-size: 13px; color: #155724; background: #d1e7dd; padding: 8px; border-radius: 4px;">
-            🎴 First card: ${result.firstCardBdoPubKey.substring(0, 12)}... (for direct access)
+            🍽️ Menu catalog: ${result.bdoPubKey.substring(0, 12)}... (complete menu with ${result.menuStats?.totalCards || 0} cards)
           </p>` : ''
         }
-        ${result.firstCardBdoPubKey ? 
+        ${result.bdoPubKey ? 
           `<div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-family: monospace;">
-            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing first card):</div>
+            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing complete menu):</div>
             <div style="font-size: 14px; word-break: break-all; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">
-              ${result.firstCardBdoPubKey}
+              ${result.bdoPubKey}
             </div>
-            <button onclick="navigator.clipboard.writeText('${result.firstCardBdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
+            <button onclick="navigator.clipboard.writeText('${result.bdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
                     style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px;">
               📋 Copy to Clipboard
             </button>
-            <button onclick="previewBDOMenu('${result.firstCardBdoPubKey}')" 
+            <button onclick="previewBDOMenu('${result.bdoPubKey}')" 
                     style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px; margin-left: 8px;">
               🔍 Preview BDO Data
             </button>
@@ -3484,7 +3484,7 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
  * @param {number} index - Card index
  * @returns {string} SVG content as string
  */
-function createMenuSelectorSVG(card, allCards, menuTitle, index) {
+function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
   const cardWidth = 300;
   const cardHeight = 400;
   
@@ -3505,20 +3505,37 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index) {
     const y = 120 + (optIndex * 50);
     const buttonColor = optIndex % 2 === 0 ? '#3498db' : '#9b59b6';
     
-    // All options navigate to the next selector (or products if this is the last selector)
-    const navigationComponents = nextBdoPubKey 
-      ? `spell="magicard" spell-components='{"bdoPubKey":"${nextBdoPubKey}"}'`
-      : ''; // No navigation if no next card
+    // Create selection spell-components for fount spell system with decision tree integration
+    const selectionComponents = {
+      selection: option,
+      level: card.level,
+      selectorType: 'menu',
+      menuTitle: menuTitle,
+      // Add decision tree context if available
+      ...(decisionTree && decisionTree[option] ? {
+        decisionTreePath: option,
+        hasSubSelection: typeof decisionTree[option] === 'object' && !decisionTree[option].product
+      } : {})
+    };
+    
+    // Create dual spell attributes - selection for fount system, magicard for navigation
+    let spellAttributes = `spell="selection" spell-components='${JSON.stringify(selectionComponents)}'`;
+    
+    // Add navigation spell if we have a next card to navigate to
+    if (nextBdoPubKey) {
+      const navigationComponents = { bdoPubKey: nextBdoPubKey };
+      spellAttributes += ` data-navigation-spell="magicard" data-navigation-components='${JSON.stringify(navigationComponents)}'`;
+    }
     
     return `
-      <rect ${navigationComponents}
+      <rect ${spellAttributes}
             x="50" y="${y}" width="200" height="40" rx="8" 
             fill="${buttonColor}" stroke="${buttonColor}" 
             style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;" 
             class="spell-element">
         <animate attributeName="fill" values="${buttonColor};#ecf0f1;${buttonColor}" dur="2s" repeatCount="indefinite"/>
       </rect>
-      <text ${navigationComponents}
+      <text ${spellAttributes}
             x="150" y="${y + 25}" text-anchor="middle" fill="white" font-size="14" font-weight="bold" 
             class="spell-element" 
             style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;">
@@ -3945,9 +3962,9 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         
         if (card.type === 'menu-selector') {
           console.log(`🗂️ Creating menu selector card: ${card.name}`);
-          cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i);
+          cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i, menuTree.decisionTree);
         } else if (card.type === 'product') {
-          console.log(`🛍️ Creating product card: ${card.name} ($${(card.price / 100).toFixed(2)})`);
+          console.log(`🛍️ Creating product card: ${card.name} ($${card.price.toFixed(2)})`);
           cardSvg = createMenuItemSVG(card.productData, nextCard?.productData, menuTitle, i, allCardsNeeded.length);
         } else {
           console.log(`⚠️ Unknown card type: ${card.type} for card: ${card.name}`);

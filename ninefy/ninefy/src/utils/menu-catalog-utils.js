@@ -73,6 +73,9 @@ function parseCSVToMenuTree(csvContent) {
       }
     }
 
+    // Build decision tree for direct property lookup (json.adult.day)
+    catalog.decisionTree = buildDecisionTree(catalog.products, menuHeaders);
+
     // Calculate metadata
     catalog.metadata.totalProducts = catalog.products.length;
     catalog.metadata.menuCount = Object.keys(catalog.menus).length;
@@ -82,6 +85,7 @@ function parseCSVToMenuTree(csvContent) {
 
     console.log(`✅ Parsed ${catalog.metadata.totalProducts} products across ${catalog.metadata.menuCount} menu levels`);
     console.log('🗂️ Menu structure:', JSON.stringify(catalog.menus, null, 2));
+    console.log('🌳 Decision tree:', JSON.stringify(catalog.decisionTree, null, 2));
     
     return catalog;
     
@@ -175,25 +179,25 @@ function parseProductValue(productValue) {
   const [selectionsStr, priceStr] = parts;
   const selections = selectionsStr.split('+').map(s => s.trim()).filter(s => s);
   
-  // Parse price (convert to cents)
-  let priceInCents = 0;
+  // Parse price (keep as dollars, don't convert to cents)
+  let price = 0;
   const cleanPrice = priceStr.replace(/[$,]/g, '');
   const numericPrice = parseFloat(cleanPrice);
   if (!isNaN(numericPrice)) {
-    priceInCents = Math.round(numericPrice * 100);
+    price = numericPrice;
   }
 
   // Generate product name from selections (replace "any" with wildcard indicator)
   const displaySelections = selections.map(s => s === 'any' ? '*' : s);
-  const productName = displaySelections.join(' ') + ` ${priceInCents}`;
+  const productName = displaySelections.join(' ') + ` $${price}`;
   
   // Generate unique product ID (use original selections including "any")
-  const productId = `menu_${selections.join('_')}_${priceInCents}_${generateRandomId()}`;
+  const productId = `menu_${selections.join('_')}_${price}_${generateRandomId()}`;
 
   return {
     selections,
     productName,
-    price: priceInCents,
+    price: price,
     productId,
     originalValue: productValue,
     hasWildcards: selections.includes('any')
@@ -322,6 +326,63 @@ function buildMenuStructureFromProductSelections(catalog, productData, menuHeade
       }
     }
   }
+}
+
+/**
+ * Build decision tree for direct property lookup (e.g., json.adult.day)
+ * @param {Array} products - Array of product objects with selections
+ * @param {Array} menuHeaders - Menu header information for ordering
+ * @returns {Object} Decision tree object
+ */
+function buildDecisionTree(products, menuHeaders) {
+  const tree = {};
+  
+  console.log('🌳 Building decision tree from products:', products.length);
+  
+  for (const product of products) {
+    if (!product.metadata || !product.metadata.selections) {
+      console.warn('⚠️ Product missing selections metadata:', product);
+      continue;
+    }
+    
+    const selections = product.metadata.selections;
+    console.log(`🌿 Processing product with selections: [${selections.join(', ')}] -> $${product.price}`);
+    
+    // Navigate/create the tree structure based on selections
+    let currentLevel = tree;
+    
+    for (let i = 0; i < selections.length; i++) {
+      const selection = selections[i];
+      
+      if (i === selections.length - 1) {
+        // Last selection - store the product
+        currentLevel[selection] = {
+          product: product,
+          price: product.price,
+          productId: product.id,
+          productName: product.name,
+          selections: selections,
+          // Add selection components for fount spell system
+          selectionComponents: {
+            selections: selections,
+            price: product.price,
+            productId: product.id,
+            productName: product.name
+          }
+        };
+        console.log(`  ✅ Added product at path: ${selections.join('.')}`);
+      } else {
+        // Intermediate selection - create nested object if needed
+        if (!currentLevel[selection]) {
+          currentLevel[selection] = {};
+        }
+        currentLevel = currentLevel[selection];
+      }
+    }
+  }
+  
+  console.log('🌳 Decision tree built successfully');
+  return tree;
 }
 
 /**
