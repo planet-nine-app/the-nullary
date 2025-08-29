@@ -2663,32 +2663,21 @@ async function convertMenuToMagiStack(menuData) {
                     }
                     
                     if (svgContent) {
-                        // Check if this card represents a final decision tree level
-                        // Final cards should get lookup spell to resolve products
-                        let finalSvgContent = svgContent;
-                        const isFinalCard = isCardAtFinalLevel(cardInfo, menuData);
-                        
-                        if (isFinalCard && menuData.products) {
-                            console.log(`🔍 Card "${cardInfo.name}" is at final level, adding lookup spell with catalog`);
-                            finalSvgContent = addLookupSpellToCard(svgContent, menuData);
-                        }
-                        
                         const card = {
                             name: cardInfo.name,
-                            svg: finalSvgContent,
+                            svg: svgContent,
                             created_at: new Date().toISOString(),
                             metadata: {
                                 cardBdoPubKey: cardInfo.cardBdoPubKey,
                                 price: cardInfo.price,
                                 originalProductId: cardInfo.localId,
-                                importedFrom: 'ninefy-menu-card',
-                                isFinalCard: isFinalCard
+                                importedFrom: 'ninefy-menu-card'
                             }
                         };
                         
                         cards.push(card);
-                        console.log(`✅ Loaded card: ${cardInfo.name} (SVG: ${finalSvgContent.length} chars)${isFinalCard ? ' [WITH LOOKUP SPELL]' : ''}`);
-                        console.log(`🎨 Card SVG preview: ${finalSvgContent.substring(0, 100)}...`);
+                        console.log(`✅ Loaded card: ${cardInfo.name} (SVG: ${svgContent.length} chars)`);
+                        console.log(`🎨 Card SVG preview: ${svgContent.substring(0, 100)}...`);
                     } else {
                         console.warn(`⚠️ Could not load SVG for card: ${cardInfo.name} - no content found in BDO, localStorage, or card data`);
                     }
@@ -2770,106 +2759,6 @@ async function convertMenuToMagiStack(menuData) {
         console.error('❌ Error converting menu to MagiStack:', error);
         return null;
     }
-}
-
-/**
- * Determine if a card is at the final level of the decision tree
- * Final cards should get lookup spells instead of navigation spells
- */
-function isCardAtFinalLevel(cardInfo, menuData) {
-    // Strategy 1: Check if card has no outgoing navigation (no bdoPubKey for next card)
-    // This would indicate it's a terminal card in the decision tree
-    
-    // Strategy 2: Check card position/level in menu structure
-    // If this is the last level before products, it's a final card
-    
-    // Strategy 3: Check if card name suggests it's a final selector
-    // Cards with names like "Final Selection" or similar patterns
-    
-    // For now, use a heuristic: if the card has navigation but no further cards reference it,
-    // it's likely at the final level. We'll also check if card name suggests finality.
-    
-    const cardName = cardInfo.name?.toLowerCase() || '';
-    const isNamedAsFinal = cardName.includes('final') || 
-                          cardName.includes('choose') || 
-                          cardName.includes('select your') ||
-                          cardName.includes('pick your');
-    
-    // Also check if this card is referenced by fewer than 2 other cards
-    // (indicating it's near the end of the decision tree)
-    const referencedCount = (menuData.cards || []).filter(otherCard => {
-        const otherSvg = otherCard.svg || otherCard.svgContent || '';
-        return otherSvg.includes(cardInfo.cardBdoPubKey);
-    }).length;
-    
-    const isLikelyFinal = isNamedAsFinal || referencedCount <= 1;
-    
-    console.log(`🔍 Card "${cardInfo.name}" final level check:`, {
-        isNamedAsFinal,
-        referencedCount,
-        isLikelyFinal
-    });
-    
-    return isLikelyFinal;
-}
-
-/**
- * Add lookup spell to a card's SVG content
- * Injects a lookup button with catalog data for product resolution
- */
-function addLookupSpellToCard(svgContent, menuData) {
-    console.log('🔍 Adding lookup spell to card SVG');
-    
-    // Create catalog data for the lookup spell
-    const catalogData = {
-        products: menuData.products || [],
-        title: menuData.title || 'Menu',
-        source: 'ninefy-menu-import'
-    };
-    
-    // Create lookup button SVG element
-    const lookupButton = `
-        <!-- Added by MagiCard: Lookup spell for product resolution -->
-        <g id="lookup-spell-button">
-            <rect spell="lookup" 
-                  spell-components='${JSON.stringify({ catalog: catalogData }).replace(/'/g, "&apos;")}'
-                  x="20" y="360" width="120" height="30" rx="8"
-                  fill="#f39c12" 
-                  stroke="#e67e22" 
-                  stroke-width="2"
-                  class="spell-element">
-                <animate attributeName="fill" 
-                         values="#f39c12;#ffd700;#f39c12" 
-                         dur="3s" 
-                         repeatCount="indefinite"/>
-            </rect>
-            <text spell="lookup"
-                  spell-components='${JSON.stringify({ catalog: catalogData }).replace(/'/g, "&apos;")}'
-                  x="80" y="380" 
-                  text-anchor="middle" 
-                  fill="white" 
-                  font-weight="bold" 
-                  font-size="12"
-                  class="spell-element">🔍 Find Product</text>
-        </g>
-    `;
-    
-    // Find insertion point (before closing </svg> tag)
-    const closingSvgIndex = svgContent.lastIndexOf('</svg>');
-    if (closingSvgIndex === -1) {
-        console.warn('⚠️ Could not find </svg> tag in card, appending lookup button');
-        return svgContent + lookupButton;
-    }
-    
-    // Insert lookup button before closing tag
-    const modifiedSvg = svgContent.substring(0, closingSvgIndex) + 
-                       lookupButton + 
-                       svgContent.substring(closingSvgIndex);
-    
-    console.log(`✅ Added lookup spell to card (${lookupButton.length} chars added)`);
-    console.log(`🎯 Catalog data included: ${catalogData.products.length} products`);
-    
-    return modifiedSvg;
 }
 
 /**

@@ -3484,7 +3484,7 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
  * @param {number} index - Card index
  * @returns {string} SVG content as string
  */
-function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
+function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree, catalogForLookup = null) {
   const cardWidth = 300;
   const cardHeight = 400;
   
@@ -3496,7 +3496,9 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
   );
   
   const nextBdoPubKey = nextSelectorCard ? nextSelectorCard.cardBdoPubKey : null;
+  const isFinalSelector = !nextSelectorCard; // No more selectors = final level
   console.log(`🔗 Selector "${card.name}" will navigate to: ${nextSelectorCard ? nextSelectorCard.name : 'products'}`);
+  console.log(`🔍 Is final selector (needs lookup spell): ${isFinalSelector}`);
   
   // Create option buttons directly from the selector card's options (no need for option cards)
   const optionButtons = card.options.map((option, optIndex) => {
@@ -3539,6 +3541,37 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
       </text>`;
   }).join('');
 
+  // Add lookup button if this is the final selector
+  let lookupButton = '';
+  if (isFinalSelector && catalogForLookup) {
+    console.log('🔍 Adding lookup spell to final selector card');
+    lookupButton = `
+      <!-- Lookup spell for product resolution -->
+      <g id="lookup-spell-button">
+        <rect spell="lookup" 
+              spell-components='${JSON.stringify({ catalog: catalogForLookup }).replace(/'/g, "&apos;")}'
+              x="50" y="320" width="200" height="40" rx="8"
+              fill="#f39c12" 
+              stroke="#e67e22" 
+              stroke-width="2"
+              class="spell-element">
+          <animate attributeName="fill" 
+                   values="#f39c12;#ffd700;#f39c12" 
+                   dur="3s" 
+                   repeatCount="indefinite"/>
+        </rect>
+        <text spell="lookup"
+              spell-components='${JSON.stringify({ catalog: catalogForLookup }).replace(/'/g, "&apos;")}'
+              x="150" y="345" 
+              text-anchor="middle" 
+              fill="white" 
+              font-weight="bold" 
+              font-size="14"
+              class="spell-element">🔍 Find Product</text>
+      </g>
+    `;
+  }
+
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" card-name="${card.name}">
       <!-- Background -->
@@ -3552,12 +3585,14 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
       <!-- Menu Options -->
       ${optionButtons}
       
+      ${lookupButton}
+      
       <!-- Footer -->
       <text x="150" y="${cardHeight - 30}" text-anchor="middle" fill="#7f8c8d" font-size="10">
-        Card ${index + 1} - Menu Selector
+        Card ${index + 1} - Menu Selector${isFinalSelector ? ' (Final Level)' : ''}
       </text>
       <text x="150" y="${cardHeight - 15}" text-anchor="middle" fill="#7f8c8d" font-size="10">
-        Choose an option to continue
+        ${isFinalSelector ? 'Make selections then find your product' : 'Choose an option to continue'}
       </text>
     </svg>
   `;
@@ -3765,6 +3800,68 @@ function findNextLogicalCard(currentCard, allCards, menuHeaders) {
   return null;
 }
 
+/**
+ * Create nested catalog structure for lookup spell from products array
+ * Converts products like "adult two-hour $250" to nested map: {"adult": {"two-hour": {productId, bdoPubKey, ...}}}
+ */
+function createNestedCatalogFromProducts(products) {
+  console.log('🗺️ Converting products to nested catalog map for lookup spell:', products.length);
+  
+  const catalogMap = {};
+  
+  for (const product of products) {
+    // Parse product name to extract decision tree path
+    // Expected format: "rider time-span $price" -> ["rider", "time-span"]
+    const productName = product.name || '';
+    const parts = productName.split(' ');
+    
+    if (parts.length >= 2) {
+      // Extract rider and time-span from name (remove price part)
+      let rider, timeSpan;
+      
+      // Handle different naming patterns
+      if (parts.length === 3 && parts[2].startsWith('$')) {
+        // Format: "adult two-hour $250"
+        rider = parts[0];
+        timeSpan = parts[1];
+      } else if (parts.length >= 2) {
+        // More complex parsing - find price indicator
+        const priceIndex = parts.findIndex(part => part.startsWith('$'));
+        if (priceIndex > 0) {
+          rider = parts[0];
+          timeSpan = parts.slice(1, priceIndex).join('-');
+        } else {
+          // No price found, assume first two parts are the path
+          rider = parts[0];
+          timeSpan = parts[1];
+        }
+      }
+      
+      if (rider && timeSpan) {
+        // Ensure nested structure exists
+        if (!catalogMap[rider]) {
+          catalogMap[rider] = {};
+        }
+        
+        // Store product data with both productId and bdoPubKey for navigation
+        catalogMap[rider][timeSpan] = {
+          productId: product.id,
+          bdoPubKey: product.cardBdoPubKey, // Points to the product card for navigation
+          price: product.price,
+          name: product.name
+        };
+        
+        console.log(`🗺️ Mapped "${rider}" -> "${timeSpan}" -> productId: ${product.id}, bdoPubKey: ${product.cardBdoPubKey?.substring(0, 12)}...`);
+      }
+    } else {
+      console.warn(`⚠️ Could not parse product name into decision tree path: "${productName}"`);
+    }
+  }
+  
+  console.log('🗺️ Final nested catalog structure:', catalogMap);
+  return catalogMap;
+}
+
 async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
   console.log('🍽️ Starting menu catalog processing...');
   
@@ -3895,6 +3992,11 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     
     console.log(`🎯 Total cards needed: ${allCardsNeeded.length} (${menuHeaders.length} menu levels + ${menuTree.products.length} products)`);
     
+    // Create nested catalog structure for lookup spell
+    console.log('🗺️ Creating nested catalog structure for lookup spell...');
+    const nestedCatalog = createNestedCatalogFromProducts(menuTree.products);
+    console.log('🗺️ Generated nested catalog:', nestedCatalog);
+    
     // First pass: Generate unique bdoPubKeys for ALL cards (menu + product)
     console.log('🔑 Generating unique bdoPubKeys for all cards...');
     let uniqueCardKeys = [];
@@ -3958,7 +4060,7 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         
         if (card.type === 'menu-selector') {
           console.log(`🗂️ Creating menu selector card: ${card.name}`);
-          cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i, menuTree.decisionTree);
+          cardSvg = createMenuSelectorSVG(card, allCardsNeeded, menuTitle, i, menuTree.decisionTree, nestedCatalog);
         } else if (card.type === 'product') {
           console.log(`🛍️ Creating product card: ${card.name} ($${card.price.toFixed(2)})`);
           cardSvg = createMenuItemSVG(card.productData, nextCard?.productData, menuTitle, i, allCardsNeeded.length);
