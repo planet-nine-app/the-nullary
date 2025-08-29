@@ -13,6 +13,111 @@ let isEditMode = false;
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🪄 MagiCard initializing...');
     
+    // ========================================
+    // BDO Bridge for castSpell Integration
+    // ========================================
+    
+    /**
+     * Provides BDO card retrieval for castSpell.js
+     * Handles message signing and BDO communication through Tauri backend
+     */
+    window.castSpellBridge = {
+        async getCardFromBDO(bdoPubKey) {
+            console.log(`🌉 MagiCard BDO Bridge: Fetching card ${bdoPubKey}`);
+            
+            try {
+                // Check if Tauri is available
+                if (!window.__TAURI__) {
+                    throw new Error('Tauri API not available');
+                }
+                
+                // Call Tauri backend for BDO card retrieval
+                const response = await window.__TAURI__.core.invoke('get_card_from_bdo', {
+                    bdoPubKey: bdoPubKey
+                });
+                
+                console.log(`🌉 BDO Bridge response:`, response);
+                
+                if (response && response.success) {
+                    // Extract data from nested structure - MagiCard backend returns response.card.data
+                    const cardData = response.card?.data || response.data;
+                    
+                    if (!cardData) {
+                        console.warn('⚠️ No card data found in response:', response);
+                        return {
+                            success: false,
+                            error: 'Card data not found in BDO response'
+                        };
+                    }
+                    
+                    return {
+                        success: true,
+                        data: cardData
+                    };
+                } else {
+                    return {
+                        success: false,
+                        error: response?.error || 'Failed to retrieve card from BDO'
+                    };
+                }
+                
+            } catch (error) {
+                console.warn(`❌ BDO Bridge error:`, error);
+                return {
+                    success: false,
+                    error: error.message || 'Bridge communication failed'
+                };
+            }
+        }
+    };
+    
+    console.log('🌉 BDO Bridge for castSpell registered');
+    
+    // ========================================
+    // MagiCard Navigation Integration
+    // ========================================
+    
+    /**
+     * Listen for successful card navigation from castSpell and display the card in MagiCard
+     */
+    window.addEventListener('cardNavigationComplete', async (event) => {
+        console.log('🃏 MagiCard received cardNavigationComplete event:', event.detail);
+        
+        const { bdoPubKey, cardData, navigationSource } = event.detail;
+        
+        if (cardData) {
+            console.log('🃏 MagiCard displaying fetched card:', bdoPubKey);
+            console.log('🔍 Navigation source:', navigationSource);
+            
+            try {
+                // Display the card in MagiCard's preview area
+                await displayFetchedCardInPreview(cardData, bdoPubKey, navigationSource);
+                
+            } catch (error) {
+                console.warn('❌ MagiCard failed to display fetched card:', error);
+            }
+        }
+    });
+    
+    /**
+     * Listen for product lookup completion from lookup spell
+     */
+    window.addEventListener('productLookupComplete', async (event) => {
+        console.log('🛍️ MagiCard received productLookupComplete event:', event.detail);
+        
+        const { product, selectionPath, productId, catalog } = event.detail;
+        
+        // This event is dispatched when lookup spell finds a product but doesn't navigate
+        // (i.e., when no bdoPubKey is available for the product)
+        console.log('🛍️ Product found without navigation:', {
+            productName: product.name || product.product,
+            productId: productId,
+            selectionPath: selectionPath
+        });
+    });
+    
+    console.log('🃏 MagiCard cardNavigationComplete listener registered');
+    
     try {
         // Initialize environment controls
         if (window.magicardEnv) {
@@ -744,6 +849,188 @@ async function displayCardPreview(svgContent) {
     } else {
         console.warn('⚠️ fount spell system not yet loaded, handlers will be applied later');
     }
+}
+
+/**
+ * Display a card fetched from BDO in the preview area
+ * @param {string|Object} cardData - The card data (SVG string or object containing SVG)
+ * @param {string} bdoPubKey - The BDO public key for the card
+ * @param {string} navigationSource - The source of navigation (selection, magicard, lookup)
+ */
+async function displayFetchedCardInPreview(cardData, bdoPubKey, navigationSource = 'unknown') {
+    console.log('🃏 Displaying fetched card in MagiCard preview:', { bdoPubKey, cardData });
+    
+    // Extract SVG content from card data
+    let svgContent;
+    if (typeof cardData === 'string') {
+        // Check if it's already SVG content
+        if (cardData.trim().startsWith('<svg')) {
+            svgContent = cardData;
+        } else {
+            svgContent = `<svg><text x="50" y="50">${cardData}</text></svg>`;
+        }
+    } else if (cardData && typeof cardData === 'object') {
+        console.log('🔍 Searching for SVG in card data fields:', Object.keys(cardData));
+        
+        // Try different possible locations for SVG content
+        svgContent = cardData.svg || 
+                    cardData.svgContent || 
+                    cardData.content || 
+                    cardData.data || 
+                    cardData.cardSvg ||
+                    cardData.body ||
+                    cardData.html;
+        
+        // If no SVG found, check for nested objects
+        if (!svgContent) {
+            console.log('🔍 No direct SVG field found, checking nested objects...');
+            for (const [key, value] of Object.entries(cardData)) {
+                if (typeof value === 'string' && value.trim().startsWith('<svg')) {
+                    console.log(`✅ Found SVG content in field: ${key}`);
+                    svgContent = value;
+                    break;
+                }
+            }
+        }
+        
+        // If still no SVG, create a debug display
+        if (!svgContent || typeof svgContent !== 'string' || !svgContent.trim().startsWith('<svg')) {
+            console.warn('⚠️ No SVG content found in card data, showing debug info');
+            const debugInfo = JSON.stringify(cardData, null, 2);
+            svgContent = `
+                <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0" y="0" width="400" height="300" fill="#f8f9fa" stroke="#dee2e6"/>
+                    <text x="200" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#495057">
+                        Card Data (No SVG Found)
+                    </text>
+                    <foreignObject x="10" y="50" width="380" height="240">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: monospace; font-size: 10px; overflow: auto; height: 100%; background: white; padding: 5px;">
+                            <pre>${debugInfo}</pre>
+                        </div>
+                    </foreignObject>
+                </svg>
+            `;
+        }
+    } else {
+        svgContent = '<svg><text x="50" y="50" fill="red">Invalid card data</text></svg>';
+    }
+    
+    console.log('🃏 Extracted SVG content:', svgContent.substring(0, 200) + '...');
+    
+    const previewContent = document.getElementById('preview-content');
+    if (!previewContent) {
+        console.warn('⚠️ Preview content element not found');
+        return;
+    }
+    
+    // Determine card type and icon based on navigation source
+    let cardTypeIcon = '🌐';
+    let cardTypeTitle = 'Fetched Card';
+    let cardTypeClass = 'fetched-card';
+    
+    if (navigationSource === 'lookup') {
+        cardTypeIcon = '🛍️';
+        cardTypeTitle = 'Product Card';
+        cardTypeClass = 'product-card';
+    } else if (navigationSource === 'selection') {
+        cardTypeIcon = '📋';
+        cardTypeTitle = 'Selected Card';
+        cardTypeClass = 'selected-card';
+    }
+    
+    // Show fetched card with special styling
+    previewContent.innerHTML = `
+        <div class="card-preview ${cardTypeClass}">
+            <div class="fetched-card-header">
+                <h3>${cardTypeIcon} ${cardTypeTitle}</h3>
+                <p>BDO Key: ${bdoPubKey.substring(0, 20)}...</p>
+                ${navigationSource === 'lookup' ? '<p class="source-info">🔍 Found via Lookup Spell</p>' : ''}
+            </div>
+            <div class="card-svg-container">
+                ${svgContent}
+            </div>
+        </div>
+    `;
+    
+    // Apply spell handlers to the new card content
+    if (window.applySpellHandlers) {
+        console.log('🪄 Applying spell handlers to fetched card');
+        window.applySpellHandlers(previewContent);
+    } else {
+        console.warn('⚠️ Fount spell system not loaded yet');
+    }
+    
+    // Add some CSS for fetched card styling
+    if (!document.getElementById('fetched-card-styles')) {
+        const style = document.createElement('style');
+        style.id = 'fetched-card-styles';
+        style.textContent = `
+            .fetched-card {
+                border: 2px solid #3498db;
+                border-radius: 8px;
+                background: linear-gradient(45deg, rgba(52, 152, 219, 0.1), rgba(155, 89, 182, 0.1));
+            }
+            
+            .product-card {
+                border: 2px solid #27ae60;
+                border-radius: 8px;
+                background: linear-gradient(45deg, rgba(39, 174, 96, 0.1), rgba(241, 196, 15, 0.1));
+            }
+            
+            .selected-card {
+                border: 2px solid #9b59b6;
+                border-radius: 8px;
+                background: linear-gradient(45deg, rgba(155, 89, 182, 0.1), rgba(52, 152, 219, 0.1));
+            }
+            
+            .fetched-card-header {
+                padding: 12px;
+                background: rgba(52, 152, 219, 0.2);
+                border-bottom: 1px solid #3498db;
+                border-radius: 6px 6px 0 0;
+            }
+            
+            .product-card .fetched-card-header {
+                background: rgba(39, 174, 96, 0.2);
+                border-bottom: 1px solid #27ae60;
+            }
+            
+            .selected-card .fetched-card-header {
+                background: rgba(155, 89, 182, 0.2);
+                border-bottom: 1px solid #9b59b6;
+            }
+            
+            .fetched-card-header h3 {
+                margin: 0 0 4px 0;
+                color: #3498db;
+                font-size: 16px;
+            }
+            
+            .product-card .fetched-card-header h3 {
+                color: #27ae60;
+            }
+            
+            .selected-card .fetched-card-header h3 {
+                color: #9b59b6;
+            }
+            
+            .fetched-card-header p {
+                margin: 0;
+                color: #7f8c8d;
+                font-size: 12px;
+                font-family: monospace;
+            }
+            
+            .source-info {
+                color: #27ae60 !important;
+                font-weight: bold;
+                margin-top: 4px !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    console.log('✅ Fetched card displayed in MagiCard preview');
 }
 
 /**
@@ -2376,21 +2663,32 @@ async function convertMenuToMagiStack(menuData) {
                     }
                     
                     if (svgContent) {
+                        // Check if this card represents a final decision tree level
+                        // Final cards should get lookup spell to resolve products
+                        let finalSvgContent = svgContent;
+                        const isFinalCard = isCardAtFinalLevel(cardInfo, menuData);
+                        
+                        if (isFinalCard && menuData.products) {
+                            console.log(`🔍 Card "${cardInfo.name}" is at final level, adding lookup spell with catalog`);
+                            finalSvgContent = addLookupSpellToCard(svgContent, menuData);
+                        }
+                        
                         const card = {
                             name: cardInfo.name,
-                            svg: svgContent,
+                            svg: finalSvgContent,
                             created_at: new Date().toISOString(),
                             metadata: {
                                 cardBdoPubKey: cardInfo.cardBdoPubKey,
                                 price: cardInfo.price,
                                 originalProductId: cardInfo.localId,
-                                importedFrom: 'ninefy-menu-card'
+                                importedFrom: 'ninefy-menu-card',
+                                isFinalCard: isFinalCard
                             }
                         };
                         
                         cards.push(card);
-                        console.log(`✅ Loaded card: ${cardInfo.name} (SVG: ${svgContent.length} chars)`);
-                        console.log(`🎨 Card SVG preview: ${svgContent.substring(0, 100)}...`);
+                        console.log(`✅ Loaded card: ${cardInfo.name} (SVG: ${finalSvgContent.length} chars)${isFinalCard ? ' [WITH LOOKUP SPELL]' : ''}`);
+                        console.log(`🎨 Card SVG preview: ${finalSvgContent.substring(0, 100)}...`);
                     } else {
                         console.warn(`⚠️ Could not load SVG for card: ${cardInfo.name} - no content found in BDO, localStorage, or card data`);
                     }
@@ -2472,6 +2770,106 @@ async function convertMenuToMagiStack(menuData) {
         console.error('❌ Error converting menu to MagiStack:', error);
         return null;
     }
+}
+
+/**
+ * Determine if a card is at the final level of the decision tree
+ * Final cards should get lookup spells instead of navigation spells
+ */
+function isCardAtFinalLevel(cardInfo, menuData) {
+    // Strategy 1: Check if card has no outgoing navigation (no bdoPubKey for next card)
+    // This would indicate it's a terminal card in the decision tree
+    
+    // Strategy 2: Check card position/level in menu structure
+    // If this is the last level before products, it's a final card
+    
+    // Strategy 3: Check if card name suggests it's a final selector
+    // Cards with names like "Final Selection" or similar patterns
+    
+    // For now, use a heuristic: if the card has navigation but no further cards reference it,
+    // it's likely at the final level. We'll also check if card name suggests finality.
+    
+    const cardName = cardInfo.name?.toLowerCase() || '';
+    const isNamedAsFinal = cardName.includes('final') || 
+                          cardName.includes('choose') || 
+                          cardName.includes('select your') ||
+                          cardName.includes('pick your');
+    
+    // Also check if this card is referenced by fewer than 2 other cards
+    // (indicating it's near the end of the decision tree)
+    const referencedCount = (menuData.cards || []).filter(otherCard => {
+        const otherSvg = otherCard.svg || otherCard.svgContent || '';
+        return otherSvg.includes(cardInfo.cardBdoPubKey);
+    }).length;
+    
+    const isLikelyFinal = isNamedAsFinal || referencedCount <= 1;
+    
+    console.log(`🔍 Card "${cardInfo.name}" final level check:`, {
+        isNamedAsFinal,
+        referencedCount,
+        isLikelyFinal
+    });
+    
+    return isLikelyFinal;
+}
+
+/**
+ * Add lookup spell to a card's SVG content
+ * Injects a lookup button with catalog data for product resolution
+ */
+function addLookupSpellToCard(svgContent, menuData) {
+    console.log('🔍 Adding lookup spell to card SVG');
+    
+    // Create catalog data for the lookup spell
+    const catalogData = {
+        products: menuData.products || [],
+        title: menuData.title || 'Menu',
+        source: 'ninefy-menu-import'
+    };
+    
+    // Create lookup button SVG element
+    const lookupButton = `
+        <!-- Added by MagiCard: Lookup spell for product resolution -->
+        <g id="lookup-spell-button">
+            <rect spell="lookup" 
+                  spell-components='${JSON.stringify({ catalog: catalogData }).replace(/'/g, "&apos;")}'
+                  x="20" y="360" width="120" height="30" rx="8"
+                  fill="#f39c12" 
+                  stroke="#e67e22" 
+                  stroke-width="2"
+                  class="spell-element">
+                <animate attributeName="fill" 
+                         values="#f39c12;#ffd700;#f39c12" 
+                         dur="3s" 
+                         repeatCount="indefinite"/>
+            </rect>
+            <text spell="lookup"
+                  spell-components='${JSON.stringify({ catalog: catalogData }).replace(/'/g, "&apos;")}'
+                  x="80" y="380" 
+                  text-anchor="middle" 
+                  fill="white" 
+                  font-weight="bold" 
+                  font-size="12"
+                  class="spell-element">🔍 Find Product</text>
+        </g>
+    `;
+    
+    // Find insertion point (before closing </svg> tag)
+    const closingSvgIndex = svgContent.lastIndexOf('</svg>');
+    if (closingSvgIndex === -1) {
+        console.warn('⚠️ Could not find </svg> tag in card, appending lookup button');
+        return svgContent + lookupButton;
+    }
+    
+    // Insert lookup button before closing tag
+    const modifiedSvg = svgContent.substring(0, closingSvgIndex) + 
+                       lookupButton + 
+                       svgContent.substring(closingSvgIndex);
+    
+    console.log(`✅ Added lookup spell to card (${lookupButton.length} chars added)`);
+    console.log(`🎯 Catalog data included: ${catalogData.products.length} products`);
+    
+    return modifiedSvg;
 }
 
 /**

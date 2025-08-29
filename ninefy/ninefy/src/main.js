@@ -3515,17 +3515,13 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree) {
       ...(decisionTree && decisionTree[option] ? {
         decisionTreePath: option,
         hasSubSelection: typeof decisionTree[option] === 'object' && !decisionTree[option].product
-      } : {})
+      } : {}),
+      // Add navigation bdoPubKey directly to spell-components for castSpell navigation
+      ...(nextBdoPubKey ? { bdoPubKey: nextBdoPubKey } : {})
     };
     
-    // Create dual spell attributes - selection for fount system, magicard for navigation
+    // Create unified spell attributes with bdoPubKey included for navigation
     let spellAttributes = `spell="selection" spell-components='${JSON.stringify(selectionComponents)}'`;
-    
-    // Add navigation spell if we have a next card to navigate to
-    if (nextBdoPubKey) {
-      const navigationComponents = { bdoPubKey: nextBdoPubKey };
-      spellAttributes += ` data-navigation-spell="magicard" data-navigation-components='${JSON.stringify(navigationComponents)}'`;
-    }
     
     return `
       <rect ${spellAttributes}
