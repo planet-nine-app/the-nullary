@@ -881,6 +881,33 @@ async function displayFetchedCardInPreview(cardData, bdoPubKey, navigationSource
                     cardData.body ||
                     cardData.html;
         
+        console.log('🔍 Raw svgContent found:', svgContent ? `${typeof svgContent} (${svgContent.length} chars)` : 'null/undefined');
+        console.log('🔍 svgContent preview:', svgContent ? svgContent.substring(0, 100) : 'N/A');
+        
+        // Debug each potential field individually  
+        console.log('🔍 cardData.svg:', cardData.svg ? 'exists' : 'null/undefined');
+        console.log('🔍 cardData.svgContent:', cardData.svgContent ? 'exists' : 'null/undefined'); 
+        console.log('🔍 cardData.content:', cardData.content ? 'exists' : 'null/undefined');
+                    
+        // Unescape JSON-escaped SVG content if needed
+        if (svgContent && typeof svgContent === 'string') {
+            try {
+                // Check if content is JSON-escaped (contains \" instead of ")
+                if (svgContent.includes('\\"')) {
+                    console.log('🔧 Unescaping JSON-escaped SVG content');
+                    svgContent = JSON.parse(`"${svgContent}"`);
+                    console.log('✅ Successfully unescaped SVG content');
+                } else if (svgContent.startsWith('"') && svgContent.endsWith('"')) {
+                    console.log('🔧 Removing extra quotes from SVG content');
+                    svgContent = svgContent.slice(1, -1);
+                    console.log('✅ Removed surrounding quotes');
+                }
+            } catch (unescapeError) {
+                console.warn('⚠️ Failed to unescape SVG content:', unescapeError);
+                // Keep original content if unescaping fails
+            }
+        }
+        
         // If no SVG found, check for nested objects
         if (!svgContent) {
             console.log('🔍 No direct SVG field found, checking nested objects...');

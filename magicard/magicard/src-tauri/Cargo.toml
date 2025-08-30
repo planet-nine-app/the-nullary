@@ -23,6 +23,7 @@ serde_json = "1.0"
 reqwest = { version = "0.12.4", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
 sessionless = "0.1.1"
 chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
 
 [dependencies.addie-rs]
 path = "../../../../addie/src/client/rust/addie-rs"

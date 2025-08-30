@@ -1,14 +1,16 @@
 use bdo_rs::structs::BDOUser;
 use bdo_rs::BDO;
 use serde_json::json;
-use serde_json::Value;
+use serde_json::{Value, Map};
 use sessionless::hex::FromHex;
 use sessionless::hex::IntoHex;
 use sessionless::{PrivateKey, Sessionless};
 use std::env;
 use std::fs;
 use std::path::Path;
-use chrono;
+use chrono::{self, Utc};
+use std::collections;
+use rand;
 
 /// Debug logging command for development
 #[tauri::command]
@@ -57,38 +59,86 @@ async fn get_sessionless() -> Result<Sessionless, String> {
     Ok(sessionless)
 }
 
-/// Create a seed MagiStack for testing
+/// Create a seed MagiStack for testing with real BDO upload
 #[tauri::command]
 async fn create_seed_magistack() -> Result<String, String> {
-    println!("🌱 Creating seed MagiStack for testing");
+    println!("🌱 Creating seed MagiStack with real BDO integration");
     
-    // Read the actual test card SVG files
-    let fire_svg = include_str!("../../../test-cards/fire-spell-card.svg");
-    let ice_svg = include_str!("../../../test-cards/ice-spell-card.svg");
-    let lightning_svg = include_str!("../../../test-cards/lightning-spell-card.svg");
+    // Step 1: Generate unique keys for the 3 cards
+    let card_keys = generate_card_keys("elemental_spells", 3).await?;
+    println!("🔑 Generated {} keys for elemental spells", card_keys.len());
     
-    let seed_cards = json!([
-        {
-            "name": "Fire Spell",
-            "type": "spell",
-            "content": "Cast a powerful fireball spell with interactive navigation to other spells.",
-            "svg": fire_svg
-        },
-        {
-            "name": "Ice Spell", 
-            "type": "spell",
-            "content": "Freeze enemies with ice magic and spell component interactions.",
-            "svg": ice_svg
-        },
-        {
-            "name": "Lightning Spell",
-            "type": "spell", 
-            "content": "Strike with lightning speed and power, featuring chain lightning effects.",
-            "svg": lightning_svg
+    // Read the actual test card SVG files  
+    let fire_svg = include_str!("../../../test-cards/elemental-spells/fire-spell-card.svg");
+    let ice_svg = include_str!("../../../test-cards/elemental-spells/ice-spell-card.svg");
+    let lightning_svg = include_str!("../../../test-cards/elemental-spells/lightning-spell-card.svg");
+    
+    // Step 2: Update SVG files to use real BDO pubKeys instead of demo ones
+    println!("🔑 Replacing demo keys with real keys:");
+    println!("🔑   Fire card pubKey: {}", &card_keys[0]);
+    println!("🔑   Ice card pubKey: {}", &card_keys[1]);
+    println!("🔑   Lightning card pubKey: {}", &card_keys[2]);
+    
+    let fire_svg_updated = fire_svg
+        .replace("demo_user_ice", &card_keys[1])
+        .replace("demo_user_lightning", &card_keys[2]);
+    
+    let ice_svg_updated = ice_svg
+        .replace("demo_user_fire", &card_keys[0])
+        .replace("demo_user_lightning", &card_keys[2]);
+        
+    let lightning_svg_updated = lightning_svg
+        .replace("demo_user_fire", &card_keys[0])
+        .replace("demo_user_ice", &card_keys[1]);
+    
+    println!("🔄 Updated SVG files with real BDO pubKeys");
+    println!("📏 Fire SVG length: {} chars", fire_svg_updated.len());
+    println!("📏 Ice SVG length: {} chars", ice_svg_updated.len());
+    println!("📏 Lightning SVG length: {} chars", lightning_svg_updated.len());
+    
+    // Step 3: Upload each card to BDO
+    let cards = vec![
+        ("Fire Spell", fire_svg_updated, &card_keys[0]),
+        ("Ice Spell", ice_svg_updated, &card_keys[1]), 
+        ("Lightning Spell", lightning_svg_updated, &card_keys[2])
+    ];
+    
+    let mut uploaded_cards = Vec::new();
+    
+    for (card_name, svg_content, pub_key) in cards {
+        println!("📤 Uploading card: {} with pubKey: {}...", card_name, &pub_key[..12]);
+        
+        match store_card_in_bdo(pub_key, card_name, &svg_content).await {
+            Ok(result) => {
+                println!("✅ Successfully uploaded card: {}", card_name);
+                uploaded_cards.push(json!({
+                    "name": card_name,
+                    "type": "spell",
+                    "content": format!("Interactive spell card with real BDO navigation"),
+                    "svg": svg_content,
+                    "bdoPubKey": pub_key,
+                    "uploaded": true
+                }));
+            },
+            Err(e) => {
+                println!("❌ Failed to upload card {}: {}", card_name, e);
+                // Still add to local stack but mark as not uploaded
+                uploaded_cards.push(json!({
+                    "name": card_name,
+                    "type": "spell", 
+                    "content": format!("Interactive spell card (BDO upload failed: {})", e),
+                    "svg": svg_content,
+                    "bdoPubKey": pub_key,
+                    "uploaded": false
+                }));
+            }
         }
-    ]);
+    }
     
-    save_magistack("spell_test_stack", seed_cards).await
+    println!("✅ Created seed stack with {} cards", uploaded_cards.len());
+    
+    // Step 4: Save the stack locally
+    save_magistack("elemental_spells_stack", Value::Array(uploaded_cards)).await
 }
 
 /// Create a new BDO user for card storage
@@ -567,6 +617,214 @@ async fn list_cards_in_bdo() -> Result<Vec<String>, String> {
     Ok(vec![])
 }
 
+/// Generate unique keys for cards and save to JSON file  
+#[tauri::command]
+async fn generate_card_keys(stack_name: &str, card_count: usize) -> Result<Vec<String>, String> {
+    println!("🔑 Generating {} unique keys for stack: {}", card_count, stack_name);
+    
+    let mut card_keys = Vec::new();
+    let mut key_data = std::collections::HashMap::new();
+    
+    // Generate unique BDO users for each card
+    for i in 0..card_count {
+        println!("🔑 Generating key {} of {}", i + 1, card_count);
+        
+        // Create a unique sessionless instance for this card
+        let unique_private_key = generate_unique_private_key();
+        let sessionless = Sessionless::from_private_key(
+            PrivateKey::from_hex(unique_private_key.clone()).map_err(|e| format!("Invalid private key: {}", e))?
+        );
+        
+        // Get the public key
+        let public_key = sessionless.public_key().to_hex();
+        
+        // Store the key pair
+        key_data.insert(format!("card_{}", i), json!({
+            "private_key": unique_private_key,
+            "public_key": public_key,
+            "index": i
+        }));
+        
+        card_keys.push(public_key.clone());
+        println!("✅ Generated key {}: {}", i + 1, &public_key[..12.min(public_key.len())]);
+    }
+    
+    // Save to JSON file in magicard directory
+    let safe_stack_name = stack_name.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+    let file_name = format!("{}Keys.json", safe_stack_name);
+    
+    // Save in app data directory
+    let app_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join("Library").join("Application Support").join("magicard").join("card-keys"),
+        Err(_) => Path::new(".").join("magicard_data").join("card-keys"),
+    };
+    
+    fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("Failed to create keys directory: {}", e))?;
+    
+    let file_path = app_dir.join(&file_name);
+    let keys_json = json!({
+        "stack_name": stack_name,
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "card_count": card_count,
+        "keys": key_data
+    });
+    
+    fs::write(&file_path, serde_json::to_string_pretty(&keys_json).unwrap())
+        .map_err(|e| format!("Failed to save keys file: {}", e))?;
+    
+    println!("✅ Saved {} keys to: {:?}", card_count, file_path);
+    
+    Ok(card_keys)
+}
+
+/// Store an individual card in BDO with its own unique user
+#[tauri::command]
+async fn store_card_in_bdo(card_bdo_pub_key: &str, card_name: &str, svg_content: &str) -> Result<Value, String> {
+    println!("🗄️ Storing card in BDO: {} with pubKey: {}...", card_name, &card_bdo_pub_key[..12]);
+    
+    // Load the private key for this card from the saved keys file
+    let card_private_key = match load_card_private_key("elemental_spells", card_bdo_pub_key).await {
+        Ok(private_key) => private_key,
+        Err(e) => {
+            println!("⚠️ Could not load private key for card {}: {}. Using generated key.", card_name, e);
+            // Generate a unique private key as fallback
+            generate_unique_private_key()
+        }
+    };
+    
+    let bdo_url = get_service_url("bdo");
+    
+    // Create a sessionless instance using the card's unique private key
+    let sessionless = match PrivateKey::from_hex(&card_private_key) {
+        Ok(private_key) => Sessionless::from_private_key(private_key),
+        Err(e) => {
+            println!("❌ Failed to create private key from hex: {}", e);
+            return Err(format!("Invalid private key: {}", e));
+        }
+    };
+    
+    let bdo = BDO::new(Some(bdo_url), Some(sessionless));
+    
+    // Create a unique context for this card
+    let card_context = format!("magicard_{}", card_name.replace(" ", "_").replace("/", "_"));
+    
+    // Create BDO user for this card
+    let card_data = json!({
+        "cardName": card_name,
+        "cardType": "spell",
+        "bdoPubKey": card_bdo_pub_key,
+        "svgContent": svg_content,
+        "pub": true,
+        "createdAt": chrono::Utc::now().to_rfc3339(),
+        "stackName": "elemental_spells"
+    });
+    
+    println!("📋 Storing card in BDO:");
+    println!("📋 Card Name: {}", card_name);
+    println!("📋 Card PubKey: {}", card_bdo_pub_key);
+    println!("📋 Context: {}", card_context);
+    println!("📋 SVG Content Length: {} chars", svg_content.len());
+    println!("📋 SVG Preview: {}", &svg_content[..100.min(svg_content.len())]);
+    
+    // Validate SVG content before storage
+    if !svg_content.trim().starts_with("<svg") {
+        println!("⚠️ Warning: SVG content doesn't start with <svg> tag");
+        println!("📋 Actual start: {}", &svg_content[..50.min(svg_content.len())]);
+    } else {
+        println!("✅ SVG content validates correctly (starts with <svg>)");
+    }
+
+    // Create BDO user first
+    let bdo_user = match bdo.create_user(&card_context, &card_data, &true).await {
+        Ok(user) => {
+            println!("✅ Created BDO user for card {} with UUID: {}", card_name, user.uuid);
+            println!("🔑 Card can be retrieved using pubKey: {}", card_bdo_pub_key);
+            user
+        },
+        Err(e) => {
+            println!("❌ Failed to create BDO user for card {}: {:?}", card_name, e);
+            return Err(format!("Failed to create BDO user: {}", e));
+        }
+    };
+    
+    println!("🌐 Card is now publicly accessible with pubKey: {}", card_bdo_pub_key);
+    
+    Ok(json!({
+        "success": true,
+        "uuid": bdo_user.uuid,
+        "pubKey": card_bdo_pub_key,
+        "context": card_context
+    }))
+}
+
+/// Load the private key for a specific card from the saved keys file
+async fn load_card_private_key(stack_name: &str, card_bdo_pub_key: &str) -> Result<String, String> {
+    let safe_stack_name = stack_name.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+    let file_name = format!("{}Keys.json", safe_stack_name);
+    
+    // Get keys file path
+    let app_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join("Library").join("Application Support").join("magicard").join("card-keys"),
+        Err(_) => Path::new(".").join("magicard_data").join("card-keys"),
+    };
+    
+    let file_path = app_dir.join(&file_name);
+    
+    // Check if file exists
+    if !file_path.exists() {
+        return Err(format!("Keys file not found: {:?}", file_path));
+    }
+    
+    // Read and parse the keys file
+    let keys_content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read keys file: {}", e))?;
+    
+    let keys_json: Value = serde_json::from_str(&keys_content)
+        .map_err(|e| format!("Failed to parse keys JSON: {}", e))?;
+    
+    // Find the private key for this public key
+    if let Some(keys) = keys_json["keys"].as_object() {
+        for (_card_id, key_info) in keys {
+            if let Some(pub_key) = key_info["public_key"].as_str() {
+                if pub_key == card_bdo_pub_key {
+                    if let Some(private_key) = key_info["private_key"].as_str() {
+                        return Ok(private_key.to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    Err(format!("Private key not found for pubKey: {}", card_bdo_pub_key))
+}
+
+/// Generate a unique private key for a card
+fn generate_unique_private_key() -> String {
+    use rand::RngCore;
+    
+    // Generate 32 random bytes for secp256k1 private key
+    let mut rng = rand::thread_rng();
+    let mut bytes = [0u8; 32];
+    rng.fill_bytes(&mut bytes);
+    
+    // Convert to hex string
+    let hex_key = bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>();
+    
+    // Validate it's a proper secp256k1 key by testing with sessionless
+    match PrivateKey::from_hex(&hex_key) {
+        Ok(_) => hex_key,
+        Err(_) => {
+            // If invalid, generate another 32-byte key
+            println!("⚠️ Generated key validation failed, regenerating");
+            let mut rng = rand::thread_rng();
+            let mut fallback_bytes = [0u8; 32];
+            rng.fill_bytes(&mut fallback_bytes);
+            fallback_bytes.iter().map(|b| format!("{:02x}", b)).collect::<String>()
+        }
+    }
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -587,7 +845,9 @@ pub fn run() {
             load_card_svg,
             get_card_from_bdo,
             navigate_to_card,
-            list_cards_in_bdo
+            list_cards_in_bdo,
+            generate_card_keys,
+            store_card_in_bdo
         ])
         .setup(|_app| {
             println!("🪄 MagiCard backend is starting up...");
