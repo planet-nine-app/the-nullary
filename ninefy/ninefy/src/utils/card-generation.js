@@ -177,11 +177,21 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree, c
   const cardWidth = 300;
   const cardHeight = 400;
   
-  // Find the next selector card for navigation (all options go to the same next selector)
+  // Debug the card array and current card position
+  console.log('🔍 DEBUG: Card array summary:');
+  allCards.forEach((c, i) => {
+    if (c.type === 'menu-selector') {
+      console.log(`   ${i}: ${c.name} (level: ${c.level})`);
+    }
+  });
+  console.log(`🔍 DEBUG: Current card "${card.name}" is at index: ${allCards.indexOf(card)}`);
+  
+  // Find the next selector card for navigation based on menu level order
+  const currentLevel = card.menuData?.level ?? allCards.indexOf(card);
   const nextSelectorCard = allCards.find(c => 
     c.type === 'menu-selector' && 
     c !== card && 
-    allCards.indexOf(c) > allCards.indexOf(card)
+    (c.menuData?.level ?? allCards.indexOf(c)) > currentLevel
   );
   
   const nextBdoPubKey = nextSelectorCard ? nextSelectorCard.cardBdoPubKey : null;
@@ -201,12 +211,12 @@ function createMenuSelectorSVG(card, allCards, menuTitle, index, decisionTree, c
     
     console.log(`🔍 DEBUG: isFinalSelector=${isFinalSelector}, catalogForLookup exists=${!!catalogForLookup}, option=${option}`);
     
-    if (isFinalSelector && catalogForLookup) {
+    if (isFinalSelector) {
       // Final selector: option buttons trigger lookup with this selection
       console.log(`🔍 Creating lookup spell button for final selector option: ${option}`);
       spellType = "lookup";
       spellComponents = {
-        catalog: catalogForLookup,
+        catalog: catalogForLookup || {}, // Empty catalog initially, will be updated later
         selection: option,
         level: card.level,
         selectorType: 'menu',

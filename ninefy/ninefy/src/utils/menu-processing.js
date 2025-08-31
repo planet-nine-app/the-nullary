@@ -33,6 +33,11 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
     const { uploadedCards, bdoPubKey } = await uploadCardsToStorage(cards, menuTitle, userUuid);
     console.log(`✅ Uploaded ${uploadedCards.length} cards to BDO`);
     
+    // Step 3.5: Update final selector cards in BDO with the complete nested catalog
+    console.log('🔄 Updating final selector cards with nested catalog containing product bdoPubKeys...');
+    await updateFinalSelectorCardsInBDO(uploadedCards, nestedCatalog, userUuid);
+    console.log('✅ Updated final selector cards with complete catalog');
+    
     // Step 4: Create master catalog in Sanora and BDO
     const catalogResult = await createMasterCatalog(menuTree, menuTitle, menuDescription, menuType, uploadedCards, bdoPubKey, userUuid, sanoraUrl);
     console.log('✅ Master catalog created');
@@ -142,11 +147,6 @@ async function generateMagistackCards(menuTree, menuTitle) {
   const createdCards = [];
   const cardErrors = [];
   
-  // Create nested catalog structure for lookup spell
-  console.log('🗺️ Creating nested catalog structure for lookup spell...');
-  const nestedCatalog = createNestedCatalogFromProducts(menuTree.products);
-  console.log('🗺️ Generated nested catalog:', nestedCatalog);
-  
   // Create comprehensive list of all cards needed
   const allCardsNeeded = [];
   
@@ -195,13 +195,52 @@ async function generateMagistackCards(menuTree, menuTitle) {
   
   console.log(`🎯 Total cards needed: ${allCardsNeeded.length} (${menuHeaders.length} selectors + ${menuTree.products.length} products)`);
   
-  // Generate cards using card generation utilities
+  // Generate cards using card generation utilities (pass null for catalog initially)
   const { cards, errors } = await window.CardGeneration.generateAllCards(
     allCardsNeeded, 
     menuTitle, 
     menuTree, 
-    nestedCatalog
+    null
   );
+  
+  // Now create nested catalog using the generated cards that have bdoPubKeys
+  console.log('🗺️ Creating nested catalog structure for lookup spell from generated cards...');
+  const productCards = cards.filter(card => card.type === 'product');
+  console.log('🔍 DEBUG: First few product cards structure:', productCards.slice(0, 2));
+  const nestedCatalog = createNestedCatalogFromCards(productCards);
+  console.log('🗺️ Generated nested catalog with bdoPubKeys:', nestedCatalog);
+  
+  // Regenerate final selector cards with the complete nested catalog
+  console.log('🔄 Regenerating final selector cards with nested catalog...');
+  const finalSelectorCards = cards.filter(card => {
+    if (card.type !== 'menu-selector') return false;
+    
+    // Check if this is a final selector (no next selector)
+    const cardIndex = allCardsNeeded.findIndex(c => c.cardBdoPubKey === card.cardBdoPubKey);
+    const nextSelector = allCardsNeeded.find((c, index) => 
+      c.type === 'menu-selector' && index > cardIndex
+    );
+    return !nextSelector;
+  });
+  
+  for (const finalCard of finalSelectorCards) {
+    const cardIndex = cards.findIndex(c => c.cardBdoPubKey === finalCard.cardBdoPubKey);
+    const allCardIndex = allCardsNeeded.findIndex(c => c.cardBdoPubKey === finalCard.cardBdoPubKey);
+    
+    if (cardIndex >= 0 && allCardIndex >= 0) {
+      console.log(`🔄 Regenerating final selector: ${finalCard.name} with catalog`);
+      const updatedSvg = window.CardGeneration.createMenuSelectorSVG(
+        allCardsNeeded[allCardIndex], 
+        allCardsNeeded, 
+        menuTitle, 
+        allCardIndex, 
+        menuTree.decisionTree, 
+        nestedCatalog
+      );
+      cards[cardIndex].svg = updatedSvg;
+      console.log(`✅ Updated final selector card: ${finalCard.name}`);
+    }
+  }
   
   return {
     cards,
@@ -212,7 +251,75 @@ async function generateMagistackCards(menuTree, menuTitle) {
 }
 
 /**
- * Create nested catalog structure for lookup spell from products array
+ * Create nested catalog structure for lookup spell from generated cards with bdoPubKeys
+ * Converts product cards to nested map: {"adult": {"two-hour": {productId, bdoPubKey, ...}}}
+ */
+function createNestedCatalogFromCards(productCards) {
+  console.log('🗺️ Converting product cards to nested catalog map for lookup spell:', productCards.length);
+  
+  const catalogMap = {};
+  
+  for (const card of productCards) {
+    console.log('🔍 DEBUG: Processing product card:', {
+      name: card.name,
+      type: card.type,
+      cardBdoPubKey: card.cardBdoPubKey,
+      metadata: card.metadata
+    });
+    
+    // Get product data from the card
+    const product = card.metadata || {};
+    const productName = card.name || '';
+    const parts = productName.split(' ');
+    
+    if (parts.length >= 2) {
+      let rider, timeSpan;
+      
+      // Handle different naming patterns
+      if (parts.length === 3 && parts[2].startsWith('$')) {
+        // Format: "adult two-hour $250"
+        rider = parts[0];
+        timeSpan = parts[1];
+      } else if (parts.length >= 2) {
+        // More complex parsing - find price indicator
+        const priceIndex = parts.findIndex(part => part.startsWith('$'));
+        if (priceIndex > 0) {
+          rider = parts[0];
+          timeSpan = parts.slice(1, priceIndex).join('-');
+        } else {
+          // No price found, assume first two parts are the path
+          rider = parts[0];
+          timeSpan = parts[1];
+        }
+      }
+      
+      if (rider && timeSpan) {
+        // Ensure nested structure exists
+        if (!catalogMap[rider]) {
+          catalogMap[rider] = {};
+        }
+        
+        // Store product data with bdoPubKey from the generated card
+        catalogMap[rider][timeSpan] = {
+          productId: product.id || card.name,
+          bdoPubKey: card.cardBdoPubKey, // This comes from the generated card
+          price: product.price || 0,
+          name: card.name
+        };
+        
+        console.log(`🗺️ Mapped "${rider}" -> "${timeSpan}" -> productId: ${product.id || card.name}, bdoPubKey: ${card.cardBdoPubKey}`);
+      }
+    } else {
+      console.warn(`⚠️ Could not parse product name into decision tree path: "${productName}"`);
+    }
+  }
+  
+  console.log('🗺️ Final nested catalog structure with bdoPubKeys:', catalogMap);
+  return catalogMap;
+}
+
+/**
+ * Create nested catalog structure for lookup spell from products array (DEPRECATED - use createNestedCatalogFromCards)
  * Converts products like "adult two-hour $250" to nested map: {"adult": {"two-hour": {productId, bdoPubKey, ...}}}
  */
 function createNestedCatalogFromProducts(products) {
@@ -271,12 +378,78 @@ function createNestedCatalogFromProducts(products) {
   return catalogMap;
 }
 
+/**
+ * Update final selector cards in BDO with the complete nested catalog
+ * @param {Array} uploadedCards - All uploaded cards
+ * @param {Object} nestedCatalog - Complete nested catalog with bdoPubKeys
+ * @param {string} userUuid - User UUID for authentication
+ */
+async function updateFinalSelectorCardsInBDO(uploadedCards, nestedCatalog, userUuid) {
+  console.log('🔄 Starting update of final selector cards with nested catalog...');
+  
+  // Find final selector cards (menu-selector type with no next selector)
+  const finalSelectors = uploadedCards.filter(card => {
+    if (card.type !== 'menu-selector') return false;
+    
+    // Check if this is the last selector in the sequence
+    const cardIndex = uploadedCards.findIndex(c => c.cardBdoPubKey === card.cardBdoPubKey);
+    const hasNextSelector = uploadedCards.find((c, index) => 
+      c.type === 'menu-selector' && index > cardIndex
+    );
+    return !hasNextSelector;
+  });
+  
+  console.log(`🔄 Found ${finalSelectors.length} final selector cards to update`);
+  
+  for (const finalSelector of finalSelectors) {
+    console.log(`🔄 Updating final selector: ${finalSelector.name} with nested catalog`);
+    
+    try {
+      // Re-generate the SVG with the complete nested catalog
+      const cardIndex = uploadedCards.findIndex(c => c.cardBdoPubKey === finalSelector.cardBdoPubKey);
+      const menuSelectorData = {
+        type: 'menu-selector',
+        name: finalSelector.name,
+        options: finalSelector.metadata?.options || ['two-hour', 'day', 'month'], // fallback options
+        level: finalSelector.metadata?.level || 'final'
+      };
+      
+      const updatedSvg = window.CardGeneration.createMenuSelectorSVG(
+        menuSelectorData,
+        uploadedCards,
+        finalSelector.metadata?.menuTitle || 'Menu',
+        cardIndex,
+        null, // decisionTree
+        nestedCatalog // This now has the product bdoPubKeys
+      );
+      
+      // Update the card in BDO using Tauri backend
+      if (window.__TAURI__) {
+        const invoke = window.__TAURI__.core.invoke;
+        const updateResult = await invoke('update_card_in_bdo', {
+          bdoUuid: finalSelector.cardBdoUuid,
+          bdoPubKey: finalSelector.cardBdoPubKey,
+          svgContent: updatedSvg,
+          menuName: menuTitle
+        });
+        console.log(`✅ Updated final selector card in BDO: ${finalSelector.name}`);
+      } else {
+        console.warn('⚠️ Tauri not available, skipping BDO update');
+      }
+      
+    } catch (error) {
+      console.error(`❌ Failed to update final selector card ${finalSelector.name}:`, error);
+    }
+  }
+}
+
 // Export for use in main application
 window.MenuProcessing = {
   processMenuCatalogProduct,
   parseMenuDataFromForm,
   generateMagistackCards,
-  createNestedCatalogFromProducts
+  createNestedCatalogFromProducts,
+  updateFinalSelectorCardsInBDO
 };
 
 console.log('🍽️ Menu Processing utilities loaded');

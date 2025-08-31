@@ -862,7 +862,7 @@ async fn store_card_in_bdo(card_bdo_pub_key: &str, card_name: &str, svg_content:
     let bdo = BDO::new(Some(bdo_url), Some(sessionless));
     
     // Create a unique context for this card
-    let card_context = format!("magicard_{}", card_name.replace(" ", "_").replace("/", "_"));
+    let card_context = format!("ninefy");
     
     // Create BDO user for this card
     let card_data = json!({
@@ -871,6 +871,7 @@ async fn store_card_in_bdo(card_bdo_pub_key: &str, card_name: &str, svg_content:
         "bdoPubKey": card_bdo_pub_key,
         "svgContent": svg_content,
         "pub": true,
+        "pubKey": generated_pub_key,
         "createdAt": Utc::now().to_rfc3339(),
         "menuName": menu_name
     });
@@ -1081,6 +1082,66 @@ async fn preview_bdo_menu(pub_key: &str) -> Result<String, String> {
     }
 }
 
+/// Update an existing card in BDO with new SVG content
+#[tauri::command]
+async fn update_card_in_bdo(bdo_uuid: &str, bdo_pub_key: &str, svg_content: &str, menu_name: &str) -> Result<String, String> {
+    println!("🔄 Updating card in BDO with UUID: {}... (pubKey: {}...) from menu: {}", &bdo_uuid[..12], &bdo_pub_key[..12], menu_name);
+    println!("🔍 SVG content length: {} chars", svg_content.len());
+    println!("🔍 SVG preview: {}...", &svg_content[..std::cmp::min(100, svg_content.len())]);
+    
+    // Load the private key for this card from the saved keys file
+    let card_private_key = match load_card_private_key(menu_name, bdo_pub_key).await {
+        Ok(private_key) => private_key,
+        Err(e) => {
+            println!("❌ Could not load private key for card update: {}. Cannot update without key.", e);
+            return Err(format!("Cannot update card: missing private key"));
+        }
+    };
+    
+    let bdo_url = get_service_url("bdo");
+    println!("🔗 Using BDO URL: {}", bdo_url);
+    
+    // Create a sessionless instance using the card's unique private key
+    let sessionless = match PrivateKey::from_hex(&card_private_key) {
+        Ok(private_key) => Sessionless::from_private_key(private_key),
+        Err(e) => {
+            println!("❌ Failed to create private key from hex: {}", e);
+            return Err(format!("Invalid private key: {}", e));
+        }
+    };
+    
+    // Create BDO client with sessionless authentication
+    let bdo = bdo_rs::BDO::new(Some(bdo_url), Some(sessionless));
+    
+    // Create updated card data
+    let card_data = json!({
+        "svg": svg_content,
+        "name": format!("Updated card {}", &bdo_pub_key[..8]),
+        "type": "menu-selector",
+        "updated_at": chrono::Utc::now().to_rfc3339()
+    });
+    
+    let card_context = format!("ninefy");
+    
+    // Update the BDO user with new card data
+    println!("🚀 About to call bdo.update_bdo()...");
+    println!("🔍 Parameters: uuid={}, context={}, is_public=true", &bdo_uuid[..12], card_context);
+    
+    match bdo.update_bdo(&bdo_uuid, &card_context, &card_data, &true).await {
+        Ok(updated_user) => {
+            println!("✅ Successfully updated card in BDO: {}", &bdo_uuid[..12]);
+            println!("🔍 Updated user UUID: {}", updated_user.uuid);
+            Ok(format!("Card updated successfully: {}", &bdo_uuid[..12]))
+        },
+        Err(e) => {
+            println!("❌ Failed to update card in BDO: {:?}", e);
+            println!("❌ Error type: {}", e);
+            println!("❌ Error source: {:?}", e.source());
+            Err(format!("Failed to update card: {}", e))
+        }
+    }
+}
+
 /// Generate a unique private key for a card
 fn generate_unique_private_key() -> String {
     use std::time::UNIX_EPOCH;
@@ -1139,7 +1200,8 @@ pub fn run() {
             generate_menu_card_keys,
             store_card_in_bdo,
             store_menu_in_bdo,
-            preview_bdo_menu
+            preview_bdo_menu,
+            update_card_in_bdo
         ])
         .setup(|_app| {
             println!("🛒 Ninefy backend is starting up...");
