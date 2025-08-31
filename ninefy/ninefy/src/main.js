@@ -3420,7 +3420,7 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
     </g>
   ` : '';
   
-  const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+  const svgContent = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" card-name="${product.name}">
   <defs>
     <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -4112,18 +4112,16 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       console.log(`   ${index}: ${card.name} (type: ${card.type})`);
     });
     
-    const finalSelectorCards = createdCards.filter(card => {
-      if (card.type !== 'menu-selector') return false;
-      
-      // Check if this is a final selector based on menu level (highest level = final)
-      const currentLevel = card.metadata?.level ?? 0;
-      const hasNextSelector = createdCards.some(c => 
-        c.type === 'menu-selector' && 
-        c !== card && 
-        (c.metadata?.level ?? 0) > currentLevel
-      );
-      const isFinal = !hasNextSelector;
-      console.log(`🔍 Card "${card.name}" (level: ${currentLevel}) is final selector: ${isFinal}`);
+    // Find final selector cards (menu-selector type that should have lookup spells)
+    // The final selector is the LAST menu level that leads to products
+    const menuSelectors = createdCards.filter(card => card.type === 'menu-selector');
+    console.log(`🔍 Found ${menuSelectors.length} menu selectors total`);
+    
+    // The final selector is the one with the highest index (last in sequence)
+    const finalSelectorCards = menuSelectors.filter((card, index) => {
+      console.log(`🔍 Checking card: ${card.name} (type: ${card.type}, index in selectors: ${index})`);
+      const isFinal = index === menuSelectors.length - 1; // Only the last selector is final
+      console.log(`🔍 Card "${card.name}" is final selector: ${isFinal} (${index + 1} of ${menuSelectors.length})`);
       return isFinal;
     });
     
@@ -4133,23 +4131,38 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
       console.log(`🔄 Updating final selector: ${finalCard.name} with nested catalog`);
       
       try {
-        // Re-generate the SVG with the complete nested catalog
+        console.log(`🔍 PRESERVING ORIGINAL CARD DATA FOR: ${finalCard.name}`);
+        console.log(`🔍   Original options: ${JSON.stringify(finalCard.originalOptions)}`);
+        console.log(`🔍   Original level: ${finalCard.originalLevel}`);
+        console.log(`🔍   Current SVG length: ${finalCard.svgContent?.length || 'undefined'}`);
+        
+        // Now regenerate the final selector with the complete nested catalog for lookup spells
         const cardIndex = createdCards.findIndex(c => c.cardBdoPubKey === finalCard.cardBdoPubKey);
         const menuSelectorData = {
           type: 'menu-selector',
           name: finalCard.name,
-          options: ['two-hour', 'day', 'month'], // TODO: get from actual card data
-          level: 'time span' // TODO: get from actual card data
+          options: finalCard.originalOptions || ['two-hour', 'day', 'month'], // Use preserved options
+          level: finalCard.originalLevel || 'time span' // Use preserved level
         };
         
+        console.log(`🔍 Regenerating final selector with:`);
+        console.log(`🔍   Card: ${finalCard.name}`);
+        console.log(`🔍   Options: ${JSON.stringify(menuSelectorData.options)}`);
+        console.log(`🔍   Level: ${menuSelectorData.level}`);
+        console.log(`🔍   Nested catalog keys: ${Object.keys(nestedCatalog)}`);
+        
+        // Force final selector behavior by passing an empty allCards array 
+        // so findNextSelectorCard returns null and triggers lookup spells
         const updatedSvg = window.CardGeneration.createMenuSelectorSVG(
           menuSelectorData,
-          createdCards,
+          [], // Empty array forces final selector behavior
           menuTitle,
-          cardIndex,
+          0, // cardIndex doesn't matter with empty array
           null, // decisionTree
-          nestedCatalog // This now has the product bdoPubKeys
+          nestedCatalog // This now has the product bdoPubKeys for lookup spells
         );
+        
+        console.log(`🔍 Generated updated SVG (${updatedSvg.length} characters) for: ${finalCard.name}`);
         
         // Update the card in BDO using Tauri backend
         if (window.__TAURI__) {

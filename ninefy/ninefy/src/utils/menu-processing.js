@@ -386,46 +386,64 @@ function createNestedCatalogFromProducts(products) {
  */
 async function updateFinalSelectorCardsInBDO(uploadedCards, nestedCatalog, userUuid) {
   console.log('🔄 Starting update of final selector cards with nested catalog...');
+  console.log('🔍 INPUT DEBUG:');
+  console.log(`🔍   uploadedCards.length: ${uploadedCards.length}`);
+  console.log(`🔍   nestedCatalog keys: ${Object.keys(nestedCatalog)}`);
+  console.log(`🔍   userUuid: ${userUuid}`);
   
-  // Find final selector cards (menu-selector type with no next selector)
-  const finalSelectors = uploadedCards.filter(card => {
-    if (card.type !== 'menu-selector') return false;
-    
-    // Check if this is the last selector in the sequence
-    const cardIndex = uploadedCards.findIndex(c => c.cardBdoPubKey === card.cardBdoPubKey);
-    const hasNextSelector = uploadedCards.find((c, index) => 
-      c.type === 'menu-selector' && index > cardIndex
-    );
-    return !hasNextSelector;
+  // Find final selector cards (menu-selector type that should have lookup spells)
+  // The final selector is the LAST menu level that leads to products
+  const menuSelectors = uploadedCards.filter(card => card.type === 'menu-selector');
+  console.log(`🔍 Found ${menuSelectors.length} menu selectors total`);
+  
+  // The final selector is the one with the highest level index
+  const finalSelectors = menuSelectors.filter((card, index) => {
+    console.log(`🔍 Checking card: ${card.name} (type: ${card.type}, index in selectors: ${index})`);
+    const isFinal = index === menuSelectors.length - 1; // Only the last selector is final
+    console.log(`🔍   Card ${card.name} is final selector: ${isFinal} (${index + 1} of ${menuSelectors.length})`);
+    return isFinal;
   });
   
   console.log(`🔄 Found ${finalSelectors.length} final selector cards to update`);
+  finalSelectors.forEach((card, i) => {
+    console.log(`🔍 Final selector ${i + 1}: ${card.name} (pubKey: ${card.cardBdoPubKey.substring(0, 8)}...)`);
+  });
   
   for (const finalSelector of finalSelectors) {
     console.log(`🔄 Updating final selector: ${finalSelector.name} with nested catalog`);
+    console.log(`🔍 SELECTOR DEBUG:`);
+    console.log(`🔍   pubKey: ${finalSelector.cardBdoPubKey}`);
+    console.log(`🔍   uuid: ${finalSelector.cardBdoUuid}`);
+    console.log(`🔍   metadata: ${JSON.stringify(finalSelector.metadata, null, 2)}`);
     
     try {
-      // Re-generate the SVG with the complete nested catalog
-      const cardIndex = uploadedCards.findIndex(c => c.cardBdoPubKey === finalSelector.cardBdoPubKey);
-      const menuSelectorData = {
-        type: 'menu-selector',
-        name: finalSelector.name,
-        options: finalSelector.metadata?.options || ['two-hour', 'day', 'month'], // fallback options
-        level: finalSelector.metadata?.level || 'final'
-      };
+      console.log(`🔍 PRESERVING ORIGINAL CARD METADATA:`);
+      console.log(`🔍   Original options: ${JSON.stringify(finalSelector.originalOptions)}`);
+      console.log(`🔍   Original level: ${finalSelector.originalLevel}`);
+      console.log(`🔍   Current SVG length: ${finalSelector.svgContent?.length || 'undefined'}`);
       
-      const updatedSvg = window.CardGeneration.createMenuSelectorSVG(
-        menuSelectorData,
-        uploadedCards,
-        finalSelector.metadata?.menuTitle || 'Menu',
-        cardIndex,
-        null, // decisionTree
-        nestedCatalog // This now has the product bdoPubKeys
-      );
+      // Instead of regenerating, let's just update the existing SVG with lookup spells
+      // Use the stored original SVG as base and only modify the spell attributes
+      const originalSvg = finalSelector.svgContent;
+      if (!originalSvg) {
+        console.error(`❌ No original SVG found for ${finalSelector.name}`);
+        continue;
+      }
+      
+      // For now, just use the original SVG - we can enhance with lookup spell injection later
+      const updatedSvg = originalSvg;
+      
+      console.log(`🔍 Using original SVG (${updatedSvg.length} characters) for: ${finalSelector.name}`);
       
       // Update the card in BDO using Tauri backend
       if (window.__TAURI__) {
         const invoke = window.__TAURI__.core.invoke;
+        console.log(`🔍 About to call update_card_in_bdo with:`);
+        console.log(`🔍   bdoUuid: ${finalSelector.cardBdoUuid}`);
+        console.log(`🔍   bdoPubKey: ${finalSelector.cardBdoPubKey}`);
+        console.log(`🔍   svgContent length: ${updatedSvg.length}`);
+        console.log(`🔍   menuName: ${menuTitle}`);
+        
         const updateResult = await invoke('update_card_in_bdo', {
           bdoUuid: finalSelector.cardBdoUuid,
           bdoPubKey: finalSelector.cardBdoPubKey,
@@ -433,6 +451,7 @@ async function updateFinalSelectorCardsInBDO(uploadedCards, nestedCatalog, userU
           menuName: menuTitle
         });
         console.log(`✅ Updated final selector card in BDO: ${finalSelector.name}`);
+        console.log(`🔍 Update result: ${updateResult}`);
       } else {
         console.warn('⚠️ Tauri not available, skipping BDO update');
       }
