@@ -277,10 +277,13 @@ appEnv.current();        // Check current environment
 
 ### 2. Ninefy - Digital Goods Marketplace
 **Location**: `/ninefy/`
-**Status**: ✅ Production Ready with Complete Purchase Flow
+**Status**: ✅ Production Ready with Complete Menu Navigation System
 
 **Key Features**:
-- Type-specific product forms (ebook, course, ticket, shippable, SoDoTo)
+- Type-specific product forms (ebook, course, ticket, shippable, SoDoTo, menu)
+- **Complete Menu Catalog System**: CSV/JSON hierarchical menu processing with decision tree navigation
+- **MagiCard Integration**: Generates interactive SVG cards compatible with MagiCard spell system
+- **Cross-Card Navigation**: Menu selector cards → product cards via BDO storage with cryptographic keys
 - Real Stripe payment integration via Addie backend
 - Cross-base marketplace aggregation using `/products/base` endpoint
 - Dynamic base discovery system (no hardcoded servers)
@@ -516,6 +519,94 @@ const component = createNewComponent(myConfig);
 // 3. Integrate with apps
 // Use add-environment-config.js to deploy
 ```
+
+## 🍽️ Menu Navigation System Architecture
+
+### Complete Decision Tree Navigation System (January 2025)
+
+The Nullary ecosystem includes a sophisticated **decision tree navigation system** that enables complex hierarchical menu structures with automatic product resolution and cross-card navigation.
+
+#### **Core Components**
+
+**1. Menu Catalog Processing (Ninefy)**:
+- **CSV/JSON Upload**: Hierarchical menu structures (rider → time span → product)
+- **Decision Tree Generation**: Automatic parsing of nested catalog structures
+- **Individual Product Upload**: Each menu item becomes a real Sanora product
+- **BDO Card Storage**: Menu cards stored with unique cryptographic keys
+
+**2. Interactive SVG Card Generation**:
+- **Menu Selector Cards**: Display navigation options with spell-powered buttons
+- **Product Cards**: Final destination cards with purchase integration
+- **Cross-Card Navigation**: Uses `spell="magicard"` with `bdoPubKey` references
+- **MagiCard Compatibility**: Clean SVG generation without XML declaration headers
+
+**3. Spell-Based Navigation System**:
+- **Selection Spells**: Navigate between menu levels with magistack storage
+- **Lookup Spells**: Resolve final selections to specific products
+- **MagiCard Spells**: Cross-card navigation via BDO public key references
+- **Universal castSpell.js**: Shared spell casting system across all applications
+
+#### **Navigation Flow**
+
+**Menu Creation (Ninefy)**:
+```csv
+,rider,time span,product,price
+,adult,two-hour,adult two-hour 250,2.50
+,adult,day,adult day 500,5.00
+,youth,two-hour,youth two-hour 100,1.00
+```
+
+**Card Generation Process**:
+1. **CSV Parser** → Decision tree structure
+2. **Menu Selector Cards** → Option buttons with navigation spells
+3. **Product Cards** → Final destination with purchase integration
+4. **BDO Upload** → Individual cards with unique cryptographic keys
+
+**Navigation Experience**:
+1. **"Select rider"** → User clicks "adult" → navigates to **"Select time span"**
+2. **"Select time span"** → User clicks "day" → lookup resolves to **"adult day 500"** product
+3. **Product Card** → Shows final product with purchase button
+
+#### **Technical Architecture**
+
+**Spell Types**:
+- **`selection`**: Navigate + store choice in magistack (intermediate levels)
+- **`lookup`**: Resolve magistack selections to final product (final level)
+- **`magicard`**: Cross-card navigation via BDO public keys
+
+**Key Functions**:
+- **`processMenuCatalogProduct()`** - Complete menu processing pipeline
+- **`generateAllCards()`** - SVG card generation with spell integration
+- **`createMenuSelectorSVG()`** - Interactive menu selector cards
+- **`createMenuItemSVG()`** - Final product cards with purchase flow
+
+**Cross-Application Integration**:
+- **Ninefy**: Menu creation and card generation
+- **MagiCard**: Card display and spell navigation
+- **castSpell.js**: Universal spell resolution system
+- **BDO**: Cryptographically secured card storage
+
+#### **Production Features**
+
+**✅ Intelligent Navigation**:
+- **Magistack Selection Storage**: User choices remembered throughout navigation session
+- **Automatic Final Card Detection**: Only last menu selector gets lookup spells
+- **Consistent SVG Generation**: Clean SVG without XML declarations for MagiCard compatibility
+- **Real Cryptographic Keys**: Unique BDO pubKeys for secure card references
+
+**✅ Complete Integration**:
+- **Cross-Card Navigation**: Seamless navigation between menu and product cards
+- **Universal Spell System**: Works across Tauri apps and browser extensions
+- **BDO Bridge Interface**: Standardized card retrieval across applications
+- **Environment Support**: Works in dev/test/local environments
+
+**✅ Production Ready**:
+- **No Mock Data**: All cards use real backend integration
+- **Error Handling**: Graceful degradation when services unavailable
+- **User Feedback**: Clear loading states and success/error messages
+- **Comprehensive Testing**: Validated across complete ecosystem
+
+This system represents the first working implementation of intelligent decision tree navigation where users can navigate complex hierarchical menus with selections automatically resolving to specific products through cryptographically-secured cross-card navigation.
 
 ## Key Documentation Files
 

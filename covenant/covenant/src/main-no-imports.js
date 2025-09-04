@@ -972,7 +972,159 @@ function createContractViewScreen() {
         }
     }, 100);
     
+    // Add extension-compatible step signing buttons
+    addExtensionCovenantButtons(svg);
+    
     return svg;
+}
+
+/**
+ * Add extension-compatible covenant spell buttons for contract steps
+ */
+function addExtensionCovenantButtons(svg) {
+    if (!appState.currentContract || !appState.currentContract.steps) {
+        return;
+    }
+    
+    console.log('🔧 Adding extension covenant buttons for contract:', appState.currentContract.uuid);
+    
+    // Check if The Advancement extension is available
+    const hasExtension = typeof window.AdvancementExtension !== 'undefined' || 
+                        typeof window.castSpell === 'function';
+    
+    if (!hasExtension) {
+        console.log('ℹ️ The Advancement extension not detected, skipping covenant spell buttons');
+        return;
+    }
+    
+    console.log('✅ The Advancement extension detected, adding covenant spell buttons');
+    
+    // Add header for extension integration section
+    const extensionHeader = createSVGText('🚀 The Advancement Extension Integration', 50, 750, {
+        fontSize: theme.typography.headerSize,
+        fontWeight: 'bold',
+        color: theme.colors.secondary
+    });
+    svg.appendChild(extensionHeader);
+    
+    const instructionText = createSVGText(
+        'Click buttons below to sign contract steps using The Advancement browser extension',
+        50, 780, {
+            fontSize: theme.typography.bodySize,
+            color: theme.colors.textSecondary
+        }
+    );
+    svg.appendChild(instructionText);
+    
+    // Add covenant spell button for each contract step
+    appState.currentContract.steps.forEach((step, index) => {
+        const yPos = 820 + (index * 60);
+        
+        // Step title
+        const stepTitle = createSVGText(`Step ${index + 1}: ${step.description}`, 70, yPos, {
+            fontSize: theme.typography.bodySize,
+            fontWeight: 'bold',
+            color: theme.colors.text
+        });
+        svg.appendChild(stepTitle);
+        
+        // Check if current user has already signed this step
+        const userUUID = appState.userInfo?.uuid;
+        const hasUserSigned = step.signatures && step.signatures[userUUID];
+        const isStepCompleted = step.completed;
+        
+        // Step status
+        let statusText = '⏳ Awaiting signatures';
+        let statusColor = theme.colors.textSecondary;
+        
+        if (isStepCompleted) {
+            statusText = '✅ Completed';
+            statusColor = theme.colors.secondary;
+        } else if (hasUserSigned) {
+            statusText = '✍️ You signed';
+            statusColor = theme.colors.accent;
+        }
+        
+        const stepStatus = createSVGText(statusText, 70, yPos + 20, {
+            fontSize: theme.typography.smallSize,
+            color: statusColor
+        });
+        svg.appendChild(stepStatus);
+        
+        // Create covenant spell button (always visible for extension users)
+        const buttonText = hasUserSigned ? '🔄 Re-sign Step' : '✍️ Sign Step';
+        const buttonColor = hasUserSigned ? theme.colors.accent : theme.colors.primary;
+        
+        // Create invisible rect for spell casting
+        const spellRect = createSVGElement('rect', {
+            x: '500',
+            y: (yPos - 10).toString(),
+            width: '150',
+            height: '35',
+            rx: '6',
+            ry: '6',
+            fill: buttonColor,
+            stroke: 'none',
+            cursor: 'pointer',
+            spell: 'covenant',
+            'spell-components': JSON.stringify({
+                contractUuid: appState.currentContract.uuid,
+                stepId: step.id,
+                action: 'signStep'
+            })
+        });
+        
+        // Button text
+        const buttonTextElement = createSVGText(buttonText, 575, yPos + 8, {
+            fontSize: theme.typography.bodySize,
+            fontWeight: 'bold',
+            color: '#ffffff',
+            textAnchor: 'middle',
+            spell: 'covenant',
+            'spell-components': JSON.stringify({
+                contractUuid: appState.currentContract.uuid,
+                stepId: step.id,
+                action: 'signStep'
+            })
+        });
+        
+        // Add hover effects
+        spellRect.addEventListener('mouseenter', () => {
+            spellRect.setAttribute('fill', `${buttonColor}cc`);
+        });
+        spellRect.addEventListener('mouseleave', () => {
+            spellRect.setAttribute('fill', buttonColor);
+        });
+        
+        svg.appendChild(spellRect);
+        svg.appendChild(buttonTextElement);
+        
+        console.log(`🔧 Added covenant spell button for step: ${step.id}`);
+    });
+    
+    // Add listener for covenant step signing events from the extension
+    document.addEventListener('covenantStepSigned', (event) => {
+        console.log('📜 Received covenant step signed event:', event.detail);
+        
+        // Refresh the contract view to show updated signatures
+        if (event.detail.contractUuid === appState.currentContract.uuid) {
+            console.log('🔄 Refreshing contract view after step signing');
+            
+            // Refresh the current contract data and redisplay
+            setTimeout(async () => {
+                try {
+                    const updatedContract = await invoke('get_contract', {
+                        contractUuid: appState.currentContract.uuid
+                    });
+                    
+                    appState.currentContract = updatedContract;
+                    switchToScreen('view'); // Refresh the view
+                } catch (error) {
+                    console.error('❌ Failed to refresh contract after signing:', error);
+                }
+            }, 1000);
+        }
+    });
 }
 
 /**

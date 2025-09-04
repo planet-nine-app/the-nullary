@@ -67,6 +67,91 @@ MagiCard is a **fully functional interactive SVG card stack application** built 
 - **Navigation Logic**: `navigateToCardViaBdoPubKey()` with smart local/remote detection
 - **Card Integration**: Automatic addition to current stack with metadata tracking
 
+## 🍽️ **Complete Menu Navigation Integration (January 2025)**
+
+**Revolutionary Achievement**: MagiCard now provides **seamless integration with Ninefy's decision tree menu system**, enabling complex hierarchical navigation across menu selector cards and product cards!
+
+### **✅ Ninefy Menu Integration**
+
+**Complete Menu Card Support**:
+- **Menu Selector Cards**: Display hierarchical navigation options (rider → time span)
+- **Product Cards**: Final destination cards with purchase integration
+- **Decision Tree Navigation**: Intelligent path building through user selections
+- **Cross-Card Fetching**: Automatic BDO retrieval for cards not in local stack
+
+**Integration Workflow**:
+1. **Ninefy**: User uploads CSV menu → generates SVG cards → stores in BDO with unique pubKeys
+2. **MagiCard**: User imports menu pubKey → navigates through menu structure → reaches products
+3. **Universal Navigation**: All navigation powered by `spell="magicard"` with `bdoPubKey` references
+
+### **✅ Clean SVG Generation Compatibility**
+
+**Critical Technical Fix**:
+- **Problem**: Ninefy product cards included XML declaration headers causing triple-escaping
+- **Solution**: Standardized SVG generation to match menu cards (no XML declaration)
+- **Result**: Perfect compatibility between Ninefy-generated cards and MagiCard display
+
+**Before (Broken)**:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400">
+  <!-- Triple-escaped content causing display errors -->
+```
+
+**After (Working)**:
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400">
+  <!-- Clean content displays perfectly -->
+```
+
+### **✅ Advanced Spell Navigation**
+
+**Three Spell Types Supported**:
+
+**1. Selection Spells** (Menu Navigation):
+```xml
+<rect spell="selection" 
+      spell-components='{"selection":"adult","level":0,"bdoPubKey":"next_selector"}' 
+      x="50" y="120" width="200" height="40"/>
+```
+- Stores user choice in magistack
+- Navigates to next menu level
+- Preserves selection path for final lookup
+
+**2. Lookup Spells** (Product Resolution):
+```xml
+<rect spell="lookup"
+      spell-components='{"catalog":{...},"selection":"day","level":1}' 
+      x="50" y="170" width="200" height="40"/>
+```
+- Uses magistack selections to resolve products
+- Navigates from menu path to specific product
+- Integrates with Ninefy's nested catalog structure
+
+**3. MagiCard Spells** (Cross-Card Navigation):
+```xml
+<rect spell="magicard"
+      spell-components='{"bdoPubKey":"actual_bdo_pubkey"}'
+      x="20" y="320" width="80" height="30"/>
+```
+- Fetches cards from BDO storage
+- Seamless navigation between any cards
+- Automatic stack integration for future access
+
+### **✅ Production Integration Features**
+
+**Real BDO Integration**:
+- **Cryptographic Security**: All cards stored with unique sessionless keypairs
+- **Public Access**: Cards stored with `pub=true` for cross-application access
+- **Authentication**: Proper BDO authentication using consistent `card_context`
+- **Error Handling**: Graceful degradation when cards can't be fetched
+
+**Universal Navigation System**:
+- **castSpell.js Integration**: Uses fount-served universal spell system
+- **BDO Bridge Interface**: Standardized `window.castSpellBridge` for card retrieval
+- **Environment Support**: Works across dev/test/local configurations
+- **Cross-Platform**: Functions in both Tauri applications and browser environments
+
 ## Architecture
 
 ### Core Philosophy

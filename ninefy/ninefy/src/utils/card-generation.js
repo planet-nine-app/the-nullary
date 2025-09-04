@@ -303,6 +303,24 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
   // Format price for display
   const priceDisplay = `$${product.price.toFixed(2)}`;
   
+  // Calculate amount in cents for purchase spell
+  const amountInCents = Math.round(product.price * 100);
+  
+  // Create purchase button with mp: false spell  
+  const purchaseButton = `
+    <rect spell="purchase" spell-components='{"amount":${amountInCents},"productId":"${product.id}","mp":false}'
+          x="110" y="280" width="80" height="35" rx="8" 
+          fill="#9b59b6" stroke="#8e44ad" stroke-width="2"
+          style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;"
+          class="spell-element">
+      <animate attributeName="fill" values="#9b59b6;#bb77dd;#9b59b6" dur="2s" repeatCount="indefinite"/>
+    </rect>
+    <text spell="purchase" spell-components='{"amount":${amountInCents},"productId":"${product.id}","mp":false}'
+          x="150" y="302" text-anchor="middle" fill="white" font-size="12" font-weight="bold"
+          style="cursor: url(&quot;data:image/svg+xml,<svg xmlns=\&quot;http://www.w3.org/2000/svg\&quot; width=\&quot;32\&quot; height=\&quot;32\&quot; viewBox=\&quot;0 0 32 32\&quot;><text y=\&quot;24\&quot; font-size=\&quot;24\&quot;>🪄</text></svg>&quot;) 16 16, pointer;"
+          class="spell-element">💰 Buy</text>
+  `;
+
   // Create navigation to next product if available
   let navigationButton = '';
   if (nextBdoPubKey) {
@@ -354,6 +372,9 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
       <text x="150" y="200" text-anchor="middle" fill="#95a5a6" font-size="9">
         ${product.metadata?.selections?.join(' → ') || 'N/A'}
       </text>
+      
+      <!-- Purchase Button -->
+      ${purchaseButton}
       
       <!-- Navigation -->
       ${navigationButton}
