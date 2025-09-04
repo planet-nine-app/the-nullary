@@ -93,6 +93,35 @@
         <div class="loading">Loading Covenant...</div>
     </div>
 
+    <!-- Environment Configuration and Spell Systems -->
+    <script src="environment-config.js"></script>
+    <script>
+        // Initialize environment controls for Covenant
+        if (window.PlanetNineEnvironment) {
+            window.PlanetNineEnvironment.initializeEnvironmentControls('covenant');
+        }
+        
+        // Load spell systems
+        async function loadSpellSystems() {
+            const fountUrl = getServiceUrl('fount');
+            const covenantUrl = getServiceUrl('covenant');
+            
+            // Load castSpell.js from fount
+            const castSpellScript = document.createElement('script');
+            castSpellScript.src = `${fountUrl.replace(/\/$/, '')}/castSpell.js`;
+            castSpellScript.onerror = () => console.log('castSpell.js not available, continuing without spells');
+            document.head.appendChild(castSpellScript);
+            
+            // Load signCovenant.js from covenant
+            const signCovenantScript = document.createElement('script');
+            signCovenantScript.src = `${covenantUrl.replace(/\/$/, '')}/signCovenant.js`;
+            signCovenantScript.onerror = () => console.log('signCovenant.js not available, continuing without covenant signing');
+            document.head.appendChild(signCovenantScript);
+        }
+        
+        // Load spell systems after environment is configured
+        setTimeout(loadSpellSystems, 100);
+    </script>
     <script src="main-no-imports.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 
 Rhapsold is a **fully functional minimalist blogging platform** built on The Nullary ecosystem, showcasing the complete SVG-first architecture with layered UI system, scrollable feeds, and HUD overlays. It serves as both a production blogging application and the flagship reference implementation for building complex SVG-based Tauri apps.
 
-**Latest Status**: All major gaps resolved with complete shared infrastructure integration including environment switching, sync status, offline state management, user persistence, and base discovery.
+**Latest Status**: All major gaps resolved with complete shared infrastructure integration including environment switching, sync status, offline state management, user persistence, base discovery, and universal spell system integration (castSpell.js + signCovenant.js).
 
 ## Architecture
 
@@ -21,6 +21,7 @@ Rhapsold is a **fully functional minimalist blogging platform** built on The Nul
 - **Authentication**: sessionless protocol with secp256k1 cryptographic keys
 - **Desktop**: Tauri v2.6.2 framework (Rust + Web) for cross-platform apps
 - **Storage**: Full allyabase integration (Sanora, BDO, Dolores) + local storage for caching
+- **Spell System**: Universal castSpell.js and signCovenant.js integration with environment-aware service discovery
 
 ## Project Structure
 

@@ -18,6 +18,7 @@ Covenant GUI is a Nullary application for creating and managing magical covenant
 - **Real Service Integration**: Direct integration with existing covenant service via Rust client
 - **Enhanced UUID Management**: Automatic clipboard copying, auto-insertion into forms, and comprehensive guidance
 - **Improved Form Instructions**: Clear, detailed guidance for both participants and contract steps
+- **Universal Spell System**: Complete integration with castSpell.js and signCovenant.js for cross-app compatibility
 
 ### 🏗️ Architecture
 
@@ -34,6 +35,7 @@ Covenant GUI is a Nullary application for creating and managing magical covenant
 - **Services**: Direct covenant service integration with environment switching
 - **Storage**: Server-side BDO storage via covenant service
 - **Forms**: Dynamic form-widget loading from Sanora service for consistent UI
+- **Spell System**: Universal castSpell.js and signCovenant.js integration with environment-aware service discovery
 
 ## Key Features
 

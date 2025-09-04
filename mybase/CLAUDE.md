@@ -19,6 +19,7 @@ MyBase is a comprehensive social networking platform built on the Planet Nine ec
 - **Backend**: Rust with complete Planet Nine service integrations
 - **UI Components**: Modern CSS with card-based design and modal interfaces
 - **Services**: Prof (profiles), BDO (storage), Dolores (feeds), Sessionless (authentication)
+- **Spell System**: Universal castSpell.js and signCovenant.js integration with environment-aware service discovery
 
 ## Key Features
 

@@ -22,6 +22,7 @@ The Nullary is a collection of minimalist, SVG-first social media and productivi
 - ✅ Offline state management
 - ✅ Base discovery and management
 - ✅ SVG component architecture
+- ✅ Universal spell system integration (castSpell.js + signCovenant.js)
 
 ## Architecture Philosophy
 
@@ -95,7 +96,65 @@ const sanoraUser = await userPersistence.getOrCreateServiceUser('sanora', 'https
 await userPersistence.savePreference('theme', 'dark');
 ```
 
-### 3. Simple Theme System
+### 3. Universal Spell System Integration
+**Location**: Integrated across all nullary app `index.html` files
+
+**Complete Cross-App Spell Support**:
+All 16 nullary applications now have universal access to the Planet Nine spell system through dynamic script loading from their configured environment services.
+
+**Key Features**:
+- **Dynamic castSpell.js Loading**: Every app loads spell casting capability from its configured fount service
+- **signCovenant.js Integration**: Universal covenant contract signing across all applications  
+- **Environment-Aware Service Discovery**: Uses environment configuration to locate correct service endpoints
+- **Graceful Degradation**: Provides fallback functionality when services unavailable
+- **100ms Initialization Delay**: Ensures proper environment configuration before spell system loading
+
+**Implementation Pattern**:
+```javascript
+async function loadSpellSystems() {
+    try {
+        // Wait for environment to be ready
+        while (typeof getServiceUrl === 'undefined') {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        const fountUrl = getServiceUrl('fount');
+        const covenantUrl = getServiceUrl('covenant');
+        
+        // Load castSpell.js from fount
+        const castSpellScript = document.createElement('script');
+        castSpellScript.src = `${fountUrl.replace(/\/$/, '')}/castSpell.js`;
+        castSpellScript.onload = () => console.log('✅ castSpell.js loaded from fount');
+        castSpellScript.onerror = () => {
+            console.warn('⚠️ Failed to load castSpell.js, using fallback');
+            window.castSpell = (el) => alert(`🪄 Spell: ${el.getAttribute('spell')} (fallback)`);
+        };
+        document.head.appendChild(castSpellScript);
+        
+        // Load covenant signing from covenant service
+        const covenantScript = document.createElement('script');
+        covenantScript.src = `${covenantUrl.replace(/\/$/, '')}/signCovenant.js`;
+        covenantScript.onload = () => console.log('✅ signCovenant.js loaded from covenant');
+        covenantScript.onerror = () => console.warn('⚠️ Failed to load signCovenant.js');
+        document.head.appendChild(covenantScript);
+        
+    } catch (error) {
+        console.error('❌ Failed to load spell systems:', error);
+    }
+}
+```
+
+**Apps with Spell Integration**:
+- rhapsold, ninefy, screenary, mybase, stackchat, nexus
+- idothis, covenant, grocary, viewary, lexary, photary  
+- blogary, viewaris, eventary
+
+**Cross-Environment Support**:
+- Works seamlessly across dev, test, and local environments
+- Automatic service endpoint resolution via environment configuration
+- Consistent behavior regardless of deployment environment
+
+### 4. Simple Theme System
 **Location**: `/shared/themes/simple-theme.js`
 
 **Planet Nine Colors**:

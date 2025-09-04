@@ -15,6 +15,7 @@ Both serve as the "front door" to Planet Nine, showcasing how all services work 
 - **SVG-First UI** - Following Nullary design principles but for browsers
 - **Four Main Portals**: Content & Social, Communications, Shopping, Base Discovery
 - **API Proxy** - Routes requests to allyabase services with graceful fallbacks
+- **Spell System**: Universal castSpell.js and signCovenant.js integration with environment-aware service discovery
 
 ### Critical Development Lessons
 

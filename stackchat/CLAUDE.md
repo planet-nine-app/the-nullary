@@ -13,6 +13,7 @@ StackChat is a peer-to-peer messaging application built on the Planet Nine ecosy
 - **Connection Storage**: Local storage of connections with real julia UUIDs
 - **UI Components**: Complete RPG-style messaging interface with animations
 - **No Mock Data**: All production code, no mock data or test stubs
+- **Universal Spell System**: Complete integration with castSpell.js and signCovenant.js for cross-app compatibility
 
 ### 🚧 In Progress: Julia Association Flow
 

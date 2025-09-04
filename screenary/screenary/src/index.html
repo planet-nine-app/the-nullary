@@ -7,6 +7,44 @@
     <meta name="theme-color" content="#000000" />
     <link rel="stylesheet" href="styles.css" />
     <title>Viewaris</title>
+    <!-- Load spell systems before modules -->
+    <script src="environment-config.js"></script>
+    <script>
+        async function loadSpellSystems() {
+            try {
+                // Wait for environment to be ready
+                while (typeof getServiceUrl === 'undefined') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                const fountUrl = getServiceUrl('fount');
+                const covenantUrl = getServiceUrl('covenant');
+                
+                // Load castSpell.js from fount
+                const castSpellScript = document.createElement('script');
+                castSpellScript.src = `${fountUrl.replace(/\/$/, '')}/castSpell.js`;
+                castSpellScript.onload = () => console.log('✅ castSpell.js loaded from fount');
+                castSpellScript.onerror = () => {
+                    console.warn('⚠️ Failed to load castSpell.js, using fallback');
+                    window.castSpell = (el) => alert(`🪄 Spell: ${el.getAttribute('spell')} (fallback)`);
+                };
+                document.head.appendChild(castSpellScript);
+                
+                // Load covenant signing from covenant service
+                const covenantScript = document.createElement('script');
+                covenantScript.src = `${covenantUrl.replace(/\/$/, '')}/signCovenant.js`;
+                covenantScript.onload = () => console.log('✅ signCovenant.js loaded from covenant');
+                covenantScript.onerror = () => console.warn('⚠️ Failed to load signCovenant.js');
+                document.head.appendChild(covenantScript);
+                
+            } catch (error) {
+                console.error('❌ Failed to load spell systems:', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadSpellSystems);
+    </script>
+    
     <script type="module" src="main.js" defer></script>
     <script type="module" src="stripe.js" defer></script>
   </head>
