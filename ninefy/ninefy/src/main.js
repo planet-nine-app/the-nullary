@@ -6124,10 +6124,49 @@ async function processMembershipProduct(productData, userUuid, sanoraUrl) {
     const { uploadedCards, bdoPubKey } = await uploadCardsToStorage(cards, membershipTitle, userUuid);
     console.log(`✅ Uploaded ${uploadedCards.length} membership cards to BDO`);
     
-    // Step 4.5: Update selector card with actual BDO pubKeys for navigation
-    console.log('🔗 Updating selector card with actual BDO pubKeys...');
-    await updateMembershipSelectorWithActualPubKeys(uploadedCards, membershipStructure, membershipTitle, organizationName, createdTierProducts, userUuid);
-    console.log('✅ Selector card updated with real navigation references');
+    // Step 4.5: Create master membership catalog for BDO (like menus)
+    console.log('📋 Creating master membership catalog for BDO...');
+    
+    const membershipCatalogForBDO = {
+      title: membershipTitle,
+      description: `Membership with ${membershipStructure.metadata.totalTiers} tiers and ${membershipStructure.metadata.totalPerks} perks`,
+      type: "membership",
+      tiers: membershipStructure.tiers,
+      perks: membershipStructure.perks,
+      tierProducts: createdTierProducts.map(tp => ({
+        tierName: tp.tierName,
+        productUuid: tp.productUuid,
+        price: tp.price
+      })),
+      cards: uploadedCards,
+      metadata: {
+        ...membershipStructure.metadata,
+        uploadedAt: new Date().toISOString(),
+        totalCards: uploadedCards.length,
+        firstCardBdoPubKey: uploadedCards.length > 0 ? uploadedCards[0].cardBdoPubKey : null,
+        membershipTitle: membershipTitle,
+        organizationName: organizationName
+      }
+    };
+    
+    // Upload master membership catalog to BDO
+    let masterCatalogBdoPubKey = null;
+    try {
+      if (window.ninefyInvoke || window.__TAURI__) {
+        const invoke = window.ninefyInvoke || window.__TAURI__.core.invoke;
+        
+        masterCatalogBdoPubKey = await invoke('store_menu_in_bdo', {
+          menuName: membershipTitle,
+          menuData: JSON.stringify(membershipCatalogForBDO)
+        });
+        
+        console.log('✅ Master membership catalog uploaded to BDO successfully');
+        console.log(`🔑 Master catalog BDO pubKey: ${masterCatalogBdoPubKey}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to upload master membership catalog to BDO:', error);
+      masterCatalogBdoPubKey = bdoPubKey; // Fallback to upload pubKey
+    }
     
     // Step 5: Create master membership product in Sanora
     console.log('👑 Creating master membership product...');
@@ -6173,8 +6212,8 @@ async function processMembershipProduct(productData, userUuid, sanoraUrl) {
       title: membershipTitle,
       organization: organizationName,
       masterProductUuid: masterProductResult?.product_uuid || 'unknown',
-      bdoId: bdoPubKey || 'unknown',
-      bdoPubKey: bdoPubKey,
+      bdoId: masterCatalogBdoPubKey || 'unknown',
+      bdoPubKey: masterCatalogBdoPubKey,
       firstCardBdoPubKey: uploadedCards.length > 0 ? uploadedCards[0].cardBdoPubKey : null,
       tiersCreated: createdTierProducts.length,
       totalPerks: membershipStructure.metadata.totalPerks,
@@ -6252,6 +6291,12 @@ async function generateMembershipMagistackCards(membershipStructure, membershipT
         name: `${membershipTitle} - ${tier.name}`,
         isMenu: false,
         price: tierProduct.price,
+        membershipData: {
+          title: membershipTitle,
+          organization: organizationName,
+          tiers: membershipStructure.tiers,
+          perks: membershipStructure.perks
+        },
         tierData: {
           ...tier,
           productUuid: tierProduct.productUuid,
@@ -6580,6 +6625,18 @@ async function updateMembershipSelectorWithActualPubKeys(uploadedCards, membersh
   if (window.__TAURI__ && window.__TAURI__.core) {
     try {
       console.log(`🔄 Updating selector card in BDO with pubKey: ${selectorCard.cardBdoPubKey.substring(0, 8)}...`);
+      
+      console.log(`🔍 Attempting update with:`);
+      console.log(`🔍   bdoUuid: ${selectorCard.cardBdoUuid}`);
+      console.log(`🔍   bdoPubKey: ${selectorCard.cardBdoPubKey}`);
+      console.log(`🔍   menuName: ${membershipTitle}`);
+      console.log(`🔍   svgContent length: ${updatedSelectorSvg.length}`);
+      
+      // Debug: Show all uploaded card pubKeys to verify consistency
+      console.log(`🔍 All uploaded card pubKeys for comparison:`);
+      uploadedCards.forEach((card, index) => {
+        console.log(`🔍   ${index + 1}. ${card.name}: ${card.cardBdoPubKey}`);
+      });
       
       const updateResult = await window.__TAURI__.core.invoke('update_card_in_bdo', {
         bdoUuid: selectorCard.cardBdoUuid,

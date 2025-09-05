@@ -31,12 +31,18 @@ async function uploadCardsToStorage(cards, menuTitle, userUuid) {
       const cardUploadResult = await uploadIndividualCard(card, userUuid);
       
       if (!cardUploadResult.error) {
+        // Add bdoUuid to the card for future updates
+        card.cardBdoUuid = cardUploadResult.bdoUuid;
+        
         uploadedCards.push({
           ...card,
           bdoUploadResult: cardUploadResult
         });
         console.log(`✅ Card "${card.name}" uploaded successfully to BDO`);
         console.log(`🔑 Card BDO pubKey: ${card.cardBdoPubKey}`);
+        if (cardUploadResult.bdoUuid) {
+          console.log(`🆔 Card BDO UUID: ${cardUploadResult.bdoUuid}`);
+        }
       } else {
         console.error(`❌ Failed to upload card "${card.name}":`, cardUploadResult.error);
         uploadErrors.push({
@@ -58,7 +64,10 @@ async function uploadCardsToStorage(cards, menuTitle, userUuid) {
   try {
     if (window.ninefyInvoke || window.__TAURI__) {
       const invoke = window.ninefyInvoke || window.__TAURI__.core.invoke;
-      const keyResult = await invoke('generate_menu_card_keys', { count: 1 });
+      const keyResult = await invoke('generate_menu_card_keys', { 
+        menuName: menuTitle, 
+        cardCount: 1 
+      });
       if (keyResult && keyResult.length > 0) {
         masterBdoPubKey = keyResult[0];
         console.log(`🔑 Generated master menu bdoPubKey: ${masterBdoPubKey}`);
@@ -108,18 +117,27 @@ async function uploadIndividualCard(card, userUuid) {
       
       const result = await invoke('store_card_in_bdo', {
         cardBdoPubKey: card.cardBdoPubKey,
-        menuName: card.name,
-        ...cardData
+        cardName: card.name,
+        svgContent: card.svg,
+        cardType: card.type || 'unknown',
+        menuName: card.membershipData?.title || card.menuData?.title || 'Unknown Menu'
       });
       
-      if (result && result.success) {
+      if (result && !result.error) {
         console.log(`✅ BDO storage successful for card: ${card.name}`);
         console.log(`🔑 Stored with pubKey: ${card.cardBdoPubKey}`);
         console.log(`📦 Data uploaded: ${JSON.stringify(cardData).length} chars`);
         
+        // Extract UUID from "bdo_user:{uuid}" format
+        let bdoUuid = null;
+        if (typeof result === 'string' && result.startsWith('bdo_user:')) {
+          bdoUuid = result.replace('bdo_user:', '');
+        }
+        
         return {
           success: true,
           bdoPubKey: card.cardBdoPubKey,
+          bdoUuid: bdoUuid,
           dataSize: JSON.stringify(cardData).length
         };
       } else {

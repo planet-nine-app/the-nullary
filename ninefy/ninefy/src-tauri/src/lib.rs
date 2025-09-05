@@ -1094,7 +1094,7 @@ async fn update_card_in_bdo(bdo_uuid: &str, bdo_pub_key: &str, svg_content: &str
         Ok(private_key) => private_key,
         Err(e) => {
             println!("❌ Could not load private key for card update: {}. Cannot update without key.", e);
-            return Err(format!("Cannot update card: missing private key"));
+            return Err(format!("Cannot update card: {}", e));
         }
     };
     
