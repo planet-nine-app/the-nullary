@@ -14,7 +14,7 @@
       "Participants": {
         "type": "textarea",
         "charLimit": 2000,
-        "placeholder": "Enter participant UUIDs, one per line. Click 'Copy My UUID' button above to start.\nExample:\n6b6ceafd-d87e-4b9a-a4d9-79c6e8ff9696\n9a4a5019-fc4f-4735-ac85-68c184755514\n\nTips:\n• Click 'Copy My UUID' to get your own UUID\n• Ask other participants to share their UUIDs with you\n• Use the Connection screen to generate shareable URLs\n• Each participant needs their own unique UUID"
+        "placeholder": "Enter participant public keys, one per line. Click 'Copy My Public Key' button above to start.\nExample:\n02a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890\n03b2c3d4e5f6789012345678901234567890123456789012345678901234567890ab\n\nTips:\n• Click 'Copy My Public Key' to get your own public key\n• Ask other participants to share their public keys with you\n• Use the Connection screen to generate shareable URLs\n• Each participant needs their own unique public key"
       },
       "Contract Steps": {
         "type": "textarea", 

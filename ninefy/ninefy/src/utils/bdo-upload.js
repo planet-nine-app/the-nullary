@@ -30,7 +30,7 @@ async function uploadCardsToStorage(cards, menuTitle, userUuid) {
       // Upload individual card to BDO
       const cardUploadResult = await uploadIndividualCard(card, userUuid);
       
-      if (cardUploadResult.success) {
+      if (!cardUploadResult.error) {
         uploadedCards.push({
           ...card,
           bdoUploadResult: cardUploadResult
@@ -107,8 +107,9 @@ async function uploadIndividualCard(card, userUuid) {
       const invoke = window.ninefyInvoke || window.__TAURI__.core.invoke;
       
       const result = await invoke('store_card_in_bdo', {
-        pubkey: card.cardBdoPubKey,
-        card_data: cardData
+        cardBdoPubKey: card.cardBdoPubKey,
+        menuName: card.name,
+        ...cardData
       });
       
       if (result && result.success) {
@@ -279,5 +280,8 @@ window.BDOUpload = {
   uploadIndividualCard,
   createMasterCatalog
 };
+
+// Also make uploadCardsToStorage globally available for compatibility with menu system
+window.uploadCardsToStorage = uploadCardsToStorage;
 
 console.log('🌐 BDO Upload utilities loaded');

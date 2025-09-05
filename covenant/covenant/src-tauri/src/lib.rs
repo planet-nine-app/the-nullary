@@ -476,11 +476,11 @@ async fn get_user_info() -> Result<(String, String), String> {
     println!("║ Public Key: {:<64} ║", pub_key);
     println!("╠══════════════════════════════════════════════════════════════════════════════╣");
     println!("║ 📋 PARTICIPANT MANAGEMENT TIPS:                                             ║");
-    println!("║ • Copy your UUID from the app interface - it's automatically copied         ║");
-    println!("║ • Share this UUID with others who want to add you to contracts              ║");
+    println!("║ • Copy your public key from the app interface - it's automatically copied   ║");
+    println!("║ • Share this public key with others who want to add you to contracts        ║");
     println!("║ • Use the Connection screen to generate shareable URLs for easier sharing   ║");
-    println!("║ • When creating contracts, paste participant UUIDs one per line             ║");
-    println!("║ • Each participant must share their UUID with the contract creator          ║");
+    println!("║ • When creating contracts, paste participant public keys one per line       ║");
+    println!("║ • Each participant must share their public key with the contract creator    ║");
     println!("╚══════════════════════════════════════════════════════════════════════════════╝");
     
     Ok((user_uuid, pub_key))
@@ -500,6 +500,19 @@ async fn copy_user_uuid_to_clipboard(app_handle: tauri::AppHandle) -> Result<Str
     Ok(user_uuid)
 }
 
+#[tauri::command]
+async fn copy_user_pubkey_to_clipboard(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let (_, pub_key) = get_user_info().await?;
+    
+    // Use the clipboard plugin to copy the public key
+    app_handle.clipboard()
+        .write_text(&pub_key)
+        .map_err(|e| format!("Failed to copy to clipboard: {}", e))?;
+    
+    println!("📋 Public key copied to clipboard: {}", pub_key);
+    Ok(pub_key)
+}
+
 /// Initialize sessionless and generate connection URL for other instances
 #[tauri::command]
 async fn generate_connection_url() -> Result<String, String> {
@@ -514,6 +527,14 @@ async fn generate_connection_url() -> Result<String, String> {
     
     println!("🔗 Generated connection URL: {}", connection_url);
     Ok(connection_url)
+}
+
+/// Get current environment configuration
+#[tauri::command]
+async fn get_environment() -> Result<String, String> {
+    let env = env::var("COVENANT_ENV").unwrap_or_else(|_| "dev".to_string());
+    println!("🌍 Frontend requested environment: {}", env);
+    Ok(env)
 }
 
 /// Process a connection URL from another instance
@@ -576,8 +597,10 @@ pub fn run() {
             get_contract_svg,
             get_user_info,
             copy_user_uuid_to_clipboard,
+            copy_user_pubkey_to_clipboard,
             generate_connection_url,
-            process_connection_url
+            process_connection_url,
+            get_environment
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

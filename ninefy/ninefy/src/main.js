@@ -1671,6 +1671,12 @@ function createDetailsScreen() {
       return createMenuDetailsScreen(product);
     }
     
+    // Check if this is a membership product and display it differently
+    if (window.MembershipUtils && isMembershipProduct(product)) {
+      console.log('👑 Creating membership details view for:', product.title);
+      return createMembershipDetailsScreen(product);
+    }
+    
     // Display the selected product
     const productContainer = document.createElement('div');
     productContainer.style.cssText = `
@@ -2438,6 +2444,249 @@ function createMenuDetailsScreen(product) {
 }
 
 /**
+ * Check if a product is a membership product
+ * @param {Object} product - Product to check
+ * @returns {boolean} True if product is membership-related
+ */
+function isMembershipProduct(product) {
+  if (!product) return false;
+  
+  // Check for membership product type
+  if (product.productType === 'membership') {
+    return true;
+  }
+  
+  // Check for membership metadata
+  if (product.metadata?.membershipData || product.membershipData) {
+    return true;
+  }
+  
+  // Check title patterns
+  if (product.title && product.title.toLowerCase().includes('membership')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Create Membership Details Screen for membership products
+ */
+function createMembershipDetailsScreen(product) {
+  const screen = document.createElement('div');
+  screen.id = 'membership-details-screen';
+  screen.className = 'screen';
+  
+  // Back button
+  const backButton = document.createElement('button');
+  backButton.innerHTML = '← Back to Shop';
+  backButton.style.cssText = `
+    background: ${appState.currentTheme.colors.secondary};
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: all 0.2s ease;
+  `;
+  
+  backButton.addEventListener('click', () => {
+    appState.currentScreen = 'main';
+    appState.selectedProduct = null;
+    updateHUDButtons();
+    renderCurrentScreen();
+  });
+
+  // Create membership details container
+  const detailsContainer = document.createElement('div');
+  detailsContainer.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-width: 900px;
+    margin: 0 auto;
+  `;
+
+  // Membership header
+  const headerContainer = document.createElement('div');
+  headerContainer.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid ${appState.currentTheme.colors.primary};
+  `;
+
+  const titleContainer = document.createElement('div');
+  titleContainer.style.cssText = `flex: 1;`;
+
+  const title = document.createElement('h1');
+  title.textContent = product.title;
+  title.style.cssText = `
+    color: ${appState.currentTheme.colors.primary};
+    font-family: ${appState.currentTheme.typography.fontFamily};
+    font-size: 2.5rem;
+    margin: 0 0 10px 0;
+  `;
+
+  const description = document.createElement('p');
+  description.textContent = product.description || 'Membership program with exclusive benefits';
+  description.style.cssText = `
+    color: ${appState.currentTheme.colors.textSecondary};
+    font-size: 1.1rem;
+    margin: 0;
+    line-height: 1.5;
+  `;
+
+  titleContainer.appendChild(title);
+  titleContainer.appendChild(description);
+  headerContainer.appendChild(titleContainer);
+
+  // Try to extract membership data from product
+  let membershipData = null;
+  
+  // Check for membership tiers in artifacts (CSV data)
+  if (product.artifacts && product.artifacts.length > 0) {
+    try {
+      // For now, we'll display basic membership info
+      // Real implementation would fetch and parse the CSV data
+      const artifactsSection = document.createElement('div');
+      artifactsSection.style.cssText = `
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-left: 4px solid ${appState.currentTheme.colors.secondary};
+      `;
+
+      const artifactsTitle = document.createElement('h3');
+      artifactsTitle.textContent = '👑 Membership Tiers';
+      artifactsTitle.style.cssText = `
+        color: ${appState.currentTheme.colors.primary};
+        margin: 0 0 15px 0;
+        font-size: 1.2rem;
+      `;
+
+      const membershipInfo = document.createElement('div');
+      membershipInfo.innerHTML = `
+        <div style="
+          padding: 15px;
+          background: white;
+          border-radius: 6px;
+          margin-bottom: 15px;
+          border: 1px solid #e0e0e0;
+        ">
+          <p style="color: ${appState.currentTheme.colors.text}; margin: 0;">
+            📄 Membership tiers and benefits are defined in uploaded CSV file
+          </p>
+          <p style="color: ${appState.currentTheme.colors.textSecondary}; margin: 10px 0 0 0; font-size: 0.9rem;">
+            Join to access exclusive member benefits and perks
+          </p>
+        </div>
+      `;
+
+      artifactsSection.appendChild(artifactsTitle);
+      artifactsSection.appendChild(membershipInfo);
+      detailsContainer.appendChild(headerContainer);
+      detailsContainer.appendChild(artifactsSection);
+
+    } catch (error) {
+      console.error('Error processing membership data:', error);
+    }
+  } else {
+    // No membership data available, show basic info
+    detailsContainer.appendChild(headerContainer);
+    
+    const membershipInfo = document.createElement('div');
+    membershipInfo.innerHTML = `
+      <div style="
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        color: ${appState.currentTheme.colors.textSecondary};
+      ">
+        <p>👑 Membership program details will be available soon</p>
+      </div>
+    `;
+    
+    detailsContainer.appendChild(membershipInfo);
+  }
+
+  // Join button (if membership has pricing)
+  if (product.price && product.price > 0) {
+    const joinSection = document.createElement('div');
+    joinSection.style.cssText = `
+      text-align: center;
+      margin-top: 30px;
+      padding: 20px;
+      background: ${appState.currentTheme.colors.background};
+      border-radius: 8px;
+    `;
+
+    const priceElement = document.createElement('div');
+    priceElement.textContent = formatPrice(product.price);
+    priceElement.style.cssText = `
+      font-size: 2rem;
+      font-weight: bold;
+      color: ${appState.currentTheme.colors.accent};
+      margin-bottom: 15px;
+    `;
+
+    const joinButton = document.createElement('button');
+    joinButton.innerHTML = '👑 Join Membership';
+    joinButton.style.cssText = `
+      background: ${appState.currentTheme.colors.accent};
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      font-family: ${appState.currentTheme.typography.fontFamily};
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    `;
+
+    joinButton.addEventListener('click', async () => {
+      try {
+        // Check if payment system is available
+        if (!window.initializePayment) {
+          alert('Payment system is not available. Please check your internet connection and try again.');
+          return;
+        }
+        
+        // Initialize Stripe payment for membership
+        console.log('👑 Initiating membership purchase for:', product.title);
+        await window.initializePayment(product, product.price, 'usd');
+      } catch (error) {
+        console.error('❌ Membership payment initialization failed:', error);
+        if (error.message.includes('Tauri not available')) {
+          alert('Payment processing requires the Tauri desktop app. Please run the app via "npm run tauri dev".');
+        } else if (error.message.includes('Stripe library not loaded')) {
+          alert('Payment system is loading. Please wait a moment and try again.');
+        } else {
+          alert('Failed to initialize payment. Please check your connection and try again.');
+        }
+      }
+    });
+
+    joinSection.appendChild(priceElement);
+    joinSection.appendChild(joinButton);
+    detailsContainer.appendChild(joinSection);
+  }
+
+  screen.appendChild(backButton);
+  screen.appendChild(detailsContainer);
+  return screen;
+}
+
+/**
  * Create new form-widget based upload form
  */
 async function createFormWidgetUploadForm() {
@@ -2791,6 +3040,41 @@ async function createFormWidgetUploadForm() {
           </div>` : ''
         }
         <p style="margin: 0; font-size: 13px; opacity: 0.8;">Catalog stored in BDO • Form will reset in 3 seconds...</p>
+      `;
+    } else if (result.productType === 'membership') {
+      console.log('🎯 MAGICARD_WORKFLOW: 🎉 Displaying membership success message with firstCardBdoPubKey:', result.firstCardBdoPubKey);
+      console.log('🎯 MAGICARD_WORKFLOW: 📋 Membership bdoPubKey (stored separately):', result.bdoPubKey);
+      successMessage.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 15px;">👑✅</div>
+        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Membership Program Created Successfully!</h3>
+        <p style="margin: 0 0 10px 0; font-size: 15px;">
+          Your membership program "${result.title}" has been processed.<br>
+          <strong>${result.cardResults.successful}</strong> interactive SVG cards created for MagiCard.<br>
+          <strong>${result.tiersCreated}</strong> membership tiers with <strong>${result.totalPerks}</strong> perks.
+        </p>
+        ${result.cardResults.failed > 0 ? 
+          `<p style="margin: 0 0 10px 0; font-size: 13px; color: #856404; background: #fff3cd; padding: 8px; border-radius: 4px;">
+            ⚠️ ${result.cardResults.failed} cards failed to create
+          </p>` : ''
+        }
+        ${result.bdoPubKey ? 
+          `<div style="background: linear-gradient(135deg, #e91e63, #c2185b); color: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-family: monospace;">
+            <div style="font-weight: bold; margin-bottom: 5px;">🪄 MagiCard ID (for importing membership selector):</div>
+            <div style="font-size: 14px; word-break: break-all; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">
+              ${result.bdoPubKey}
+            </div>
+            <button onclick="navigator.clipboard.writeText('${result.bdoPubKey}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)" 
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px;">
+              📋 Copy to Clipboard
+            </button>
+          </div>` : ''
+        }
+        ${result.firstCardBdoPubKey ? 
+          `<div style="background: #f8f9fa; padding: 8px; border-radius: 4px; margin: 10px 0; font-size: 12px; color: #6c757d;">
+            💡 <strong>Import Instructions:</strong> Copy the MagiCard ID above and paste it into MagiCard's import dialog to access your complete membership tier selector with navigation to individual tier cards.
+          </div>` : ''
+        }
+        <p style="margin: 0; font-size: 13px; opacity: 0.8;">Membership stored in BDO • Form will reset in 3 seconds...</p>
       `;
     } else {
       successMessage.innerHTML = `
@@ -3308,6 +3592,18 @@ async function uploadProductToSanora(productData) {
         productType: productData.productType
       });
       return await processMenuCatalogProduct(productData, userUuid, sanoraUrl);
+    }
+    
+    // Special handling for membership products
+    if (productData.productType === 'membership') {
+      console.log('👑 Processing membership product...');
+      console.log('📋 Membership data:', {
+        title: productData.formData['Membership Title'],
+        organization: productData.formData['Organization Name'],
+        hasFile: !!productData.formData['Membership Tiers CSV'],
+        productType: productData.productType
+      });
+      return await processMembershipProduct(productData, userUuid, sanoraUrl);
     }
     
     // Step 1: Create product in Sanora FIRST
@@ -5680,6 +5976,631 @@ async function previewBDOMenu(bdoPubKey) {
     console.error('❌ Error previewing BDO data:', error);
     alert('❌ Error previewing BDO data: ' + error.message);
   }
+}
+
+/**
+ * Process membership product with tiers and perks
+ * @param {Object} productData - Form data containing membership information
+ * @param {string} userUuid - User UUID for authentication
+ * @param {string} sanoraUrl - Sanora service URL
+ * @returns {Object} Processing result with success status and details
+ */
+async function processMembershipProduct(productData, userUuid, sanoraUrl) {
+  console.log('👑 Starting membership product processing...');
+  
+  try {
+    // Extract form data
+    const membershipTitle = productData.formData['Membership Title'] || 'Untitled Membership';
+    const organizationName = productData.formData['Organization Name'] || '';
+    const membershipDescription = productData.formData['Membership Description'] || '';
+    
+    // Step 1: Parse membership CSV data
+    const csvData = productData.formData['Membership Tiers CSV'];
+    if (!csvData) {
+      throw new Error('No membership tiers CSV file provided');
+    }
+    
+    // Read CSV file content (similar to menu processing)
+    let csvContent = '';
+    if (csvData.file) {
+      try {
+        csvContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(csvData.file);
+        });
+        console.log('📄 CSV file content loaded, length:', csvContent.length);
+      } catch (error) {
+        console.error('❌ Error reading CSV file:', error);
+        throw new Error('Failed to read CSV file content');
+      }
+    } else {
+      throw new Error('No CSV file found in form data');
+    }
+    
+    if (!csvContent.trim()) {
+      throw new Error('CSV file is empty');
+    }
+    
+    console.log('📊 Parsing membership CSV data...');
+    const membershipStructure = window.MembershipUtils.parseCSVToMembershipStructure(csvContent);
+    console.log(`✅ Parsed ${membershipStructure.metadata.totalTiers} tiers and ${membershipStructure.metadata.totalPerks} perks`);
+    
+    // Step 2: Create individual tier products in Sanora
+    const createdTierProducts = [];
+    
+    for (const tier of membershipStructure.tiers) {
+      console.log(`📦 Creating Sanora product for tier: ${tier.name}`);
+      
+      // Create tier description with perks
+      const perksList = tier.includedPerks.map(perkId => 
+        `• ${membershipStructure.perks[perkId] || perkId}`
+      ).join('\n');
+      
+      const tierDescription = [
+        `${organizationName} - ${tier.name} Membership`,
+        membershipDescription,
+        '',
+        '**Included Perks:**',
+        perksList,
+        '',
+        `Annual Cost: $${(tier.annualCost / 100).toFixed(2)}`,
+        tier.monthlyCost > 0 ? `Monthly Cost: $${(tier.monthlyCost / 100).toFixed(2)}` : 'Monthly billing not available'
+      ].filter(line => line !== null).join('\n');
+      
+      // Determine primary price (prefer annual, fallback to monthly)
+      const primaryPrice = tier.annualCost > 0 ? tier.annualCost : tier.monthlyCost;
+      
+      const tierProductData = {
+        uuid: userUuid,
+        sanoraUrl: sanoraUrl,
+        title: `${membershipTitle} - ${tier.name}`,
+        description: tierDescription,
+        price: primaryPrice,
+        currency: 'USD',
+        productType: 'membership-tier',
+        category: 'membership',
+        tags: [`${organizationName.toLowerCase()}`, 'membership', tier.name.toLowerCase()],
+        metadata: JSON.stringify({
+          membershipTitle: membershipTitle,
+          organizationName: organizationName,
+          tierName: tier.name,
+          annualCost: tier.annualCost,
+          monthlyCost: tier.monthlyCost,
+          includedPerks: tier.includedPerks,
+          perkDefinitions: membershipStructure.perks,
+          isMembershipTier: true
+        })
+      };
+      
+      // Create product in Sanora
+      if (window.ninefyInvoke) {
+        try {
+          console.log(`🔄 Adding tier product to Sanora: ${tierProductData.title}`);
+          const result = await window.ninefyInvoke('add_product', tierProductData);
+          
+          if (result && !result.error) {
+            console.log(`✅ Created tier product: ${result.product_uuid}`);
+            createdTierProducts.push({
+              tierName: tier.name,
+              productUuid: result.product_uuid,
+              price: primaryPrice,
+              annualCost: tier.annualCost,
+              monthlyCost: tier.monthlyCost,
+              perks: tier.includedPerks
+            });
+          } else {
+            console.error(`❌ Failed to create tier product: ${result?.error || 'Unknown error'}`);
+          }
+        } catch (error) {
+          console.error(`❌ Error creating tier product for ${tier.name}:`, error);
+        }
+      } else {
+        // Fallback for non-Tauri environments
+        console.log(`📝 Would create tier product: ${tierProductData.title} ($${(primaryPrice / 100).toFixed(2)})`);
+        createdTierProducts.push({
+          tierName: tier.name,
+          productUuid: `mock-${tier.name.toLowerCase().replace(/\s+/g, '-')}`,
+          price: primaryPrice,
+          annualCost: tier.annualCost,
+          monthlyCost: tier.monthlyCost,
+          perks: tier.includedPerks
+        });
+      }
+    }
+    
+    // Step 3: Generate magistack cards for membership navigation
+    console.log('🎨 Creating magistack cards for membership tiers...');
+    const { cards, cardErrors } = await generateMembershipMagistackCards(
+      membershipStructure, 
+      membershipTitle, 
+      organizationName, 
+      createdTierProducts
+    );
+    console.log(`✅ Generated ${cards.length} membership cards (${cardErrors.length} errors)`);
+    
+    // Step 4: Upload cards to BDO with unique keys
+    const { uploadedCards, bdoPubKey } = await uploadCardsToStorage(cards, membershipTitle, userUuid);
+    console.log(`✅ Uploaded ${uploadedCards.length} membership cards to BDO`);
+    
+    // Step 4.5: Update selector card with actual BDO pubKeys for navigation
+    console.log('🔗 Updating selector card with actual BDO pubKeys...');
+    await updateMembershipSelectorWithActualPubKeys(uploadedCards, membershipStructure, membershipTitle, organizationName, createdTierProducts, userUuid);
+    console.log('✅ Selector card updated with real navigation references');
+    
+    // Step 5: Create master membership product in Sanora
+    console.log('👑 Creating master membership product...');
+    
+    const masterMembershipData = {
+      uuid: userUuid,
+      sanoraUrl: sanoraUrl,
+      title: membershipTitle,
+      description: membershipDescription,
+      price: Math.min(...membershipStructure.tiers.filter(t => t.annualCost > 0 || t.monthlyCost > 0)
+                            .map(t => t.annualCost > 0 ? t.annualCost : t.monthlyCost)),
+      currency: 'USD',
+      productType: 'membership',
+      category: 'membership',
+      tags: [organizationName.toLowerCase(), 'membership'],
+      metadata: JSON.stringify({
+        membershipTitle: membershipTitle,
+        organizationName: organizationName,
+        tiers: createdTierProducts,
+        perkDefinitions: membershipStructure.perks,
+        totalTiers: membershipStructure.metadata.totalTiers,
+        totalPerks: membershipStructure.metadata.totalPerks,
+        isMasterMembership: true,
+        createdAt: membershipStructure.metadata.createdAt
+      })
+    };
+    
+    let masterProductResult = null;
+    if (window.ninefyInvoke) {
+      try {
+        console.log('🔄 Adding master membership to Sanora...');
+        masterProductResult = await window.ninefyInvoke('add_product', masterMembershipData);
+        console.log('✅ Master membership product created:', masterProductResult?.product_uuid);
+      } catch (error) {
+        console.error('❌ Error creating master membership product:', error);
+      }
+    }
+    
+    // Return comprehensive result
+    return {
+      success: true,
+      productType: 'membership',
+      title: membershipTitle,
+      organization: organizationName,
+      masterProductUuid: masterProductResult?.product_uuid || 'unknown',
+      bdoId: bdoPubKey || 'unknown',
+      bdoPubKey: bdoPubKey,
+      firstCardBdoPubKey: uploadedCards.length > 0 ? uploadedCards[0].cardBdoPubKey : null,
+      tiersCreated: createdTierProducts.length,
+      totalPerks: membershipStructure.metadata.totalPerks,
+      tiers: createdTierProducts,
+      perks: membershipStructure.perks,
+      cardResults: {
+        successful: uploadedCards.length,
+        failed: cardErrors.length,
+        details: {
+          created: uploadedCards,
+          errors: cardErrors
+        }
+      },
+      membershipData: membershipStructure,
+      message: `✅ Successfully created ${membershipTitle} with ${createdTierProducts.length} tiers, ${membershipStructure.metadata.totalPerks} perks, and ${uploadedCards.length} magistack cards`
+    };
+    
+  } catch (error) {
+    console.error('❌ Membership processing failed:', error);
+    return {
+      success: false,
+      productType: 'membership',
+      error: error.message,
+      message: `❌ Failed to process membership: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Generate magistack cards for membership navigation
+ * @param {Object} membershipStructure - Parsed membership structure with tiers and perks
+ * @param {string} membershipTitle - Membership title for card headers
+ * @param {string} organizationName - Organization name for branding
+ * @param {Array} createdTierProducts - Array of tier products created in Sanora
+ * @returns {Object} Generated cards and errors
+ */
+async function generateMembershipMagistackCards(membershipStructure, membershipTitle, organizationName, createdTierProducts) {
+  console.log('👑 Creating SVG cards for membership tiers...');
+  const createdCards = [];
+  const cardErrors = [];
+  
+  try {
+    // First, create all card objects that we need to generate
+    const allCardsNeeded = [];
+    
+    // Step 1: Create tier selector card (main navigation card)
+    console.log('🎨 Creating tier selector card...');
+    const tierSelectorCard = {
+      type: 'membership-selector',
+      name: `${membershipTitle} - Choose Tier`,
+      isMenu: true,
+      isSelector: true,
+      membershipData: {
+        title: membershipTitle,
+        organization: organizationName,
+        tiers: membershipStructure.tiers,
+        perks: membershipStructure.perks,
+        tierProducts: createdTierProducts
+      }
+    };
+    
+    allCardsNeeded.push(tierSelectorCard);
+    
+    // Step 2: Create individual tier product cards
+    console.log('📄 Creating individual tier cards...');
+    for (const tierProduct of createdTierProducts) {
+      const tier = membershipStructure.tiers.find(t => t.name === tierProduct.tierName);
+      if (!tier) {
+        cardErrors.push(`Tier not found for product: ${tierProduct.tierName}`);
+        continue;
+      }
+      
+      const tierCard = {
+        type: 'membership-tier',
+        name: `${membershipTitle} - ${tier.name}`,
+        isMenu: false,
+        price: tierProduct.price,
+        tierData: {
+          ...tier,
+          productUuid: tierProduct.productUuid,
+          membershipTitle: membershipTitle,
+          organizationName: organizationName,
+          perkDefinitions: membershipStructure.perks
+        }
+      };
+      
+      allCardsNeeded.push(tierCard);
+    }
+    
+    // Step 3: Generate unique BDO pubKeys for ALL cards (same as menu system)
+    console.log('🔑 Generating unique BDO pubKeys for membership cards...');
+    let uniqueCardKeys = [];
+    
+    if (!window.ninefyInvoke && !window.__TAURI__) {
+      throw new Error('Backend not available - cannot generate cryptographic keys for membership cards');
+    }
+    
+    const invoke = window.ninefyInvoke || window.__TAURI__.core.invoke;
+    const keyResult = await invoke('generate_menu_card_keys', { 
+      menuName: membershipTitle, 
+      cardCount: allCardsNeeded.length 
+    });
+    
+    if (!keyResult || keyResult.length === 0) {
+      throw new Error('Failed to generate cryptographic keys from backend');
+    }
+    
+    uniqueCardKeys = keyResult;
+    console.log(`🔑 Generated ${uniqueCardKeys.length} unique sessionless keypairs for membership`);
+    
+    // Step 4: Assign unique keys to each card
+    for (let i = 0; i < allCardsNeeded.length; i++) {
+      const card = allCardsNeeded[i];
+      card.cardBdoPubKey = uniqueCardKeys[i];
+      console.log(`🔑 Assigned key ${i + 1}: ${card.cardBdoPubKey.substring(0, 12)}... to ${card.name}`);
+    }
+    
+    // Step 5: Generate SVG content for each card
+    for (const card of allCardsNeeded) {
+      try {
+        if (card.type === 'membership-selector') {
+          // Generate selector SVG with actual tier card references
+          const tierCardReferences = allCardsNeeded.slice(1).map(tierCard => ({
+            tierName: tierCard.tierData.name,
+            cardBdoPubKey: tierCard.cardBdoPubKey
+          }));
+          
+          card.svg = createMembershipSelectorSVGWithRefs(card, createdTierProducts, tierCardReferences);
+          card.svgContent = card.svg;
+        } else if (card.type === 'membership-tier') {
+          // Generate tier SVG
+          card.svg = createMembershipTierSVG(card);
+          card.svgContent = card.svg;
+        }
+        
+        createdCards.push(card);
+        console.log(`✅ Generated ${card.type} card: ${card.name}`);
+        
+      } catch (error) {
+        console.error(`❌ Error generating card ${card.name}:`, error);
+        cardErrors.push(`Failed to generate ${card.name}: ${error.message}`);
+      }
+    }
+    
+    console.log(`🎯 Total membership cards created: ${createdCards.length} (${membershipStructure.tiers.length} tier cards + 1 selector)`);
+    
+    return {
+      cards: createdCards,
+      cardErrors: cardErrors
+    };
+    
+  } catch (error) {
+    console.error('❌ Error generating membership cards:', error);
+    return {
+      cards: [],
+      cardErrors: [error.message]
+    };
+  }
+}
+
+
+/**
+ * Create individual tier product card with detailed perks and purchase spell
+ */
+function createMembershipTierSVG(card) {
+  console.log(`🎨 Creating tier card SVG for: ${card.tierData.name}`);
+  
+  const { tierData } = card;
+  const cardWidth = 500;
+  const perkCount = tierData.includedPerks.length;
+  const cardHeight = 350 + (perkCount * 25); // Dynamic height based on perk count
+  
+  let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" viewBox="0 0 ${cardWidth} ${cardHeight}">
+    <style>
+      .tier-bg { fill: #2c3e50; stroke: #34495e; stroke-width: 2; }
+      .tier-header { fill: #ecf0f1; font-family: Arial, sans-serif; font-weight: bold; font-size: 22px; text-anchor: middle; }
+      .tier-org { fill: #bdc3c7; font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; }
+      .tier-name { fill: #f1c40f; font-family: Arial, sans-serif; font-weight: bold; font-size: 28px; text-anchor: middle; }
+      .pricing-container { fill: #ecf0f1; font-family: Arial, sans-serif; font-size: 14px; text-anchor: start; }
+      .pricing-highlight { fill: #e74c3c; font-weight: bold; font-size: 18px; }
+      .perk-header { fill: #ecf0f1; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; text-anchor: start; }
+      .perk-item { fill: #bdc3c7; font-family: Arial, sans-serif; font-size: 13px; text-anchor: start; }
+      .purchase-button { fill: #e74c3c; stroke: #c0392b; stroke-width: 2; cursor: pointer; }
+      .purchase-button:hover { fill: #c0392b; }
+      .purchase-text { fill: white; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; text-anchor: middle; pointer-events: none; }
+      .spell-element { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🪄</text></svg>'), pointer; }
+    </style>
+    
+    <!-- Card background -->
+    <rect class="tier-bg" x="0" y="0" width="${cardWidth}" height="${cardHeight}" rx="12" ry="12"/>
+    
+    <!-- Header -->
+    <text class="tier-header" x="${cardWidth / 2}" y="40">${tierData.membershipTitle}</text>
+    <text class="tier-org" x="${cardWidth / 2}" y="60">${tierData.organizationName}</text>
+    
+    <!-- Tier name -->
+    <text class="tier-name" x="${cardWidth / 2}" y="100">👑 ${tierData.name}</text>`;
+  
+  // Pricing information
+  let yOffset = 140;
+  
+  if (tierData.annualCost > 0) {
+    svgContent += `
+    <text class="pricing-container" x="50" y="${yOffset}">Annual: </text>
+    <text class="pricing-highlight" x="120" y="${yOffset}">$${(tierData.annualCost / 100).toFixed(2)}/year</text>`;
+    yOffset += 25;
+  }
+  
+  if (tierData.monthlyCost > 0) {
+    svgContent += `
+    <text class="pricing-container" x="50" y="${yOffset}">Monthly: </text>
+    <text class="pricing-highlight" x="120" y="${yOffset}">$${(tierData.monthlyCost / 100).toFixed(2)}/month</text>`;
+    yOffset += 25;
+  }
+  
+  if (tierData.annualCost === 0 && tierData.monthlyCost === 0) {
+    svgContent += `
+    <text class="pricing-highlight" x="50" y="${yOffset}">Free Membership</text>`;
+    yOffset += 25;
+  }
+  
+  yOffset += 20; // Extra spacing before perks
+  
+  // Perks section
+  svgContent += `
+  <text class="perk-header" x="50" y="${yOffset}">Included Benefits:</text>`;
+  yOffset += 25;
+  
+  tierData.includedPerks.forEach(perkId => {
+    const perkName = tierData.perkDefinitions[perkId] || perkId;
+    svgContent += `
+    <text class="perk-item" x="70" y="${yOffset}">✓ ${perkName}</text>`;
+    yOffset += 25;
+  });
+  
+  // Purchase button
+  const buttonY = yOffset + 20;
+  const buttonWidth = 300;
+  const buttonX = (cardWidth - buttonWidth) / 2;
+  
+  svgContent += `
+  <rect class="purchase-button spell-element" 
+        spell="purchase" 
+        spell-components='{"productId":"${tierData.productUuid}","tierName":"${tierData.name}","price":${tierData.annualCost > 0 ? tierData.annualCost : tierData.monthlyCost}}' 
+        x="${buttonX}" y="${buttonY}" width="${buttonWidth}" height="50" rx="8" ry="8"/>
+  
+  <text class="purchase-text spell-element" 
+        spell="purchase" 
+        spell-components='{"productId":"${tierData.productUuid}","tierName":"${tierData.name}","price":${tierData.annualCost > 0 ? tierData.annualCost : tierData.monthlyCost}}' 
+        x="${cardWidth / 2}" y="${buttonY + 32}">💳 Join ${tierData.name} Tier</text>`;
+  
+  svgContent += `</svg>`;
+  
+  console.log(`✅ Created tier card SVG for ${tierData.name} (${svgContent.length} characters)`);
+  return svgContent;
+}
+
+/**
+ * Create tier selector SVG with all membership tiers as navigation buttons
+ */
+function createMembershipSelectorSVGWithRefs(card, tierProducts, tierCardReferences) {
+  console.log('🎨 Creating membership tier selector SVG...');
+  
+  const { membershipData } = card;
+  const cardWidth = 600;
+  const cardHeight = 400 + (membershipData.tiers.length * 80);
+  
+  let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${cardWidth}" height="${cardHeight}" viewBox="0 0 ${cardWidth} ${cardHeight}">
+    <style>
+      .membership-bg { fill: #2c3e50; stroke: #34495e; stroke-width: 2; }
+      .membership-header { fill: #ecf0f1; font-family: Arial, sans-serif; font-weight: bold; font-size: 24px; text-anchor: middle; }
+      .membership-org { fill: #bdc3c7; font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; }
+      .tier-button { fill: #3498db; stroke: #2980b9; stroke-width: 2; cursor: pointer; }
+      .tier-button:hover { fill: #2980b9; }
+      .tier-button-text { fill: white; font-family: Arial, sans-serif; font-weight: bold; font-size: 16px; text-anchor: middle; pointer-events: none; }
+      .tier-perks { fill: #95a5a6; font-family: Arial, sans-serif; font-size: 11px; text-anchor: start; pointer-events: none; }
+      .tier-price { fill: #e74c3c; font-family: Arial, sans-serif; font-weight: bold; font-size: 14px; text-anchor: end; pointer-events: none; }
+      .spell-element { cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text y="24" font-size="24">🪄</text></svg>'), pointer; }
+      
+      .tier-button-pulse {
+        animation: tierPulse 3s ease-in-out infinite;
+      }
+      
+      @keyframes tierPulse {
+        0% { fill: #3498db; }
+        50% { fill: #9b59b6; }
+        100% { fill: #3498db; }
+      }
+    </style>
+    
+    <!-- Card background -->
+    <rect class="membership-bg" x="0" y="0" width="${cardWidth}" height="${cardHeight}" rx="12" ry="12"/>
+    
+    <!-- Header -->
+    <text class="membership-header" x="${cardWidth / 2}" y="40">👑 ${membershipData.title}</text>
+    <text class="membership-org" x="${cardWidth / 2}" y="65">${membershipData.organization}</text>
+    
+    <!-- Tier selection instruction -->
+    <text style="fill: #ecf0f1; font-family: Arial, sans-serif; font-size: 16px; text-anchor: middle;" x="${cardWidth / 2}" y="100">Choose your membership tier:</text>`;
+  
+  // Add tier buttons with perk previews
+  let yOffset = 130;
+  membershipData.tiers.forEach((tier, index) => {
+    const tierProduct = tierProducts.find(tp => tp.tierName === tier.name);
+    const buttonY = yOffset + (index * 80);
+    
+    // Find corresponding tier card's bdoPubKey from references
+    const tierCardRef = tierCardReferences.find(ref => ref.tierName === tier.name);
+    const tierCardBdoPubKey = tierCardRef ? tierCardRef.cardBdoPubKey : `tier_${tier.name.toLowerCase().replace(/\s+/g, '_')}_placeholder`;
+    
+    // Tier button background with pulsing animation
+    svgContent += `
+    <rect class="tier-button tier-button-pulse spell-element" 
+          spell="magicard" 
+          spell-components='{"bdoPubKey":"${tierCardBdoPubKey}"}' 
+          x="50" y="${buttonY}" width="${cardWidth - 100}" height="70" rx="8" ry="8"/>`;
+    
+    // Tier name
+    svgContent += `
+    <text class="tier-button-text spell-element" 
+          spell="magicard" 
+          spell-components='{"bdoPubKey":"${tierCardBdoPubKey}"}' 
+          x="${cardWidth / 2}" y="${buttonY + 25}">👑 ${tier.name}</text>`;
+    
+    // Pricing
+    const priceText = tier.annualCost > 0 ? `$${(tier.annualCost / 100).toFixed(2)}/year` : 
+                     tier.monthlyCost > 0 ? `$${(tier.monthlyCost / 100).toFixed(2)}/month` : 'Free';
+    
+    svgContent += `
+    <text class="tier-price spell-element" 
+          spell="magicard" 
+          spell-components='{"bdoPubKey":"${tierCardBdoPubKey}"}' 
+          x="${cardWidth - 70}" y="${buttonY + 45}">${priceText}</text>`;
+    
+    // Show first 3 perks as preview
+    const previewPerks = tier.includedPerks.slice(0, 3);
+    const perkText = previewPerks.map(perkId => membershipData.perks[perkId] || perkId).join(', ');
+    const perkPreview = previewPerks.length < tier.includedPerks.length 
+      ? `${perkText} +${tier.includedPerks.length - previewPerks.length} more`
+      : perkText;
+    
+    if (perkPreview) {
+      svgContent += `
+      <text class="tier-perks spell-element" 
+            spell="magicard" 
+            spell-components='{"bdoPubKey":"${tierCardBdoPubKey}"}' 
+            x="70" y="${buttonY + 55}">✓ ${perkPreview}</text>`;
+    }
+  });
+  
+  svgContent += `</svg>`;
+  
+  console.log(`✅ Created membership selector SVG (${svgContent.length} characters)`);
+  return svgContent;
+}
+
+/**
+ * Update the membership selector card with actual BDO pubKeys for navigation
+ */
+async function updateMembershipSelectorWithActualPubKeys(uploadedCards, membershipStructure, membershipTitle, organizationName, createdTierProducts, userUuid) {
+  console.log('🔄 Updating selector card with real BDO pubKeys for cross-card navigation...');
+  
+  // Find the selector card (first card, type 'membership-selector')
+  const selectorCard = uploadedCards.find(card => card.type === 'membership-selector');
+  if (!selectorCard) {
+    console.error('❌ Selector card not found in uploaded cards');
+    return;
+  }
+  
+  // Find the tier cards and build reference map
+  const tierCardReferences = [];
+  uploadedCards.forEach(card => {
+    if (card.type === 'membership-tier') {
+      const tierName = card.metadata?.name || card.name.replace(`${membershipTitle} - `, '');
+      tierCardReferences.push({
+        tierName: tierName,
+        cardBdoPubKey: card.cardBdoPubKey
+      });
+      console.log(`🔗 Mapped tier "${tierName}" to pubKey: ${card.cardBdoPubKey.substring(0, 8)}...`);
+    }
+  });
+  
+  console.log(`🎯 Found ${tierCardReferences.length} tier card references to update`);
+  
+  // Recreate the selector card with actual pubKey references
+  const updatedSelectorCard = {
+    type: 'membership-selector',
+    name: `${membershipTitle} - Choose Tier`,
+    isMenu: true,
+    isSelector: true,
+    membershipData: {
+      title: membershipTitle,
+      organization: organizationName,
+      tiers: membershipStructure.tiers,
+      perks: membershipStructure.perks,
+      tierProducts: createdTierProducts
+    }
+  };
+  
+  const updatedSelectorSvg = createMembershipSelectorSVGWithRefs(updatedSelectorCard, createdTierProducts, tierCardReferences);
+  
+  // Update the card in BDO using the existing pubKey
+  if (window.__TAURI__ && window.__TAURI__.core) {
+    try {
+      console.log(`🔄 Updating selector card in BDO with pubKey: ${selectorCard.cardBdoPubKey.substring(0, 8)}...`);
+      
+      const updateResult = await window.__TAURI__.core.invoke('update_card_in_bdo', {
+        bdoUuid: selectorCard.cardBdoUuid,
+        bdoPubKey: selectorCard.cardBdoPubKey,
+        svgContent: updatedSelectorSvg,
+        menuName: membershipTitle
+      });
+      
+      console.log('✅ Selector card updated in BDO with navigation references');
+      
+    } catch (error) {
+      console.error('❌ Failed to update selector card in BDO:', error);
+    }
+  } else {
+    console.warn('⚠️ Tauri not available, selector card not updated in BDO');
+    console.log('✅ Selector card SVG updated locally (would update BDO in Tauri environment)');
+  }
+  
+  // Update the local reference in uploadedCards
+  selectorCard.svg = updatedSelectorSvg;
+  selectorCard.svgContent = updatedSelectorSvg;
 }
 
 // Make preview function globally available

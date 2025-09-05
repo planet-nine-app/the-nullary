@@ -165,6 +165,31 @@
           "required": false
         }
       }
+    },
+    "membership": {
+      "label": "👑 Membership",
+      "icon": "👑",
+      "title": "👑 Membership Configuration", 
+      "formConfig": {
+        "Membership Title": {
+          "type": "text"
+        },
+        "Organization Name": {
+          "type": "text"
+        },
+        "Membership Tiers CSV": {
+          "type": "catalog"
+        },
+        "Membership Description": {
+          "type": "textarea",
+          "charLimit": 1000,
+          "required": false
+        },
+        "Membership Image": {
+          "type": "image",
+          "required": false
+        }
+      }
     }
   }
 }

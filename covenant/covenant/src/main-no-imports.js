@@ -129,10 +129,11 @@ function loadFormWidget() {
     let baseUrl;
     
     if (currentEnv === 'local') {
-        // Standard local sanora port
-        baseUrl = 'http://127.0.0.1:7243';
+        // Use sanora from environment config
+        baseUrl = getServiceUrl('sanora').replace(/\/$/, '');
     } else if (currentEnv === 'test') {
-        baseUrl = 'http://127.0.0.1:5121';
+        // Use sanora from environment config  
+        baseUrl = getServiceUrl('sanora').replace(/\/$/, '');
     } else {
         // For dev environment, fallback to local sanora since form-widget isn't deployed
         console.log('📋 Dev environment detected, falling back to local sanora for form-widget');
@@ -527,7 +528,7 @@ function createContractsScreen() {
     
     // Show My UUID button
     const myUuidBtn = createSVGButton(
-        '🆔 Copy My UUID', 500, 100, 140, 40,
+        '🆔 Copy My Public Key', 500, 100, 160, 40,
         showMyUUID, {
             fill: theme.colors.accent,
             hoverFill: theme.colors.warning
@@ -537,7 +538,7 @@ function createContractsScreen() {
     
     // Add helper text for UUID management
     const uuidHelper = createSVGText(
-        '💡 Click "Copy My UUID" to copy your UUID for sharing with other participants',
+        '💡 Click "Copy My Public Key" to copy your public key for sharing with other participants',
         50, 160, {
             fontSize: theme.typography.smallSize,
             color: theme.colors.textSecondary
@@ -620,7 +621,7 @@ function createContractCreationScreen() {
     
     // Add My UUID button on creation screen too
     const myUuidBtnCreate = createSVGButton(
-        '🆔 Copy My UUID', 550, 80, 140, 35,
+        '🆔 Copy My Public Key', 550, 80, 160, 35,
         async () => {
             await showMyUUID();
             // Auto-insert into participants field if it exists and is empty
@@ -785,7 +786,7 @@ function createConnectionScreen() {
                 <input 
                     type="text" 
                     id="connectionUrl" 
-                    placeholder="covenant://connect?userUUID=..." 
+                    placeholder="covenant://connect?publicKey=..." 
                     style="
                         width: 100%;
                         padding: 10px;
@@ -1029,8 +1030,8 @@ function addExtensionCovenantButtons(svg) {
         svg.appendChild(stepTitle);
         
         // Check if current user has already signed this step
-        const userUUID = appState.userInfo?.uuid;
-        const hasUserSigned = step.signatures && step.signatures[userUUID];
+        const userPubKey = appState.userInfo?.publicKey;
+        const hasUserSigned = step.signatures && step.signatures[userPubKey];
         const isStepCompleted = step.completed;
         
         // Step status
@@ -1207,17 +1208,17 @@ async function showMyUUID() {
         // First get the user info
         const [userUuid, pubKey] = await invoke('get_user_info');
         
-        // Then copy UUID to clipboard using Tauri command
+        // Then copy public key to clipboard using Tauri command
         try {
-            await invoke('copy_user_uuid_to_clipboard');
-            console.log('✅ UUID copied to clipboard via Tauri: ' + userUuid);
+            await invoke('copy_user_pubkey_to_clipboard');
+            console.log('✅ Public key copied to clipboard via Tauri: ' + appState.userInfo?.publicKey);
         } catch (clipboardError) {
             // Fallback to browser clipboard if Tauri clipboard fails
             console.warn('⚠️ Tauri clipboard failed, trying browser clipboard:', clipboardError);
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
-                    await navigator.clipboard.writeText(userUuid);
-                    console.log('✅ UUID copied to clipboard via browser API: ' + userUuid);
+                    await navigator.clipboard.writeText(appState.userInfo?.publicKey || '');
+                    console.log('✅ Public key copied to clipboard via browser API: ' + appState.userInfo?.publicKey);
                 } catch (browserError) {
                     console.error('❌ Browser clipboard also failed:', browserError);
                 }
@@ -1482,6 +1483,17 @@ async function initializeApp() {
             
             if (invoke) {
                 console.log('🎯 Tauri environment detected, invoke function found');
+                
+                // Get environment from Rust backend first
+                try {
+                    const backendEnv = await invoke('get_environment');
+                    console.log(`🌍 Backend environment: ${backendEnv}`);
+                    // Set localStorage so environment config functions work correctly
+                    localStorage.setItem('nullary-env', backendEnv);
+                    console.log(`✅ Set frontend environment to match backend: ${backendEnv}`);
+                } catch (error) {
+                    console.log(`🌍 Could not get backend environment, using frontend default: ${error}`);
+                }
                 
                 // Load user info
                 try {
