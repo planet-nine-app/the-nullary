@@ -82,11 +82,8 @@ async function loadScreenData(screenName) {
         case 'profile':
             await loadMyProfile();
             break;
-        case 'profiles':
-            await loadProfilesForSwipe();
-            break;
-        case 'likes':
-            displayLikedProfiles();
+        case 'connected-apps':
+            displayConnectedApps();
             break;
     }
 }
@@ -117,29 +114,76 @@ function displayProfile(profile) {
         return;
     }
     
-    // Create profile display
-    container.innerHTML = `
-        <div class="profile-card">
-            <div class="profile-avatar-large">
-                ${profile.imageFilename ? 
-                    `<img src="${profile.imageUrl || '#'}" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                     <div class="avatar-fallback" style="display:none;">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>` :
-                    `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
-                }
-            </div>
-            <div class="profile-name">${profile.name || 'No Name'}</div>
-            <div class="profile-email">${profile.email || 'No Email'}</div>
-            <div class="profile-idothis">${profile.idothis || 'What do you do?'}</div>
-            ${profile.bio ? `<div class="profile-bio">${profile.bio}</div>` : ''}
-            ${profile.website ? `<div class="profile-website"><a href="${profile.website}" target="_blank">${profile.website}</a></div>` : ''}
-            ${profile.location ? `<div class="profile-location">📍 ${profile.location}</div>` : ''}
-            
-            <div class="profile-actions">
-                <button class="form-button" onclick="showEditProfileForm()">Edit Profile</button>
-                <button class="form-button danger" onclick="deleteProfile()">Delete Profile</button>
-            </div>
-        </div>
-    `;
+    // Clear container and create post widget for profile
+    container.innerHTML = '';
+    
+    // Create a widget container for the profile post
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'post-widget-container';
+    container.appendChild(widgetContainer);
+    
+    // Create post widget instance
+    const profilePost = new PostWidget(widgetContainer, { debug: false });
+    
+    // Add profile name as the main title
+    profilePost.addElement('name', profile.name || 'Professional Profile');
+    
+    // Add profile image if available
+    if (profile.imageUrl || profile.imageFilename) {
+        profilePost.addElement('image', profile.imageUrl, { 
+            alt: `${profile.name}'s profile picture`,
+            layout: 'mixed'
+        });
+    }
+    
+    // Add profile description combining idothis, bio, and details
+    let profileDescription = '';
+    if (profile.idothis) {
+        profileDescription += `💼 ${profile.idothis}\n\n`;
+    }
+    if (profile.bio) {
+        profileDescription += `${profile.bio}\n\n`;
+    }
+    
+    // Add contact details
+    let contactDetails = '';
+    if (profile.email) {
+        contactDetails += `📧 ${profile.email}\n`;
+    }
+    if (profile.website) {
+        contactDetails += `🌐 ${profile.website}\n`;
+    }
+    if (profile.location) {
+        contactDetails += `📍 ${profile.location}`;
+    }
+    
+    if (contactDetails) {
+        profileDescription += contactDetails;
+    }
+    
+    if (profileDescription) {
+        profilePost.addElement('description', profileDescription);
+    }
+    
+    // Add action buttons
+    const editButton = profilePost.addElement('button', 'Edit Profile');
+    
+    // Add a spacer and delete button
+    profilePost.addSpacer({ minHeight: '20px' });
+    const deleteButton = profilePost.addElement('button', 'Delete Profile');
+    
+    // Add event listeners to buttons after they're created
+    setTimeout(() => {
+        const buttons = widgetContainer.querySelectorAll('button');
+        if (buttons[0]) {
+            buttons[0].addEventListener('click', showEditProfileForm);
+            buttons[0].style.backgroundColor = '#667eea';
+        }
+        if (buttons[1]) {
+            buttons[1].addEventListener('click', deleteProfile);
+            buttons[1].style.backgroundColor = '#f44336';
+        }
+    }, 100);
 }
 
 function showCreateProfileForm() {
@@ -654,6 +698,32 @@ function displayLikedProfiles() {
     `;
 }
 
+// Connected Apps display
+function displayConnectedApps() {
+    const container = document.getElementById('connectedAppsDisplay');
+    
+    container.innerHTML = `
+        <div class="profile-card">
+            <h2 style="margin-bottom: 20px; color: #333;">🔗 Connected Apps</h2>
+            <div style="text-align: center; color: #666; padding: 40px 20px;">
+                <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;">🚧</div>
+                <h3 style="color: #667eea; margin-bottom: 15px;">Coming Soon</h3>
+                <p style="line-height: 1.6; margin-bottom: 20px;">
+                    This screen will show all the Planet Nine apps you're connected to via Julia coordinating keys. 
+                    You'll be able to link your IDothis profile to apps like Ninefy for seamless cross-platform functionality.
+                </p>
+                <div style="background: rgba(103, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <strong style="color: #667eea;">Future Features:</strong><br>
+                    • Link to Ninefy for ebook publishing<br>
+                    • Connect with other Planet Nine services<br>
+                    • Manage cross-app permissions<br>
+                    • Coordinate keys with Julia service
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Utility functions
 async function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -744,31 +814,22 @@ function createAppStructure() {
                 💼 IDothis
             </div>
             <div class="nav-buttons">
-                <button class="nav-button" data-screen="profile" onclick="showScreen('profile')">Profile</button>
-                <button class="nav-button active" data-screen="profiles" onclick="showScreen('profiles')">Discover</button>
-                <button class="nav-button" data-screen="likes" onclick="showScreen('likes')">Likes</button>
+                <button class="nav-button active" data-screen="profile" onclick="showScreen('profile')">Profile</button>
+                <button class="nav-button" data-screen="connected-apps" onclick="showScreen('connected-apps')">Connected Apps</button>
             </div>
         </nav>
 
         <!-- Profile Screen -->
-        <div id="profile-screen" class="screen">
+        <div id="profile-screen" class="screen active">
             <div class="content">
                 <div id="profileDisplay"></div>
             </div>
         </div>
 
-        <!-- Profiles Discovery Screen -->
-        <div id="profiles-screen" class="screen active">
+        <!-- Connected Apps Screen -->
+        <div id="connected-apps-screen" class="screen">
             <div class="content">
-                <div id="swipeContainer"></div>
-            </div>
-        </div>
-
-        <!-- Liked Profiles Screen -->
-        <div id="likes-screen" class="screen">
-            <div class="content">
-                <h2 style="color: white; margin-bottom: 20px;">Liked Profiles</h2>
-                <div id="likedProfilesContainer"></div>
+                <div id="connectedAppsDisplay"></div>
             </div>
         </div>
     `;

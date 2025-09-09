@@ -3364,18 +3364,13 @@ function enhanceMenuForm(form) {
     
     // Load sample data handler
     loadSampleBtn.addEventListener('click', () => {
-      const sampleCSV = `,rider,time span,product,,,
-,adult,two-hour,adult+two-hour$250,,,
-,youth,day,adult+day$500,,,
-,reduced,month,adult+month$10000,,,
-,,,youth+two-hour$100,,,
-,,,youth+day$200,,,
-,,,youth+month$2000,,,
-,,,reduced+two-hour$150,,,
-,,,reduced+day$250,,,
-,,,reduced+month$2500,,,
-,,,chilaquiles verdes+any+any$1700,,,
-,,,special combo+any+day$2500,,,`;
+      const sampleCSV = `,dish,egg,exclusions,product
+,chilaquiles verdes,scrambled,no dairy,chilaquiles verdes+scrambled+no dairy$17
+,chilaquiles rojos,over medium-ish,no onion,chilaquiles rojos+over medium-ish+no onion$18
+,chilaquiles encacahuajados,no egg,no cilantro,chilaquiles encacahuajados+no egg+no cilantro$17
+,chilaquiles campechanos,,no avocado,chilaquiles campechanos+any+no avocado$21
+,migas,scrambled,no cheese,migas+scrambled+no cheese$15
+,migas,poached,dairy-free,migas+poached+dairy-free$16`;
       
       menuDataTextarea.value = sampleCSV;
       validateMenu();
@@ -4137,6 +4132,8 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         isMenu: true,
         isSelector: true,
         options: menuOptions,
+        originalOptions: menuOptions, // Preserve original options for regeneration
+        originalLevel: menuLevel, // Preserve original level for regeneration
         nextLevel: i < menuHeaders.length - 1 ? menuHeaders[i + 1] : 'product',
         menuData: {
           title: `Choose ${menuLevel}`,
@@ -4333,68 +4330,73 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         metadata: card.metadata
       });
       
-      // Get selections from the parsed product metadata (where CSV parser stores them)
+      // Get selections from the original menuTree product data
       let selections = null;
       
-      // Check different possible locations for selections
-      if (card.metadata?.metadata?.selections) {
-        selections = card.metadata.metadata.selections;
-        console.log('🔍 Found selections in metadata.metadata.selections:', selections);
-      } else if (card.metadata?.selections) {
-        selections = card.metadata.selections;
-        console.log('🔍 Found selections in metadata.selections:', selections);
+      // First, try to find the original product from menuTree 
+      const originalProduct = menuTree.products.find(p => p.name === card.name || p.productName === card.name);
+      if (originalProduct && originalProduct.metadata && originalProduct.metadata.selections) {
+        selections = originalProduct.metadata.selections;
+        console.log('🔍 Found selections from original menuTree product:', selections);
       } else {
-        console.log('🔍 No selections found in metadata, parsing from name');
-        // Fallback: parse from product name
-        const productName = card.name || '';
-        const parts = productName.split(' ');
+        console.log('⚠️ Could not find original product with selections for:', card.name);
+        console.log('🔍 Available products in menuTree:', menuTree.products.map(p => p.name || p.productName));
+        // Skip this product - it doesn't have proper selections
+        continue;
+      }
+      
+      if (!selections || !Array.isArray(selections)) {
+        console.warn('⚠️ Product has no valid selections array:', card.name);
+        continue;
+      }
+      
+      // Build the nested catalog structure using the full selection path
+      console.log(`🗺️ Building nested path: [${selections.join(' → ')}] → ${card.name}`);
+      
+      let currentLevel = nestedCatalog;
+      
+      // Navigate/create the nested structure based on all selections
+      for (let i = 0; i < selections.length; i++) {
+        const selection = selections[i];
         
-        if (parts.length >= 2) {
-          let rider, timeSpan;
+        if (i === selections.length - 1) {
+          // Last level - store the product
+          currentLevel[selection] = {
+            productId: card.name,
+            bdoPubKey: card.cardBdoPubKey,
+            price: card.price || 0,
+            name: card.name
+          };
+          console.log(`🗺️ ✅ Final level: "${selection}" → productId: ${card.name}`);
           
-          // Handle different naming patterns  
-          if (parts.length === 3 && parts[2].startsWith('$')) {
-            // Format: "adult two-hour $250"
-            rider = parts[0];
-            timeSpan = parts[1];
-          } else if (parts.length >= 2) {
-            // More complex parsing - find price indicator
-            const priceIndex = parts.findIndex(part => part.startsWith('$'));
-            if (priceIndex > 0) {
-              rider = parts[0];
-              timeSpan = parts.slice(1, priceIndex).join('-');
-            } else {
-              // No price found, assume first two parts are the path
-              rider = parts[0];
-              timeSpan = parts[1];
+          // Also add "any" wildcard for this level if selection is not already "any"
+          if (selection !== 'any') {
+            currentLevel['any'] = {
+              productId: card.name,
+              bdoPubKey: card.cardBdoPubKey,
+              price: card.price || 0,
+              name: card.name
+            };
+            console.log(`🗺️ ✅ Added "any" wildcard at final level for: ${card.name}`);
+          }
+          
+        } else {
+          // Intermediate level - create nested object if needed
+          if (!currentLevel[selection]) {
+            currentLevel[selection] = {};
+            console.log(`🗺️ Created intermediate level: "${selection}"`);
+          }
+          
+          // Also create "any" wildcard branch if selection is not already "any"  
+          if (selection !== 'any') {
+            if (!currentLevel['any']) {
+              currentLevel['any'] = {};
+              console.log(`🗺️ Created "any" wildcard at level: "${selection}"`);
             }
           }
           
-          if (rider && timeSpan) {
-            selections = [rider, timeSpan];
-          }
+          currentLevel = currentLevel[selection];
         }
-      }
-      
-      if (selections && selections.length >= 2) {
-        const [rider, timeSpan] = selections;
-        
-        // Ensure nested structure exists
-        if (!nestedCatalog[rider]) {
-          nestedCatalog[rider] = {};
-        }
-        
-        // Store product data with bdoPubKey from the generated card
-        nestedCatalog[rider][timeSpan] = {
-          productId: card.metadata?.id || card.name,
-          bdoPubKey: card.cardBdoPubKey, // This comes from the generated card
-          price: card.metadata?.price || 0,
-          name: card.name
-        };
-        
-        console.log(`🗺️ ✅ Mapped "${rider}" → "${timeSpan}" → productId: ${card.metadata?.id || card.name}, bdoPubKey: ${card.cardBdoPubKey}`);
-      } else {
-        console.warn(`⚠️ Could not find selections for product: ${card.name}`);
       }
     }
     
@@ -4432,13 +4434,24 @@ async function processMenuCatalogProduct(productData, userUuid, sanoraUrl) {
         console.log(`🔍   Original level: ${finalCard.originalLevel}`);
         console.log(`🔍   Current SVG length: ${finalCard.svgContent?.length || 'undefined'}`);
         
+        // Extract the level from the card name (e.g., "Select exclusions" -> "exclusions")
+        const levelMatch = finalCard.name.match(/^Select (.+)$/);
+        const menuLevel = levelMatch ? levelMatch[1] : finalCard.level;
+        console.log(`🔍   Extracted menu level: ${menuLevel}`);
+        
+        // Get the actual options from the original menu structure instead of relying on stored data
+        const actualOptions = menuTree && menuTree.menus && menuTree.menus[menuLevel] 
+          ? Object.keys(menuTree.menus[menuLevel])
+          : [];
+        console.log(`🔍   Actual options from menu structure: [${actualOptions.join(', ')}] (${actualOptions.length} options)`);
+        
         // Now regenerate the final selector with the complete nested catalog for lookup spells
         const cardIndex = createdCards.findIndex(c => c.cardBdoPubKey === finalCard.cardBdoPubKey);
         const menuSelectorData = {
           type: 'menu-selector',
           name: finalCard.name,
-          options: finalCard.originalOptions || ['two-hour', 'day', 'month'], // Use preserved options
-          level: finalCard.originalLevel || 'time span' // Use preserved level
+          options: actualOptions.length > 0 ? actualOptions : [], // Use actual options from menu structure
+          level: menuLevel // Use extracted level
         };
         
         console.log(`🔍 Regenerating final selector with:`);

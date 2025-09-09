@@ -107,7 +107,7 @@
         /* Content area */
         .content {
             flex: 1;
-            padding: 20px;
+            padding: 30px;
             overflow-y: auto;
         }
 
@@ -280,11 +280,14 @@
         .profile-card {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 12px;
-            padding: 30px;
-            max-width: 500px;
+            padding: 40px;
+            max-width: 90%;
+            width: 100%;
+            min-height: calc(100vh - 200px);
             margin: 0 auto;
             text-align: center;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            box-sizing: border-box;
         }
 
         .profile-avatar-large {
@@ -511,12 +514,15 @@
         /* Widget container styles */
         .widget-container {
             width: 100%;
+            max-width: 100%;
             margin: 20px 0;
+            min-height: 400px;
         }
 
         .widget-container svg {
             width: 100%;
             height: auto;
+            min-height: 400px;
         }
 
         /* Post widget styles for feed display */
@@ -1130,6 +1136,7 @@
     
     <!-- Widget Scripts -->
     <script src="form-widget.js"></script>
+    <script src="post-widget.js"></script>
     
     <script type="module" src="main.js"></script>
 </body>

@@ -100,6 +100,7 @@ body {
   border-right: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Important for flex scrolling */
 }
 
 .right-column {
@@ -133,6 +134,28 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  min-height: 0; /* Important for flex scrolling */
+  max-height: 100%; /* Ensure height constraint */
+}
+
+/* Custom scrollbar for stack list */
+.stack-list-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stack-list-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.stack-list-content::-webkit-scrollbar-thumb {
+  background: rgba(155, 89, 182, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.stack-list-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 89, 182, 0.5);
 }
 
 .stack-item {

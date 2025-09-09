@@ -67,9 +67,13 @@ function parseCSVToMenuTree(csvContent) {
       // Skip empty rows
       if (columns.every(col => !col.trim())) continue;
 
+      console.log(`🔍 Processing CSV row ${i}: [${columns.join(', ')}]`);
       const result = parseHierarchicalRow(columns, menuHeaders, productColumnIndex);
       if (result) {
+        console.log(`🔍 Row ${i} parsed result:`, result);
         addToHierarchicalMenuTree(catalog, result, menuHeaders);
+      } else {
+        console.log(`⚠️ Row ${i} returned null result`);
       }
     }
 
@@ -86,6 +90,14 @@ function parseCSVToMenuTree(csvContent) {
     console.log(`✅ Parsed ${catalog.metadata.totalProducts} products across ${catalog.metadata.menuCount} menu levels`);
     console.log('🗂️ Menu structure:', JSON.stringify(catalog.menus, null, 2));
     console.log('🌳 Decision tree:', JSON.stringify(catalog.decisionTree, null, 2));
+    
+    // Debug menu structure keys for each level
+    console.log('🔍 DEBUGGING MENU STRUCTURE:');
+    for (const header of menuHeaders) {
+      const menuLevel = header.name;
+      const options = Object.keys(catalog.menus[menuLevel] || {});
+      console.log(`🔍   ${menuLevel}: [${options.join(', ')}] (${options.length} options)`);
+    }
     
     return catalog;
     
@@ -567,76 +579,71 @@ function menuTreeToCSV(catalog) {
  */
 function createSampleMenuTree() {
   return {
-    title: 'Sample Transit Pass Catalog',
+    title: 'Sample Restaurant Menu Catalog',
     menus: {
-      adult: {
-        title: 'Adult Passes',
+      dish: {
+        title: 'Dishes',
         submenus: {
-          'two-hour': {
-            title: 'Two Hour Pass',
-            products: ['menu_adult_two_hour_250_abc123']
+          'chilaquiles verdes': {
+            title: 'Chilaquiles Verdes',
+            products: ['menu_chilaquiles_verdes_scrambled_no_dairy_17_abc123']
           },
-          day: {
-            title: 'Day Pass',
-            products: ['menu_adult_day_500_def456']
+          'chilaquiles rojos': {
+            title: 'Chilaquiles Rojos', 
+            products: ['menu_chilaquiles_rojos_over_medium_ish_no_onion_18_def456']
           },
-          month: {
-            title: 'Monthly Pass',
-            products: ['menu_adult_month_10000_ghi789']
+          'migas': {
+            title: 'Migas',
+            products: ['menu_migas_scrambled_no_cheese_15_ghi789']
           }
         },
         products: []
       },
-      youth: {
-        title: 'Youth Passes',
+      egg: {
+        title: 'Egg Preparation',
         submenus: {
-          'two-hour': {
-            title: 'Two Hour Pass',
-            products: ['menu_youth_two_hour_100_jkl012']
+          'scrambled': {
+            title: 'Scrambled',
+            products: ['menu_chilaquiles_verdes_scrambled_no_dairy_17_abc123']
           },
-          day: {
-            title: 'Day Pass',
-            products: ['menu_youth_day_200_mno345']
+          'over medium-ish': {
+            title: 'Over Medium-ish',
+            products: ['menu_chilaquiles_rojos_over_medium_ish_no_onion_18_def456']
           },
-          month: {
-            title: 'Monthly Pass',
-            products: ['menu_youth_month_2000_pqr678']
+          'no egg': {
+            title: 'No Egg',
+            products: ['menu_chilaquiles_encacahuajados_no_egg_no_cilantro_17_jkl012']
           }
         },
         products: []
       },
-      reduced: {
-        title: 'Reduced Fare',
+      exclusions: {
+        title: 'Dietary Exclusions',
         submenus: {
-          'two-hour': {
-            title: 'Two Hour Pass',
-            products: ['menu_reduced_two_hour_150_stu901']
+          'no dairy': {
+            title: 'No Dairy',
+            products: ['menu_chilaquiles_verdes_scrambled_no_dairy_17_abc123']
           },
-          day: {
-            title: 'Day Pass',
-            products: ['menu_reduced_day_250_vwx234']
+          'no onion': {
+            title: 'No Onion',
+            products: ['menu_chilaquiles_rojos_over_medium_ish_no_onion_18_def456']
           },
-          month: {
-            title: 'Monthly Pass',
-            products: ['menu_reduced_month_2500_yz567']
+          'no cilantro': {
+            title: 'No Cilantro',
+            products: ['menu_chilaquiles_encacahuajados_no_egg_no_cilantro_17_jkl012']
           }
         },
         products: []
       }
     },
     products: [
-      { id: 'menu_adult_two_hour_250_abc123', name: 'adult two-hour 250', price: 250, category: 'menu-item', metadata: { riderType: 'adult', timeSpan: 'two-hour' } },
-      { id: 'menu_adult_day_500_def456', name: 'adult day 500', price: 500, category: 'menu-item', metadata: { riderType: 'adult', timeSpan: 'day' } },
-      { id: 'menu_adult_month_10000_ghi789', name: 'adult month 10000', price: 10000, category: 'menu-item', metadata: { riderType: 'adult', timeSpan: 'month' } },
-      { id: 'menu_youth_two_hour_100_jkl012', name: 'youth two-hour 100', price: 100, category: 'menu-item', metadata: { riderType: 'youth', timeSpan: 'two-hour' } },
-      { id: 'menu_youth_day_200_mno345', name: 'youth day 200', price: 200, category: 'menu-item', metadata: { riderType: 'youth', timeSpan: 'day' } },
-      { id: 'menu_youth_month_2000_pqr678', name: 'youth month 2000', price: 2000, category: 'menu-item', metadata: { riderType: 'youth', timeSpan: 'month' } },
-      { id: 'menu_reduced_two_hour_150_stu901', name: 'reduced two-hour 150', price: 150, category: 'menu-item', metadata: { riderType: 'reduced', timeSpan: 'two-hour' } },
-      { id: 'menu_reduced_day_250_vwx234', name: 'reduced day 250', price: 250, category: 'menu-item', metadata: { riderType: 'reduced', timeSpan: 'day' } },
-      { id: 'menu_reduced_month_2500_yz567', name: 'reduced month 2500', price: 2500, category: 'menu-item', metadata: { riderType: 'reduced', timeSpan: 'month' } }
+      { id: 'menu_chilaquiles_verdes_scrambled_no_dairy_17_abc123', name: 'chilaquiles verdes scrambled no dairy $17', price: 17, category: 'menu-item', metadata: { dish: 'chilaquiles verdes', egg: 'scrambled', exclusions: 'no dairy' } },
+      { id: 'menu_chilaquiles_rojos_over_medium_ish_no_onion_18_def456', name: 'chilaquiles rojos over medium-ish no onion $18', price: 18, category: 'menu-item', metadata: { dish: 'chilaquiles rojos', egg: 'over medium-ish', exclusions: 'no onion' } },
+      { id: 'menu_chilaquiles_encacahuajados_no_egg_no_cilantro_17_jkl012', name: 'chilaquiles encacahuajados no egg no cilantro $17', price: 17, category: 'menu-item', metadata: { dish: 'chilaquiles encacahuajados', egg: 'no egg', exclusions: 'no cilantro' } },
+      { id: 'menu_migas_scrambled_no_cheese_15_mno345', name: 'migas scrambled no cheese $15', price: 15, category: 'menu-item', metadata: { dish: 'migas', egg: 'scrambled', exclusions: 'no cheese' } }
     ],
     metadata: {
-      totalProducts: 9,
+      totalProducts: 4,
       menuCount: 3,
       createdAt: new Date().toISOString()
     }

@@ -166,6 +166,8 @@ async function generateMagistackCards(menuTree, menuTitle) {
       isMenu: true,
       isSelector: true,
       options: menuOptions,
+      originalOptions: menuOptions, // Preserve original options for regeneration
+      originalLevel: menuLevel, // Preserve original level for regeneration
       menuData: {
         level: i,
         menuLevel: menuLevel,

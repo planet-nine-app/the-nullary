@@ -552,7 +552,13 @@ function createHeader() {
                 🌐 BDO Cards
             </button>
             <button class="btn btn-secondary" onclick="importStack()">
-                📥 Import
+                📥 Import Stack
+            </button>
+            <button class="btn btn-secondary" onclick="bulkImportCards()">
+                📦 Bulk Import
+            </button>
+            <button class="btn btn-quaternary" onclick="createTestStacks()" title="Create multiple test stacks to test scrolling">
+                🧪 Test Scrolling
             </button>
         </div>
     `;
@@ -1468,6 +1474,98 @@ async function createSeedStack() {
 }
 
 /**
+ * Create multiple test stacks to test scrolling functionality
+ */
+async function createTestStacks() {
+    console.log('🧪 Creating multiple test stacks for scrolling test...');
+    
+    try {
+        const testStackNames = [
+            '🎯 Combat Spells',
+            '🔮 Utility Magic', 
+            '🏰 Dungeon Cards',
+            '⚔️ Weapon Arsenal',
+            '🛡️ Defense Spells',
+            '🌟 Legendary Items',
+            '🎨 Art Collection',
+            '🎭 Character Cards',
+            '🎪 Carnival Deck',
+            '🎮 Game Pieces',
+            '🎲 Random Cards',
+            '🎵 Music Spells',
+            '🎊 Party Effects',
+            '🎁 Gift Cards',
+            '🎤 Performance Arts'
+        ];
+        
+        const sampleCard = {
+            name: 'Sample Card',
+            type: 'test',
+            content: 'This is a test card for scrolling demonstration.',
+            svg: `<svg width="300" height="400" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="300" height="400" fill="#f8f9fa" stroke="#6c757d" stroke-width="2" rx="10"/>
+                <text x="150" y="50" text-anchor="middle" fill="#495057" font-family="Arial" font-size="16" font-weight="bold">TEST CARD</text>
+                <rect spell="test-action" x="50" y="150" width="200" height="80" fill="#007bff" stroke="#0056b3" stroke-width="2" rx="5"/>
+                <text spell="test-action" x="150" y="195" text-anchor="middle" fill="white" font-family="Arial" font-size="14">Click to Test</text>
+                <text x="150" y="350" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="12">🧪 Scrolling Test Card</text>
+            </svg>`,
+            created_at: new Date().toISOString()
+        };
+        
+        let createdCount = 0;
+        
+        for (const stackName of testStackNames) {
+            // Check if stack already exists
+            const existingStack = stacks.find(s => s.name === stackName);
+            if (existingStack) {
+                console.log(`⏭️ Stack "${stackName}" already exists, skipping`);
+                continue;
+            }
+            
+            const testStack = {
+                name: stackName,
+                cards: [
+                    { ...sampleCard, name: 'Test Card 1' },
+                    { ...sampleCard, name: 'Test Card 2' },
+                    { ...sampleCard, name: 'Test Card 3' }
+                ],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            
+            if (window.__TAURI__) {
+                await window.__TAURI__.core.invoke('save_magistack', {
+                    name: stackName,
+                    cards: testStack.cards
+                });
+            } else {
+                stacks.push(testStack);
+            }
+            
+            createdCount++;
+        }
+        
+        if (!window.__TAURI__) {
+            await saveStacks();
+        }
+        
+        await loadStacks();
+        updateStackList();
+        
+        console.log(`✅ Created ${createdCount} test stacks`);
+        await showCustomAlert(
+            'Test Stacks Created',
+            `🧪 Created ${createdCount} test stacks!\n\nNow you should be able to test the scrolling functionality in the left panel. Try scrolling through the stack list to see if it works properly.`,
+            'Great!'
+        );
+        
+    } catch (error) {
+        console.error('❌ Error creating test stacks:', error);
+        await showCustomAlert('Error', `Failed to create test stacks: ${error.message}`, 'OK');
+    }
+}
+
+/**
  * Import a menu from Ninefy using bdoPubKey
  */
 async function importFromBdoPubKey() {
@@ -2236,6 +2334,156 @@ function cleanupAllMenuLocalStorage() {
  */
 async function importStack() {
     alert('📥 Import functionality coming soon!\n\nThis will allow you to import MagiStacks from files or other users.');
+}
+
+/**
+ * Bulk import multiple SVG cards into the current stack
+ */
+async function bulkImportCards() {
+    if (!currentStack) {
+        await showCustomAlert('No Stack Selected', 'Please select or create a stack first before importing cards.', 'OK');
+        return;
+    }
+    
+    try {
+        // Create hidden file input for multiple file selection
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.svg';
+        fileInput.multiple = true;
+        fileInput.style.display = 'none';
+        
+        // Promise to handle file selection
+        const files = await new Promise((resolve) => {
+            fileInput.onchange = (event) => {
+                resolve(Array.from(event.target.files));
+            };
+            fileInput.oncancel = () => {
+                resolve([]);
+            };
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+        });
+        
+        if (files.length === 0) {
+            console.log('📦 Bulk import cancelled by user');
+            return;
+        }
+        
+        console.log(`📦 Starting bulk import of ${files.length} SVG files...`);
+        
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        // Process each file
+        for (const file of files) {
+            try {
+                // Validate file type
+                if (!file.type.includes('svg') && !file.name.toLowerCase().endsWith('.svg')) {
+                    errors.push(`❌ ${file.name}: Not an SVG file`);
+                    errorCount++;
+                    continue;
+                }
+                
+                // Read file content
+                const svgContent = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+                
+                // Generate card name from filename (remove .svg extension)
+                const cardName = file.name.replace(/\.svg$/i, '');
+                
+                // Check if card already exists
+                const existingCard = currentStack.cards.find(card => card.name === cardName);
+                if (existingCard) {
+                    const shouldReplace = await showCustomConfirm(
+                        'Card Already Exists', 
+                        `A card named "${cardName}" already exists in this stack. Replace it?`,
+                        'Replace', 'Skip'
+                    );
+                    
+                    if (!shouldReplace) {
+                        console.log(`⏭️ Skipped existing card: ${cardName}`);
+                        continue;
+                    }
+                }
+                
+                // Create card object
+                const card = {
+                    name: cardName,
+                    svg: svgContent,
+                    created_at: new Date().toISOString()
+                };
+                
+                // Add to current stack (replace if exists)
+                if (existingCard) {
+                    const index = currentStack.cards.findIndex(c => c.name === cardName);
+                    currentStack.cards[index] = card;
+                } else {
+                    currentStack.cards.push(card);
+                }
+                
+                // Save SVG to storage
+                if (window.__TAURI__) {
+                    await window.__TAURI__.core.invoke('save_card_svg', {
+                        stack_name: currentStack.name,
+                        card_name: cardName,
+                        svg_content: svgContent
+                    });
+                }
+                
+                successCount++;
+                console.log(`✅ Added card: ${cardName}`);
+                
+            } catch (error) {
+                console.error(`❌ Error processing ${file.name}:`, error);
+                errors.push(`❌ ${file.name}: ${error.message}`);
+                errorCount++;
+            }
+        }
+        
+        // Save the updated stack
+        if (successCount > 0) {
+            currentStack.updated_at = new Date().toISOString();
+            
+            if (window.__TAURI__) {
+                await window.__TAURI__.core.invoke('save_magistack', {
+                    name: currentStack.name,
+                    cards: currentStack.cards
+                });
+            } else {
+                await saveStacks();
+            }
+            
+            // Refresh the UI
+            await loadStacks();
+            await selectStack(currentStack);
+        }
+        
+        // Show results summary
+        let message = `📦 Bulk Import Complete!\n\n`;
+        message += `✅ Successfully imported: ${successCount} cards\n`;
+        if (errorCount > 0) {
+            message += `❌ Errors: ${errorCount} cards\n\n`;
+            if (errors.length > 0) {
+                message += `Error details:\n${errors.slice(0, 5).join('\n')}`;
+                if (errors.length > 5) {
+                    message += `\n... and ${errors.length - 5} more errors`;
+                }
+            }
+        }
+        
+        await showCustomAlert('Bulk Import Results', message, 'OK');
+        
+    } catch (error) {
+        console.error('❌ Bulk import error:', error);
+        await showCustomAlert('Import Error', `Failed to import cards: ${error.message}`, 'OK');
+    }
 }
 
 /**
