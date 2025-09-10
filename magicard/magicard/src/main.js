@@ -606,7 +606,7 @@ function createMainContent() {
                 </div>
             </div>
             <div id="bdo-pubkey-display" class="bdo-pubkey-display" style="display: none;">
-                <div class="bdo-pubkey-label">🔑 BDO Import Key:</div>
+                <div id="bdo-key-label" class="bdo-pubkey-label">🔑 BDO Import Key:</div>
                 <div class="bdo-pubkey-value" id="bdo-pubkey-value">Loading...</div>
                 <button class="btn btn-small btn-tertiary" onclick="copyBdoPubKey()" id="copy-bdo-key-btn">
                     📋 Copy Key
@@ -660,16 +660,32 @@ function updateStackList() {
             stackItem.classList.add('selected');
         }
         
-        const cardCount = stack.cards ? stack.cards.length : 0;
-        const updatedDate = stack.updated_at ? new Date(stack.updated_at).toLocaleDateString() : 'Unknown';
-        
-        stackItem.innerHTML = `
-            <div class="stack-name">${stack.name}</div>
-            <div class="stack-meta">
-                <span>${cardCount} cards</span>
-                <span>${updatedDate}</span>
-            </div>
-        `;
+        // Handle different stack types
+        if (stack.type === 'bdo_reference') {
+            const estimatedCount = stack.metadata?.estimatedCardCount || '?';
+            const lastAccessed = stack.last_accessed ? new Date(stack.last_accessed).toLocaleDateString() : 'Never';
+            
+            stackItem.innerHTML = `
+                <div class="stack-name">🌐 ${stack.name}</div>
+                <div class="stack-meta">
+                    <span>~${estimatedCount} cards</span>
+                    <span>Last accessed: ${lastAccessed}</span>
+                </div>
+            `;
+            stackItem.style.borderLeft = '4px solid #3498db'; // Blue border for BDO references
+        } else {
+            // Regular local stack
+            const cardCount = stack.cards ? stack.cards.length : 0;
+            const updatedDate = stack.updated_at ? new Date(stack.updated_at).toLocaleDateString() : 'Unknown';
+            
+            stackItem.innerHTML = `
+                <div class="stack-name">${stack.name}</div>
+                <div class="stack-meta">
+                    <span>${cardCount} cards</span>
+                    <span>${updatedDate}</span>
+                </div>
+            `;
+        }
         
         stackItem.addEventListener('click', () => selectStack(stack));
         container.appendChild(stackItem);
@@ -680,8 +696,62 @@ function updateStackList() {
  * Select a stack for preview
  */
 async function selectStack(stack) {
-    currentStack = stack;
     console.log(`🎯 Selected stack: ${stack.name}`);
+    
+    // Handle BDO references - fetch actual data on-demand
+    if (stack.type === 'bdo_reference') {
+        console.log('🌐 Loading BDO reference, fetching fresh data from server...');
+        
+        try {
+            // Show loading state
+            currentStack = {
+                name: stack.name + ' (Loading...)',
+                type: 'loading',
+                bdoPubKey: stack.bdoPubKey,
+                metadata: stack.metadata
+            };
+            
+            updateStackList();
+            await updatePreviewArea(); // This will show loading state
+            
+            // Fetch fresh data from BDO
+            const menuData = await fetchMenuFromBDO(stack.bdoPubKey);
+            if (menuData) {
+                // Convert to full magistack for display (but don't save locally)
+                const magistack = await convertMenuToMagiStack(menuData);
+                if (magistack) {
+                    magistack.metadata.originalBdoPubKey = stack.bdoPubKey; // Ensure we have the key
+                    magistack.metadata.isReference = true; // Mark as BDO reference
+                    magistack.metadata.lastFetched = new Date().toISOString();
+                    
+                    currentStack = magistack;
+                    console.log('✅ BDO reference loaded successfully');
+                    
+                    // Update the reference's last accessed time
+                    stack.last_accessed = new Date().toISOString();
+                    await saveStacks();
+                } else {
+                    throw new Error('Failed to convert BDO data to magistack');
+                }
+            } else {
+                throw new Error('Failed to fetch from BDO');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error fetching BDO reference:', error);
+            currentStack = {
+                name: stack.name + ' (Error)',
+                type: 'error',
+                bdoPubKey: stack.bdoPubKey,
+                metadata: stack.metadata,
+                error: error.message
+            };
+        }
+        
+    } else {
+        // Regular local stack
+        currentStack = stack;
+    }
     
     // Update visual selection
     updateStackList();
@@ -689,11 +759,18 @@ async function selectStack(stack) {
     // Update preview area
     await updatePreviewArea();
     
-    // Show action buttons
+    // Show action buttons (but modify for BDO references)
     const actionButtons = document.getElementById('action-buttons');
     if (actionButtons) {
-        actionButtons.style.display = 'flex';
-        console.log('✅ Action buttons shown (delete button should be visible)');
+        if (stack.type === 'bdo_reference') {
+            // Limited actions for BDO references
+            actionButtons.style.display = 'flex';
+            console.log('✅ Action buttons shown for BDO reference (limited actions)');
+        } else {
+            // Full actions for local stacks
+            actionButtons.style.display = 'flex';
+            console.log('✅ Action buttons shown for local stack');
+        }
     } else {
         console.log('❌ Action buttons element not found');
     }
@@ -709,14 +786,44 @@ async function updatePreviewArea() {
     const previewContent = document.getElementById('preview-content');
     if (!previewContent || !currentStack) return;
     
+    // Handle loading state for BDO references
+    if (currentStack.type === 'loading') {
+        previewContent.innerHTML = `
+            <div class="empty-preview">
+                <div class="empty-preview-icon">🌐</div>
+                <div class="empty-preview-text">Loading from BDO...</div>
+                <div class="empty-preview-subtext">Fetching latest data from server</div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Handle error state for BDO references
+    if (currentStack.type === 'error') {
+        previewContent.innerHTML = `
+            <div class="empty-preview">
+                <div class="empty-preview-icon">❌</div>
+                <div class="empty-preview-text">Failed to load from BDO</div>
+                <div class="empty-preview-subtext">Error: ${currentStack.error || 'Unknown error'}</div>
+            </div>
+        `;
+        return;
+    }
+    
     const cards = currentStack.cards || [];
     
     if (cards.length === 0) {
+        const emptyIcon = currentStack.metadata?.isReference ? '🌐' : '🃏';
+        const emptyText = currentStack.metadata?.isReference ? 'No cards in BDO reference' : 'Empty stack';
+        const emptySubtext = currentStack.metadata?.isReference 
+            ? 'This BDO reference appears to be empty'
+            : `Add cards to "${currentStack.name}" to see them here`;
+        
         previewContent.innerHTML = `
             <div class="empty-preview">
-                <div class="empty-preview-icon">🃏</div>
-                <div class="empty-preview-text">Empty stack</div>
-                <div class="empty-preview-subtext">Add cards to "${currentStack.name}" to see them here</div>
+                <div class="empty-preview-icon">${emptyIcon}</div>
+                <div class="empty-preview-text">${emptyText}</div>
+                <div class="empty-preview-subtext">${emptySubtext}</div>
             </div>
         `;
         return;
@@ -756,28 +863,69 @@ async function updateBdoPubKeyDisplay() {
     }
     
     try {
-        // Generate a BDO pubkey for this stack
-        // For now, use the stack name to generate a consistent key
         let stackPubKey = '';
+        let pubKeySource = '';
         
-        if (window.__TAURI__) {
-            // Get the real public key from sessionless (no fake keys!)
-            stackPubKey = await window.__TAURI__.core.invoke('get_public_key');
+        // Check for BDO reference or imported stack with original key
+        if (currentStack.bdoPubKey) {
+            // This is a BDO reference or has a stored BDO key
+            stackPubKey = currentStack.bdoPubKey;
+            if (currentStack.metadata?.isReference) {
+                pubKeySource = 'BDO Reference Key';
+            } else {
+                pubKeySource = 'Original BDO Key (from Ninefy)';
+            }
+            console.log(`🔑 Using BDO pubkey for stack "${currentStack.name}": ${stackPubKey}`);
+        } else if (currentStack.metadata?.originalBdoPubKey) {
+            stackPubKey = currentStack.metadata.originalBdoPubKey;
+            pubKeySource = 'Original BDO Key (from Ninefy)';
+            console.log(`🔑 Using original BDO pubkey for imported stack "${currentStack.name}": ${stackPubKey}`);
+        } else if (currentStack.metadata?.importedFrom === 'ninefy-menu-catalog') {
+            // This is an imported stack but missing the originalBdoPubKey (older import)
+            console.log(`⚠️ Imported stack "${currentStack.name}" missing originalBdoPubKey - this was likely imported before the fix`);
+            stackPubKey = 'Missing - Re-import recommended';
+            pubKeySource = 'Imported Stack Missing Key';
         } else {
-            // Web fallback - show error message instead of fake key
-            bdoPubKeyValue.textContent = 'BDO integration requires Tauri backend';
-            bdoPubKeyDisplay.style.display = 'block';
-            return;
+            // For local stacks, generate a user-specific key
+            if (window.__TAURI__) {
+                // Get the real public key from sessionless (no fake keys!)
+                stackPubKey = await window.__TAURI__.core.invoke('get_public_key');
+                pubKeySource = 'User Key (for local sharing)';
+            } else {
+                // Web fallback - show error message instead of fake key
+                bdoPubKeyValue.textContent = 'BDO integration requires Tauri backend';
+                bdoPubKeyDisplay.style.display = 'block';
+                return;
+            }
         }
         
-        // Display the pubkey
+        // Display the pubkey with source info
         bdoPubKeyValue.textContent = stackPubKey;
+        bdoPubKeyValue.setAttribute('title', pubKeySource);
         bdoPubKeyDisplay.style.display = 'block';
         
-        console.log(`🔑 Generated BDO pubkey for stack "${currentStack.name}": ${stackPubKey}`);
+        // Add visual indicator for different key types
+        const keyLabel = document.getElementById('bdo-key-label');
+        if (keyLabel) {
+            if (currentStack.bdoPubKey && currentStack.metadata?.isReference) {
+                keyLabel.textContent = '🌐 BDO Reference ID:';
+                keyLabel.style.color = '#3498db'; // Blue for BDO references
+            } else if (currentStack.metadata?.originalBdoPubKey || currentStack.bdoPubKey) {
+                keyLabel.textContent = '🔑 Original MagiCard ID:';
+                keyLabel.style.color = '#27ae60'; // Green for original keys
+            } else if (currentStack.metadata?.importedFrom === 'ninefy-menu-catalog') {
+                keyLabel.textContent = '⚠️ Missing Original Key:';
+                keyLabel.style.color = '#f1c40f'; // Yellow for missing keys
+            } else {
+                keyLabel.textContent = '🔑 MagiCard ID:';
+                keyLabel.style.color = '#9b59b6'; // Purple for user keys
+            }
+        }
+        
+        console.log(`🔑 Showing BDO pubkey for stack "${currentStack.name}": ${stackPubKey} (${pubKeySource})`);
         
     } catch (error) {
-        console.error('❌ Error generating BDO pubkey:', error);
+        console.error('❌ Error getting BDO pubkey:', error);
         bdoPubKeyValue.textContent = 'Error generating key';
         bdoPubKeyDisplay.style.display = 'block';
     }
@@ -1589,23 +1737,31 @@ async function importFromBdoPubKey() {
             return;
         }
         
-        // Convert menu to MagiStack
-        const magistack = await convertMenuToMagiStack(menuData);
+        // Create a BDO reference instead of storing the full magistack locally
+        const stackReference = {
+            name: menuData.title + ' (from BDO)',
+            type: 'bdo_reference',
+            bdoPubKey: bdoPubKey,
+            created_at: new Date().toISOString(),
+            last_accessed: new Date().toISOString(),
+            metadata: {
+                importedFrom: 'ninefy-menu-catalog',
+                originalTitle: menuData.title,
+                estimatedCardCount: menuData.cards?.length || menuData.products?.length || 0,
+                isReference: true
+            }
+        };
         
-        if (magistack) {
-            // Add to stacks
-            stacks.push(magistack);
-            await saveStacks();
-            updateStackList();
-            
-            console.log(`✅ Imported menu as MagiStack: ${magistack.name}`);
-            alert(`Successfully imported "${magistack.name}" with ${magistack.cards.length} cards!`);
-            
-            // Auto-select the imported stack
-            await selectStack(magistack);
-        } else {
-            alert('Failed to convert menu to MagiStack. Please try again.');
-        }
+        // Add the reference to stacks (not the full data)
+        stacks.push(stackReference);
+        await saveStacks();
+        updateStackList();
+        
+        console.log(`✅ Added BDO reference for: ${stackReference.name}`);
+        alert(`Successfully added reference to "${stackReference.name}"!\nContent will be fetched from BDO when selected.`);
+        
+        // Auto-select the imported stack reference
+        await selectStack(stackReference);
         
     } catch (error) {
         console.error('❌ Error importing from bdoPubKey:', error);
