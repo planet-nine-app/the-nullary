@@ -200,6 +200,41 @@ async fn save_magistack(name: &str, cards: Value) -> Result<String, String> {
     Ok(format!("Stack '{}' saved successfully", name))
 }
 
+/// Save a MagiStack with full metadata to local storage
+#[tauri::command]
+async fn save_magistack_with_metadata(stack_data: Value) -> Result<String, String> {
+    let name = stack_data["name"].as_str().ok_or("Missing name field")?;
+    println!("💾 Saving MagiStack with metadata: {}", name);
+    
+    // Get app data directory
+    let app_dir = match std::env::var("HOME") {
+        Ok(home) => Path::new(&home).join(".magicard").join("stacks"),
+        Err(_) => Path::new(".").join("magicard_data").join("stacks"),
+    };
+    
+    // Create directory if it doesn't exist
+    fs::create_dir_all(&app_dir)
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+    
+    // Save stack file with full data structure (including metadata)
+    let file_path = app_dir.join(format!("{}.json", name));
+    let now = chrono::Utc::now().to_rfc3339();
+    let created_at = stack_data["created_at"].as_str().unwrap_or(&now);
+    let full_stack_data = json!({
+        "name": stack_data["name"],
+        "cards": stack_data["cards"],
+        "metadata": stack_data["metadata"],
+        "created_at": created_at,
+        "updated_at": now
+    });
+    
+    fs::write(&file_path, serde_json::to_string_pretty(&full_stack_data).unwrap())
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    
+    println!("✅ Saved MagiStack '{}' with metadata to: {:?}", name, file_path);
+    Ok(format!("Stack '{}' with metadata saved successfully", name))
+}
+
 /// Load a MagiStack from local storage
 #[tauri::command]
 async fn load_magistack(name: &str) -> Result<Value, String> {
@@ -838,6 +873,7 @@ pub fn run() {
             create_seed_magistack,
             create_bdo_user,
             save_magistack,
+            save_magistack_with_metadata,
             load_magistack,
             list_magistacks,
             delete_magistack,

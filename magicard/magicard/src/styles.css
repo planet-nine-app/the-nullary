@@ -83,6 +83,7 @@ body {
 .main-content {
   flex: 1;
   display: flex;
+  height: calc(100vh - 100px); /* Subtract approximate header height */
   overflow: hidden;
 }
 
@@ -109,6 +110,9 @@ body {
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Important for flex scrolling */
+  max-height: 100%; /* Ensure height constraint */
+  overflow-y: auto;
 }
 
 /* Stack list styles */
@@ -220,11 +224,42 @@ body {
   border: 2px dashed #e0e0e0;
   border-radius: 12px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   min-height: 400px;
   position: relative;
-  overflow: hidden;
+  padding: 1rem;
+}
+
+/* When content is present, align at top instead of center */
+.preview-content.has-content {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* When empty, center the content */
+.preview-content:not(.has-content) {
+  align-items: center;
+  justify-content: center;
+}
+
+/* Custom scrollbar for preview content */
+.preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.preview-content::-webkit-scrollbar-thumb {
+  background: rgba(155, 89, 182, 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.preview-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 89, 182, 0.5);
 }
 
 .empty-preview {

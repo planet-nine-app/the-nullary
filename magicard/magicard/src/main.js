@@ -612,6 +612,13 @@ function createMainContent() {
                     📋 Copy Key
                 </button>
             </div>
+            <div id="first-card-pubkey-display" class="bdo-pubkey-display" style="display: none;">
+                <div id="first-card-key-label" class="bdo-pubkey-label">🎴 First Card BDO Key:</div>
+                <div class="bdo-pubkey-value" id="first-card-pubkey-value">Loading...</div>
+                <button class="btn btn-small btn-tertiary" onclick="copyFirstCardPubKey()" id="copy-first-card-key-btn">
+                    📋 Copy Key
+                </button>
+            </div>
             <div id="action-buttons" class="action-buttons" style="display: none;">
                 <button class="btn" onclick="editCurrentStack()">
                     ✏️ Edit Stack
@@ -829,17 +836,44 @@ async function updatePreviewArea() {
         return;
     }
     
-    // Show first card as preview
+    // Check for magistack data first - display SVG from successful array if available
+    if (currentStack.metadata?.magistackData?.successful?.length > 0) {
+        const firstSuccessfulCard = currentStack.metadata.magistackData.successful[0];
+        
+        // Try to get SVG content from various possible fields in the magistack data
+        let magistackSvg = firstSuccessfulCard.bdo?.svgContent || 
+                          firstSuccessfulCard.svgContent || 
+                          firstSuccessfulCard.svg || 
+                          firstSuccessfulCard.cardSvg || 
+                          firstSuccessfulCard.data?.svgContent ||
+                          firstSuccessfulCard.data?.svg;
+                          
+        if (magistackSvg) {
+            console.log('🎨 updatePreviewArea - Found magistack SVG content:', magistackSvg.length, 'characters');
+            console.log('🎨 updatePreviewArea - Magistack SVG preview:', magistackSvg.substring(0, 100));
+            
+            // Display the magistack SVG content
+            await displayCardPreview(magistackSvg);
+            return;
+        } else {
+            console.log('🎨 updatePreviewArea - Magistack data exists but no SVG content found');
+            console.log('🎨 updatePreviewArea - First successful card structure:', Object.keys(firstSuccessfulCard || {}));
+        }
+    }
+    
+    // Fall back to regular card preview if no magistack SVG content
     const firstCard = cards[0];
     console.log('🖼️ updatePreviewArea - First card exists:', !!firstCard);
-    console.log('🖼️ updatePreviewArea - First card has SVG:', !!firstCard?.svg);
-    console.log('🖼️ updatePreviewArea - First card SVG length:', firstCard?.svg?.length || 0);
+    console.log('🖼️ updatePreviewArea - First card has SVG:', !!firstCard?.svgContent);
+    console.log('🖼️ updatePreviewArea - First card SVG length:', firstCard?.svgContent?.length || 0);
     
-    if (firstCard && firstCard.svg) {
-        console.log('🖼️ updatePreviewArea - Displaying card preview');
-        await displayCardPreview(firstCard.svg);
+    if (firstCard && firstCard.svgContent) {
+        console.log('🖼️ updatePreviewArea - Displaying regular card preview');
+        await displayCardPreview(firstCard.svgContent);
     } else {
         console.log('🖼️ updatePreviewArea - No SVG content, showing empty preview');
+        // Remove has-content class for proper centering
+        previewContent.classList.remove('has-content');
         previewContent.innerHTML = `
             <div class="empty-preview">
                 <div class="empty-preview-icon">🎨</div>
@@ -924,10 +958,17 @@ async function updateBdoPubKeyDisplay() {
         
         console.log(`🔑 Showing BDO pubkey for stack "${currentStack.name}": ${stackPubKey} (${pubKeySource})`);
         
+        // Update first card BDO pubkey display
+        await updateFirstCardPubKeyDisplay();
+        
     } catch (error) {
         console.error('❌ Error getting BDO pubkey:', error);
         bdoPubKeyValue.textContent = 'Error generating key';
         bdoPubKeyDisplay.style.display = 'block';
+        
+        // Hide first card display on error
+        const firstCardDisplay = document.getElementById('first-card-pubkey-display');
+        if (firstCardDisplay) firstCardDisplay.style.display = 'none';
     }
 }
 
@@ -975,6 +1016,116 @@ async function copyBdoPubKey() {
 }
 
 /**
+ * Update first card BDO pubkey display
+ */
+async function updateFirstCardPubKeyDisplay() {
+    const firstCardDisplay = document.getElementById('first-card-pubkey-display');
+    const firstCardPubKeyValue = document.getElementById('first-card-pubkey-value');
+    
+    if (!firstCardDisplay || !firstCardPubKeyValue || !currentStack) {
+        if (firstCardDisplay) firstCardDisplay.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Check if stack has cards
+        if (!currentStack.cards || currentStack.cards.length === 0) {
+            firstCardDisplay.style.display = 'none';
+            return;
+        }
+        
+        let firstCardPubKey = '';
+        
+        // Get the first card
+        const firstCard = currentStack.cards[0];
+        
+        // Check for first card BDO pubkey from various sources
+        if (currentStack.metadata?.firstCardBdoPubKey) {
+            // Use the firstCardBdoPubKey stored in metadata (from our recent fix)
+            firstCardPubKey = currentStack.metadata.firstCardBdoPubKey;
+            console.log(`🎴 Using firstCardBdoPubKey from metadata: ${firstCardPubKey}`);
+        } else if (firstCard.metadata?.cardBdoPubKey) {
+            // Check card's metadata for BDO pubkey
+            firstCardPubKey = firstCard.metadata.cardBdoPubKey;
+            console.log(`🎴 Using cardBdoPubKey from first card metadata: ${firstCardPubKey}`);
+        } else if (firstCard.cardBdoPubKey) {
+            // Card has its own BDO pubKey (direct storage)
+            firstCardPubKey = firstCard.cardBdoPubKey;
+            console.log(`🎴 Using card's stored cardBdoPubKey: ${firstCardPubKey}`);
+        } else if (firstCard.bdoPubKey) {
+            // Card has a bdoPubKey (legacy or different format)
+            firstCardPubKey = firstCard.bdoPubKey;
+            console.log(`🎴 Using card's stored bdoPubKey: ${firstCardPubKey}`);
+        } else {
+            // This is a local card without BDO data - no real pubKey available
+            firstCardPubKey = 'Local card - no BDO pubKey';
+            console.log(`🎴 Local card "${firstCard.name}" has no BDO pubKey`);
+        }
+        
+        if (firstCardPubKey) {
+            firstCardPubKeyValue.textContent = firstCardPubKey;
+            firstCardDisplay.style.display = 'block';
+            console.log(`🎴 Showing first card BDO pubKey for "${firstCard.name}": ${firstCardPubKey}`);
+        } else {
+            firstCardDisplay.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('❌ Error getting first card BDO pubkey:', error);
+        firstCardPubKeyValue.textContent = 'Error getting first card key';
+        firstCardDisplay.style.display = 'block';
+    }
+}
+
+/**
+ * Copy first card BDO pubkey to clipboard
+ */
+async function copyFirstCardPubKey() {
+    try {
+        const pubKeyElement = document.getElementById('first-card-pubkey-value');
+        if (!pubKeyElement) {
+            throw new Error('First card pubKey element not found');
+        }
+        
+        const pubKey = pubKeyElement.textContent.trim();
+        if (!pubKey || pubKey === 'Loading...' || pubKey.startsWith('Error')) {
+            throw new Error('No valid first card pubKey to copy');
+        }
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(pubKey);
+            console.log('📋 Copied first card BDO pubkey to clipboard:', pubKey);
+            
+            // Visual feedback
+            const copyBtn = document.getElementById('copy-first-card-key-btn');
+            if (copyBtn) {
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✅ Copied!';
+                copyBtn.style.background = '#27ae60';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '';
+                }, 2000);
+            }
+        } else {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = pubKey;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            alert('📋 First card BDO pubkey copied to clipboard!');
+        }
+    } catch (error) {
+        console.error('❌ Failed to copy first card pubkey to clipboard:', error);
+        alert('Failed to copy first card pubkey to clipboard. Please manually copy the key.');
+    }
+}
+
+/**
  * Update preview with new SVG content (for navigation)
  */
 async function updatePreview(svgContent) {
@@ -988,6 +1139,9 @@ async function updatePreview(svgContent) {
 async function displayCardPreview(svgContent) {
     const previewContent = document.getElementById('preview-content');
     if (!previewContent) return;
+    
+    // Add has-content class for proper styling
+    previewContent.classList.add('has-content');
     
     previewContent.innerHTML = `
         <div class="card-preview">
@@ -1027,20 +1181,26 @@ async function displayFetchedCardInPreview(cardData, bdoPubKey, navigationSource
         console.log('🔍 Searching for SVG in card data fields:', Object.keys(cardData));
         
         // Try different possible locations for SVG content
-        svgContent = cardData.svg || 
-                    cardData.svgContent || 
+        svgContent = cardData.svgContent || 
+                    cardData.svg || 
                     cardData.content || 
                     cardData.data || 
                     cardData.cardSvg ||
                     cardData.body ||
                     cardData.html;
         
-        console.log('🔍 Raw svgContent found:', svgContent ? `${typeof svgContent} (${svgContent.length} chars)` : 'null/undefined');
-        console.log('🔍 svgContent preview:', svgContent ? svgContent.substring(0, 100) : 'N/A');
+        // Handle dark/light mode SVG object (NEW)
+        if (typeof svgContent === 'object' && svgContent.dark && svgContent.light) {
+            console.log('🎨 SVG object detected with dark/light modes, using dark mode');
+            svgContent = svgContent.dark; // Default to dark mode
+        }
+        
+        console.log('🔍 Raw svgContent found:', svgContent ? `${typeof svgContent} (${typeof svgContent === 'string' ? svgContent.length + ' chars' : 'object'})` : 'null/undefined');
+        console.log('🔍 svgContent preview:', svgContent && typeof svgContent === 'string' ? svgContent.substring(0, 100) : 'N/A');
         
         // Debug each potential field individually  
-        console.log('🔍 cardData.svg:', cardData.svg ? 'exists' : 'null/undefined');
-        console.log('🔍 cardData.svgContent:', cardData.svgContent ? 'exists' : 'null/undefined'); 
+        console.log('🔍 cardData.svgContent:', cardData.svgContent ? 'exists' : 'null/undefined');
+        console.log('🔍 cardData.svg:', cardData.svg ? 'exists' : 'null/undefined'); 
         console.log('🔍 cardData.content:', cardData.content ? 'exists' : 'null/undefined');
                     
         // Unescape JSON-escaped SVG content if needed
@@ -1342,7 +1502,7 @@ async function navigateToCardInCurrentStack(bdoPubKey) {
     if (targetCard) {
         console.log(`✨ Found target card locally: ${targetCard.name}`);
         // Update the preview to show the target card
-        updatePreview(targetCard.svg);
+        updatePreview(targetCard.svgContent);
         
         // Show success message
         alert(`🪄 Navigated to ${targetCard.name}! Check the preview area.`);
@@ -1384,7 +1544,7 @@ async function fetchAndDisplayCardFromBDO(bdoPubKey) {
         
         if (result.success && result.card && result.card.data) {
             // Extract SVG content from the BDO response
-            let svgContent = result.card.data.svg || result.card.data.svgContent;
+            let svgContent = result.card.data.svgContent || result.card.data.svg;
             
             if (svgContent) {
                 console.log(`✅ Successfully fetched card SVG from BDO`);
@@ -1969,7 +2129,7 @@ function updateEditCardList() {
                 ${card.name || `Card ${index + 1}`}
             </div>
             <div style="font-size: 0.8rem; color: #7f8c8d;">
-                ${card.svg ? 'SVG loaded' : 'No SVG content'}
+                ${card.svgContent ? 'SVG loaded' : 'No SVG content'}
             </div>
         `;
         
@@ -2021,7 +2181,7 @@ function updateCardEditor(card, index) {
             
             <!-- SVG Preview -->
             <div id="svg-preview-${index}" style="flex: 1; background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; min-height: 300px; display: flex; align-items: center; justify-content: center;">
-                ${card.svg ? `<div style="width: 100%; height: 100%; overflow: auto;">${card.svg}</div>` : 
+                ${card.svgContent ? `<div style="width: 100%; height: 100%; overflow: auto;">${card.svgContent}</div>` : 
                     `<div style="text-align: center; color: #7f8c8d;">
                         <div style="font-size: 2rem; margin-bottom: 1rem;">📄</div>
                         <div>No SVG content</div>
@@ -2042,7 +2202,7 @@ function updateCardEditor(card, index) {
     `;
     
     // Apply spell handlers if SVG content exists
-    if (card.svg) {
+    if (card.svgContent) {
         setTimeout(() => {
             const preview = document.getElementById(`svg-preview-${index}`);
             if (preview) {
@@ -2094,7 +2254,7 @@ async function handleSVGUpload(event, cardIndex) {
             }
         }
         
-        currentStack.cards[cardIndex].svg = svgContent;
+        currentStack.cards[cardIndex].svgContent = svgContent;
         currentStack.updated_at = new Date().toISOString();
         
         // Save to backend and post to BDO
@@ -2396,6 +2556,12 @@ async function deleteCurrentStack() {
             bdoPubKeyDisplay.style.display = 'none';
         }
         
+        // Hide first card pubkey display
+        const firstCardDisplay = document.getElementById('first-card-pubkey-display');
+        if (firstCardDisplay) {
+            firstCardDisplay.style.display = 'none';
+        }
+        
         console.log(`✅ Deleted stack`);
         
     } catch (error) {
@@ -2659,9 +2825,9 @@ async function navigateToCardViaBDO(baseUrl, cardKey) {
             cardKey: cardKey
         });
         
-        if (cardData && cardData.svg) {
+        if (cardData && cardData.svgContent) {
             // Display the navigated card in a new window/modal
-            await displayNavigatedCard(cardKey, cardData.svg, baseUrl);
+            await displayNavigatedCard(cardKey, cardData.svgContent, baseUrl);
         } else {
             alert(`❌ Card not found: ${cardKey}`);
         }
@@ -2934,8 +3100,8 @@ async function fetchMenuFromBDO(bdoPubKey) {
                     console.log('✅ Successfully fetched data from BDO');
                     console.log('🔍 Full BDO cardResult structure:', JSON.stringify(cardResult, null, 2));
                     
-                    // Extract the data from BDO response
-                    const bdoData = cardResult.card.data || cardResult.card;
+                    // Extract the data from BDO response - handle new nested structure
+                    const bdoData = cardResult.bdo || cardResult.card?.data || cardResult.card;
                     console.log('🔍 Extracted BDO data:', JSON.stringify(bdoData, null, 2));
                     
                     // Check if this is a menu catalog (has cards array) or individual card
@@ -2946,12 +3112,15 @@ async function fetchMenuFromBDO(bdoPubKey) {
                         const menuCatalogData = {
                             title: bdoData.title || 'Imported Menu',
                             description: bdoData.description,
-                            bdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                            bdoPubKey: bdoPubKey, // Use the original pubKey from import
                             source: 'BDO_MENU_CATALOG',
                             cards: bdoData.cards,
                             products: bdoData.products,
                             menus: bdoData.menus,
-                            metadata: bdoData.metadata
+                            metadata: {
+                                ...bdoData.metadata,
+                                firstCardBdoPubKey: bdoData.cards?.[0]?.cardBdoPubKey || bdoData.cards?.[0]?.metadata?.cardBdoPubKey
+                            }
                         };
                         
                         console.log('🔄 Returning complete menu catalog data:', {
@@ -2971,15 +3140,18 @@ async function fetchMenuFromBDO(bdoPubKey) {
                         
                         const individualCardData = {
                             title: bdoData.cardName || 'Imported Card',
-                            bdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                            bdoPubKey: bdoPubKey, // Use the original pubKey from import
                             svgContent: svgContent,
                             source: 'BDO_INDIVIDUAL_CARD',
                             cards: [{
                                 name: bdoData.cardName || 'Card',
                                 svg: svgContent,
-                                cardBdoPubKey: cardResult.card.pubKey || bdoPubKey,
+                                cardBdoPubKey: bdoPubKey, // Use the import pubKey as the card pubKey
                                 type: bdoData.cardType || 'unknown'
-                            }]
+                            }],
+                            metadata: {
+                                firstCardBdoPubKey: bdoPubKey
+                            }
                         };
                         
                         console.log('🔄 Returning individual card data:', individualCardData.title);
@@ -3053,7 +3225,7 @@ async function convertMenuToMagiStack(menuData) {
                 
                 try {
                     // Load the SVG content from the card data (first try direct content)
-                    let svgContent = cardInfo.svg || cardInfo.svgContent;
+                    let svgContent = cardInfo.svgContent || cardInfo.svg;
                     
                     if (svgContent) {
                         console.log(`📋 Found SVG content directly in card info: ${svgContent.length} chars`);
@@ -3096,7 +3268,7 @@ async function convertMenuToMagiStack(menuData) {
                     if (svgContent) {
                         const card = {
                             name: cardInfo.name,
-                            svg: svgContent,
+                            svgContent: svgContent,
                             created_at: new Date().toISOString(),
                             metadata: {
                                 cardBdoPubKey: cardInfo.cardBdoPubKey,
@@ -3130,7 +3302,7 @@ async function convertMenuToMagiStack(menuData) {
                         if (svgContent) {
                             const card = {
                                 name: product.name,
-                                svg: svgContent,
+                                svgContent: svgContent,
                                 created_at: new Date().toISOString(),
                                 metadata: {
                                     cardBdoPubKey: product.cardBdoPubKey,
@@ -3154,6 +3326,9 @@ async function convertMenuToMagiStack(menuData) {
             throw new Error('No cards could be loaded from the menu catalog');
         }
         
+        // Get the first card's BDO pubkey if available
+        const firstCardBdoPubKey = cards.length > 0 ? cards[0].metadata?.cardBdoPubKey : null;
+        
         // Create the MagiStack
         const magistack = {
             name: stackName,
@@ -3165,23 +3340,28 @@ async function convertMenuToMagiStack(menuData) {
                 originalBdoPubKey: menuData.bdoPubKey || menuData.metadata?.bdoPubKey,
                 originalTitle: menuData.title,
                 cardCount: cards.length,
-                firstCardBdoPubKey: menuData.metadata?.firstCardBdoPubKey,
+                firstCardBdoPubKey: firstCardBdoPubKey,
                 hasSpellNavigation: true
             }
         };
         
-        // Save the stack
+        // Save the stack with metadata
         if (window.__TAURI__) {
-            await window.__TAURI__.core.invoke('save_magistack', {
-                name: magistack.name,
-                cards: magistack.cards
+            await window.__TAURI__.core.invoke('save_magistack_with_metadata', {
+                stackData: {
+                    name: magistack.name,
+                    cards: magistack.cards,
+                    metadata: magistack.metadata,
+                    created_at: magistack.created_at,
+                    updated_at: magistack.updated_at
+                }
             });
         }
         
         console.log('✅ MagiStack created successfully:', magistack.name);
         console.log('📊 MagiStack card count:', magistack.cards.length);
-        console.log('🎨 First card SVG exists:', !!magistack.cards[0]?.svg);
-        console.log('🎨 First card SVG length:', magistack.cards[0]?.svg?.length || 0);
+        console.log('🎨 First card SVG exists:', !!magistack.cards[0]?.svgContent);
+        console.log('🎨 First card SVG length:', magistack.cards[0]?.svgContent?.length || 0);
         console.log('🎯 MAGICARD_WORKFLOW: 🎉 Cards loaded with spell navigation enabled');
         
         return magistack;
@@ -3274,7 +3454,7 @@ async function createCardFromMenuProduct(product, index, menuData) {
             await window.__TAURI__.core.invoke('save_card_svg', {
                 stackName: `${menuData.title} (Menu)`,
                 cardName: card.name,
-                svgContent: card.svg
+                svgContent: card.svgContent
             });
         }
         

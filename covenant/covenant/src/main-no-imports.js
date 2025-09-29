@@ -363,7 +363,7 @@ function createLoadingSpinner(x, y, size = 30) {
  * Create contract card
  */
 function createContractCard(contract, y) {
-    const cardHeight = 120;
+    const cardHeight = 140;
     const cardWidth = 750;
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.style.cursor = 'pointer';
@@ -439,6 +439,45 @@ function createContractCard(contract, y) {
         }
     );
     
+    // BDO PubKey display (actual pubKey from contract data)
+    const bdoPubKey = contract.pub_key || contract.pubKey || contract.bdoPubKey || null;
+    let bdoPubKeyDisplay, copyBtn = null;
+    
+    if (bdoPubKey && bdoPubKey.length === 66) {
+        // Valid 66-character pubKey - truncate for display
+        const displayKey = `${bdoPubKey.substring(0, 20)}...${bdoPubKey.substring(bdoPubKey.length - 6)}`;
+        bdoPubKeyDisplay = createSVGText(
+            `BDO Key: ${displayKey}`,
+            40, y + 110, {
+                fontSize: theme.typography.smallSize,
+                color: theme.colors.accent,
+                fontFamily: 'monospace'
+            }
+        );
+        
+        // Copy BDO PubKey button
+        copyBtn = createSVGButton(
+            '📋 Copy', 550, y + 100, 60, 20,
+            (event) => {
+                event.stopPropagation(); // Prevent card click handler from firing
+                copyBdoPubKeyToClipboard(bdoPubKey);
+            }, {
+                fill: theme.colors.accent,
+                fontSize: theme.typography.smallSize
+            }
+        );
+    } else {
+        // No valid pubKey available
+        bdoPubKeyDisplay = createSVGText(
+            `BDO Key: Not available (contract not in BDO)`,
+            40, y + 110, {
+                fontSize: theme.typography.smallSize,
+                color: theme.colors.textSecondary,
+                fontStyle: 'italic'
+            }
+        );
+    }
+    
     g.appendChild(bg);
     g.appendChild(title);
     g.appendChild(description);
@@ -448,6 +487,12 @@ function createContractCard(contract, y) {
     g.appendChild(progressText);
     g.appendChild(participants);
     g.appendChild(created);
+    g.appendChild(bdoPubKeyDisplay);
+    
+    // Only append copy button if it exists
+    if (copyBtn) {
+        g.appendChild(copyBtn);
+    }
     
     // Add hover effect
     g.addEventListener('mouseenter', () => {
@@ -476,7 +521,7 @@ function createContractsScreen() {
     // Calculate dynamic height based on number of contracts
     const contractCount = appState.contracts.length || 0;
     const minHeight = 600;
-    const contractHeight = 140;
+    const contractHeight = 160; // Increased to accommodate BDO pubKey
     const viewHeight = Math.max(minHeight, 250 + (contractCount * contractHeight));
     
     const svg = createSVGContainer('100%', 'auto', viewHeight);
@@ -575,7 +620,7 @@ function createContractsScreen() {
         svg.appendChild(emptyText);
     } else {
         appState.contracts.forEach((contract, index) => {
-            const card = createContractCard(contract, 170 + (index * 140));
+            const card = createContractCard(contract, 170 + (index * 160));
             svg.appendChild(card);
         });
     }
@@ -1238,6 +1283,31 @@ async function showMyUUID() {
     } catch (error) {
         console.error('❌ Failed to get user info:', error);
         alert(`Failed to get user info: ${error}`);
+    }
+}
+
+/**
+ * Copy BDO pubKey to clipboard (like MagiCard)
+ */
+async function copyBdoPubKeyToClipboard(bdoPubKey) {
+    try {
+        // Try browser clipboard first (most reliable for text)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(bdoPubKey);
+            console.log('✅ BDO pubKey copied to clipboard:', bdoPubKey);
+            
+            // Show success feedback (temporary visual indication)
+            const event = new CustomEvent('bdoPubKeyCopied', { detail: { pubKey: bdoPubKey } });
+            document.dispatchEvent(event);
+            
+            alert(`📋 BDO PubKey Copied!\n\n${bdoPubKey}\n\nThis key can be used to import this contract into other applications like MagiCard.`);
+        } else {
+            // Fallback alert if clipboard not available
+            alert(`📋 BDO PubKey (select and copy):\n\n${bdoPubKey}\n\nThis key can be used to import this contract into other applications like MagiCard.`);
+        }
+    } catch (error) {
+        console.error('❌ Failed to copy BDO pubKey:', error);
+        alert(`📋 BDO PubKey (select and copy):\n\n${bdoPubKey}\n\nThis key can be used to import this contract into other applications like MagiCard.`);
     }
 }
 

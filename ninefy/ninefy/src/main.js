@@ -3752,7 +3752,9 @@ function createMenuItemSVG(product, nextProduct, menuTitle, index, total) {
   <!-- Interactive spell element for the whole card -->
   <rect x="50" y="260" width="200" height="60" rx="8" fill="rgba(155, 89, 182, 0.1)" 
         stroke="#9b59b6" stroke-width="2" stroke-dasharray="5,5"
-        spell="info" style="cursor: pointer;"/>
+        spell="purchase" 
+        spell-components='{"productId":"${product.id}","amount":${product.price},"name":"${product.name}"}' 
+        style="cursor: pointer;"/>
   <text x="150" y="285" text-anchor="middle" fill="#9b59b6" font-size="14" font-weight="bold">🪄 Magical Menu Item</text>
   <text x="150" y="305" text-anchor="middle" fill="#9b59b6" font-size="11">Click to cast spell!</text>
   
