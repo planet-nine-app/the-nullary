@@ -679,7 +679,10 @@ async function handlePaymentSubmission(product) {
         const { error, paymentIntent } = await stripe.confirmPayment({
             elements,
             confirmParams: {
-                return_url: window.location.origin + '/shopping.html'
+                return_url: window.location.origin + '/shopping.html',
+                payment_method_data: {
+                    allow_redisplay: 'always'
+                }
             },
             redirect: 'if_required'
         });
