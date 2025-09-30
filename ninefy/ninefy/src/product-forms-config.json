@@ -2,7 +2,7 @@
   "productTypes": {
     "ebook": {
       "label": "📚 E-Book",
-      "icon": "📚", 
+      "icon": "📚",
       "title": "📚 Book Details",
       "formConfig": {
         "Title": {
@@ -10,6 +10,11 @@
         },
         "Author": {
           "type": "text"
+        },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
         },
         "ISBN": {
           "type": "text",
@@ -40,6 +45,11 @@
         },
         "Instructor": {
           "type": "text"
+        },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
         },
         "Duration": {
           "type": "text",
@@ -73,6 +83,11 @@
         "Organizer": {
           "type": "text"
         },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
+        },
         "Venue": {
           "type": "text"
         },
@@ -97,6 +112,11 @@
       "formConfig": {
         "Product Title": {
           "type": "text"
+        },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
         },
         "Weight (lbs)": {
           "type": "text"
@@ -126,6 +146,11 @@
         "Instructor": {
           "type": "text"
         },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
+        },
         "Course Schedule": {
           "type": "textarea",
           "charLimit": 500
@@ -146,6 +171,11 @@
       "formConfig": {
         "Menu Title": {
           "type": "text"
+        },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
         },
         "Menu Type": {
           "type": "text",
@@ -173,6 +203,11 @@
       "formConfig": {
         "Membership Title": {
           "type": "text"
+        },
+        "Brand": {
+          "type": "text",
+          "placeholder": "e.g., ☮️💚🏴‍☠️ for Peace Love & Redistribution",
+          "required": false
         },
         "Organization Name": {
           "type": "text"

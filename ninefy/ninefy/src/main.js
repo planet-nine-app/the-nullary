@@ -3,6 +3,130 @@
  * A minimalist digital goods marketplace using SVG components
  */
 
+// =============================================================================
+// EMOJICODING FUNCTIONS
+// Extracted from The Advancement AdvanceKey emojicoding.js
+// =============================================================================
+
+// Base64 to emoji mapping (64 chars + padding)
+const BASE64_TO_EMOJI = {
+    'A': '😀', 'B': '😃', 'C': '😄', 'D': '😁', 'E': '😆', 'F': '😅', 'G': '😂', 'H': '😊',
+    'I': '😉', 'J': '😍', 'K': '😘', 'L': '😋', 'M': '😎', 'N': '😐', 'O': '😑', 'P': '😔',
+    'Q': '❤️', 'R': '💛', 'S': '💚', 'T': '💙', 'U': '💜', 'V': '💔', 'W': '💕', 'X': '💖',
+    'Y': '👍', 'Z': '👎', 'a': '👌', 'b': '✌️', 'c': '👈', 'd': '👉', 'e': '👆', 'f': '👇',
+    'g': '☀️', 'h': '🌙', 'i': '⭐', 'j': '⚡', 'k': '☁️', 'l': '❄️', 'm': '🔥', 'n': '💧',
+    'o': '🐶', 'p': '🐱', 'q': '🐭', 'r': '🐰', 's': '🐻', 't': '🐯', 'u': '🐸', 'v': '🐧',
+    'w': '💎', 'x': '🔑', 'y': '🎁', 'z': '🎉', '0': '🏠', '1': '🚗', '2': '📱', '3': '⚽',
+    '4': '🍎', '5': '🍊', '6': '🍌', '7': '🍕', '8': '🍔', '9': '🍰', '+': '☕', '/': '🍺',
+    '=': '🌿' // Padding character
+};
+
+// Reverse mapping
+const EMOJI_TO_BASE64 = {};
+for (const [base64Char, emoji] of Object.entries(BASE64_TO_EMOJI)) {
+    EMOJI_TO_BASE64[emoji] = base64Char;
+}
+
+/**
+ * Simple hex to emoji encoding using built-in base64
+ * @param {string} hexString - Hex string to encode
+ * @returns {string} Emoji-encoded string with magic delimiters
+ */
+function simpleEncodeHex(hexString) {
+    console.log('🔍 SIMPLE: Starting encode of hex:', hexString);
+
+    try {
+        // Convert hex to binary string for btoa
+        const binaryString = hexString.match(/.{2}/g).map(hex =>
+            String.fromCharCode(parseInt(hex, 16))
+        ).join('');
+
+        console.log('🔍 SIMPLE: Binary string length:', binaryString.length);
+
+        // Encode to base64
+        const base64 = btoa(binaryString);
+        console.log('🔍 SIMPLE: Base64 result:', base64);
+
+        // Convert base64 to emoji
+        const emoji = base64.split('').map(char => BASE64_TO_EMOJI[char] || char).join('');
+        console.log('🔍 SIMPLE: Emoji result:', emoji);
+
+        // Add magic delimiters
+        const result = '✨' + emoji + '✨';
+        console.log('🔍 SIMPLE: Final result with magic:', result);
+
+        return result;
+    } catch (error) {
+        console.error('❌ SIMPLE: Encode error:', error);
+        throw new Error('Simple encode failed: ' + error.message);
+    }
+}
+
+/**
+ * Simple emoji to hex decoding using built-in base64
+ * @param {string} emojiString - Emoji string to decode
+ * @returns {object} Object with hex result
+ */
+function simpleDecodeEmoji(emojiString) {
+    console.log('🔍 SIMPLE: Starting decode of emoji:', emojiString);
+
+    try {
+        // Strip magic delimiters
+        let stripped = emojiString;
+        if (stripped.startsWith('✨') && stripped.endsWith('✨')) {
+            stripped = stripped.slice(1, -1);
+            console.log('🔍 SIMPLE: Stripped magic delimiters:', stripped);
+        }
+
+        // Convert emoji back to base64, checking each character
+        const base64Chars = [];
+        const emojiArray = Array.from(stripped); // Handle multi-byte emoji properly
+
+        for (let i = 0; i < emojiArray.length; i++) {
+            const emoji = emojiArray[i];
+            const base64Char = EMOJI_TO_BASE64[emoji];
+
+            console.log(`🔍 SIMPLE: Processing emoji ${i}: "${emoji}" → "${base64Char}"`);
+
+            if (base64Char) {
+                base64Chars.push(base64Char);
+            } else {
+                console.error('❌ SIMPLE: Unknown emoji at position', i, ':', emoji);
+                console.error('❌ SIMPLE: Emoji code points:', [...emoji].map(c => c.codePointAt(0).toString(16)));
+                console.error('❌ SIMPLE: Available mappings sample:', Object.entries(EMOJI_TO_BASE64).slice(0, 5));
+                throw new Error(`Unknown emoji character: "${emoji}" at position ${i}`);
+            }
+        }
+
+        const base64 = base64Chars.join('');
+        console.log('🔍 SIMPLE: Recovered base64:', base64);
+
+        // Decode from base64
+        const binaryString = atob(base64);
+        console.log('🔍 SIMPLE: Binary string length:', binaryString.length);
+
+        // Convert binary string back to hex
+        const hex = binaryString.split('').map(char =>
+            char.charCodeAt(0).toString(16).padStart(2, '0')
+        ).join('').toUpperCase();
+
+        console.log('🔍 SIMPLE: Final hex result:', hex);
+
+        return {
+            hex: hex,
+            detectedMagic: 'sparkles',
+            strippedInput: stripped
+        };
+    } catch (error) {
+        console.error('❌ SIMPLE: Decode error:', error);
+        throw new Error('Simple decode failed: ' + error.message);
+    }
+}
+
+// =============================================================================
+// END EMOJICODING FUNCTIONS
+// =============================================================================
+
 // Dynamic Form Widget Loading from Current Sanora Service
 function loadFormWidget() {
   // Check if environment functions are available
@@ -1042,7 +1166,82 @@ function createProductCard(product) {
     font-size: ${appState.currentTheme.typography.productTitleSize}px;
     line-height: 1.3;
   `;
-  
+
+  // Emojicode display (brand + encoded bdoPubKey)
+  const emojicodeElement = document.createElement('div');
+  const brand = product.brand || product.Brand || '';
+  const bdoPubKey = product.bdoPubKey || product.uuid || '';
+
+  // Create full emojicode: brand + encoded bdoPubKey
+  let fullEmojicode = '';
+  if (brand && bdoPubKey) {
+    try {
+      // Use proper base64-to-emoji encoding for the entire bdoPubKey
+      const encodedBdoPubKey = simpleEncodeHex(bdoPubKey);
+      fullEmojicode = `${brand}${encodedBdoPubKey}`;
+    } catch (error) {
+      console.warn('⚠️ Failed to encode bdoPubKey:', error.message);
+      // Fallback to original substring method
+      const encodedKey = bdoPubKey.substring(0, 8);
+      fullEmojicode = `${brand}${encodedKey}`;
+    }
+  }
+
+  if (fullEmojicode) {
+    emojicodeElement.textContent = `🪄 ${fullEmojicode}`;
+    emojicodeElement.style.cssText = `
+      background: linear-gradient(90deg, #9b59b6, #27ae60);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-family: monospace;
+      margin-bottom: 8px;
+      display: inline-block;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    `;
+  }
+
+  // Product page URL display
+  const productUrlElement = document.createElement('div');
+  let productUrl = '';
+
+  // Generate product URL based on environment and product data
+  if (product.url) {
+    // Use existing URL if available
+    productUrl = product.url;
+  } else if (product.uuid || product.id) {
+    // Generate URL using Sanora pattern: /products/{user_uuid}/{product_title}
+    const userUuid = product.userUuid || product.uuid || 'unknown';
+    const productTitle = encodeURIComponent(product.title || 'untitled');
+    const currentEnv = getEnvironmentConfig();
+    const sanoraUrl = getServiceUrl('sanora');
+    productUrl = `${sanoraUrl}/products/${userUuid}/${productTitle}`;
+  }
+
+  if (productUrl) {
+    productUrlElement.innerHTML = `<span style="color: #64748b; font-size: 11px;">🔗 </span><a href="${productUrl}" target="_blank" style="color: #3b82f6; font-size: 11px; text-decoration: none; font-family: monospace;">${productUrl}</a>`;
+    productUrlElement.style.cssText = `
+      margin-bottom: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid #e2e8f0;
+      line-height: 1.4;
+    `;
+
+    // Add hover effect to the link
+    const linkElement = productUrlElement.querySelector('a');
+    if (linkElement) {
+      linkElement.addEventListener('mouseenter', () => {
+        linkElement.style.textDecoration = 'underline';
+        linkElement.style.color = '#1d4ed8';
+      });
+      linkElement.addEventListener('mouseleave', () => {
+        linkElement.style.textDecoration = 'none';
+        linkElement.style.color = '#3b82f6';
+      });
+    }
+  }
+
   // Product description
   const descriptionElement = document.createElement('p');
   descriptionElement.textContent = product.description;
@@ -1123,6 +1322,12 @@ function createProductCard(product) {
   
   contentContainer.appendChild(metaHeader);
   contentContainer.appendChild(titleElement);
+  if (fullEmojicode) {
+    contentContainer.appendChild(emojicodeElement);
+  }
+  if (productUrl) {
+    contentContainer.appendChild(productUrlElement);
+  }
   contentContainer.appendChild(descriptionElement);
   contentContainer.appendChild(statsContainer);
   
