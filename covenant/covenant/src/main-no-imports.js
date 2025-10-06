@@ -1373,13 +1373,23 @@ async function handleCovenantFormSubmit(formData) {
         });
         
         console.log('✅ Contract created successfully!', result);
-        showStatusMessage('✅ Contract created successfully!', 'success');
-        
+
+        // Display bdoPubKey and emojicode if available
+        let successMsg = '✅ Contract created successfully!';
+        if (result.bdoPubKey) {
+            successMsg += `\n\n📍 BDO PubKey: ${result.bdoPubKey}`;
+        }
+        if (result.emojicode) {
+            successMsg += `\n\n${result.emojicode}`;
+        }
+
+        showStatusMessage(successMsg, 'success');
+
         // Switch back to contracts screen and reload
         setTimeout(() => {
             switchToScreen('contracts');
             loadContracts();
-        }, 1500);
+        }, 3500);
         
     } catch (error) {
         const errorMsg = '❌ Failed to create contract: ' + error;

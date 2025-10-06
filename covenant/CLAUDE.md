@@ -60,10 +60,12 @@ Covenant GUI is a Nullary application for creating and managing magical covenant
 
 ### Beautiful Visualizations
 
-- **SVG Contract Display**: Server-generated beautiful contract visualizations
-- **Theme Support**: Light and dark themes for contract SVG rendering
+- **SVG Contract Display**: Server-generated beautiful contract visualizations with `viewBox` for responsive scaling
+- **Dark Theme Only**: Simplified to single dark theme, stored as `svgContent` at BDO top level
 - **Progress Visualization**: Real-time progress bars and completion indicators
-- **Interactive Elements**: Clickable contract cards and signing buttons
+- **Interactive Elements**: Clickable contract cards and signing buttons (hidden by default, shown when authorized)
+- **AdvanceKey Integration**: Contracts display in AdvanceKey keyboard with native SIGN/View-Only buttons
+- **Enhanced Metadata**: BDO includes `bdoPubKey` and `emojicode` fields for easy UI display
 
 ### Connection Sharing System
 
