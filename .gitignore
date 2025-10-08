@@ -25,3 +25,5 @@ Cargo.lock
 keystore.properties
 
 node_modules
+
+config
