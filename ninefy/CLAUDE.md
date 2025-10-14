@@ -96,8 +96,84 @@ ninefy/
 - File upload section (ready for BDO/Dolores integration)
 - Tag input for product categorization
 - **Real Sanora Integration**: Uses `add_product()` function with localStorage backup
+- **🪄 MAGIC Spell Integration**: Optional `enchant-product` spell for creating product + BDO together (200 MP)
 - **Upload Progress**: Loading states and success/error feedback
 - **Graceful Degradation**: Works offline with local storage when backend unavailable
+
+#### 🪄 MAGIC Protocol Integration (January 2025)
+
+**Enchant-Product Spell** - Create both product and shareable BDO in one action!
+
+**User Experience**:
+- Checkbox: "🪄 Also create BDO for sharing" (checked by default)
+- Cost: 200 MP (Mana Points)
+- When checked: Creates both Sanora product AND shareable BDO with emoji shortcode
+- When unchecked: Direct product upload only (existing behavior)
+
+**Implementation**:
+- **Location**: `/src/main.js` lines 3788-3903 (`castEnchantProductSpell()` function)
+- **Checkbox**: Lines 3014-3054 in upload form
+- **Upload Flow**: Lines 3123-3136 checks checkbox and routes to spell or direct upload
+- **Success Message**: Lines 3340-3372 shows emoji shortcode when spell used
+
+**What Users Get**:
+1. **Product Created**: Full Sanora product with all metadata
+2. **BDO Generated**: Public shareable BDO with auto-generated SVG card
+3. **Emoji Shortcode**: Easy-to-share identifier (e.g., "🌍🔑💎🌟💎🎨🐉📌")
+4. **Success Feedback**: Purple gradient box with copy-to-clipboard button
+
+**Example Success Message**:
+```
+🪄✅ Product + BDO Created Successfully!
+
+Your ebook has been uploaded to Sanora.
+🎁 Bonus: A shareable BDO was also created!
+
+😀 Emoji Shortcode (for easy sharing):
+🌍🔑💎🌟💎🎨🐉📌
+[📋 Copy to Clipboard]
+
+🔑 BDO PubKey: 02a1b2c3d4e5f6a7...
+
+🪄 Created via enchant-product spell (200 MP) • Form will reset in 3 seconds...
+```
+
+**Benefits**:
+- **One-Click Sharing**: Product automatically gets shareable BDO
+- **Cross-Base Discovery**: BDOs are public and discoverable across Planet Nine
+- **Auto-Generated SVG**: Professional product card created automatically
+- **Easy Distribution**: Share via emoji shortcode instead of long cryptographic keys
+
+**Spell Endpoint**:
+```http
+POST {sanoraUrl}/magic/spell/enchant-product
+Content-Type: application/json
+
+{
+  "casterUUID": "user-uuid",
+  "gateway": {
+    "timestamp": "1234567890",
+    "uuid": "user-uuid",
+    "minimumCost": 200,
+    "ordinal": 0
+  },
+  "components": {
+    "title": "Product Title",
+    "description": "Description",
+    "price": 2999, // cents
+    "tags": ["tag1"],
+    "category": "general",
+    "contentType": "physical",
+    "productId": "unique-id",
+    "metadata": {}
+  }
+}
+```
+
+**Integration Notes**:
+- Uses Sanora's MAGIC protocol endpoint at `/magic/spell/enchant-product`
+- Same spell used by ecosystem seed script for automated product + BDO creation
+- Full documentation available in `/sanora/README.md`
 
 ### 5. Base Screen (Server Management)
 **Purpose**: Universal base server management (shared with rhapsold)

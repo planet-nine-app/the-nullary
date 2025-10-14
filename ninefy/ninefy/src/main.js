@@ -3010,7 +3010,49 @@ async function createFormWidgetUploadForm() {
   
   selectorSection.appendChild(selectorTitle);
   selectorSection.appendChild(categorySelect);
-  
+
+  // Add BDO creation checkbox
+  const bdoCheckboxContainer = document.createElement('div');
+  bdoCheckboxContainer.style.cssText = `
+    margin-top: 20px;
+    padding: 15px;
+    background: #f0f4f8;
+    border-radius: 8px;
+    border: 1px solid #d0dce7;
+  `;
+
+  const bdoCheckbox = document.createElement('input');
+  bdoCheckbox.type = 'checkbox';
+  bdoCheckbox.id = 'create-bdo-checkbox';
+  bdoCheckbox.checked = true; // Default to checked
+  bdoCheckbox.style.cssText = `
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin-right: 10px;
+    vertical-align: middle;
+  `;
+
+  const bdoLabel = document.createElement('label');
+  bdoLabel.htmlFor = 'create-bdo-checkbox';
+  bdoLabel.style.cssText = `
+    cursor: pointer;
+    font-size: 15px;
+    color: #2c3e50;
+    display: inline-flex;
+    align-items: center;
+  `;
+  bdoLabel.innerHTML = `
+    <strong style="margin-right: 5px;">🪄 Also create BDO for sharing</strong>
+    <span style="color: #666; font-size: 13px; margin-left: 5px;">
+      (Creates both product + shareable BDO with emoji shortcode - costs 200 MP)
+    </span>
+  `;
+
+  bdoCheckboxContainer.appendChild(bdoCheckbox);
+  bdoCheckboxContainer.appendChild(bdoLabel);
+  selectorSection.appendChild(bdoCheckboxContainer);
+
   // Form display container 
   const formDisplayContainer = document.createElement('div');
   formDisplayContainer.id = 'form-display';
@@ -3077,9 +3119,21 @@ async function createFormWidgetUploadForm() {
       };
       
       console.log('💾 Complete product data ready for upload:', completeProductData);
-      
-      // Upload to Sanora
-      const uploadResult = await uploadProductToSanora(completeProductData);
+
+      // Check if BDO creation is enabled
+      const createBDO = document.getElementById('create-bdo-checkbox')?.checked || false;
+      console.log(`🪄 Create BDO checkbox: ${createBDO}`);
+
+      let uploadResult;
+      if (createBDO) {
+        // Use enchant-product spell (creates product + BDO)
+        console.log('🪄 Using enchant-product spell to create product + BDO together');
+        uploadResult = await castEnchantProductSpell(completeProductData);
+      } else {
+        // Direct product upload only
+        console.log('📦 Using direct product upload (no BDO)');
+        uploadResult = await uploadProductToSanora(completeProductData);
+      }
       
       // Remove overlay
       container.removeChild(uploadOverlay);
@@ -3282,12 +3336,40 @@ async function createFormWidgetUploadForm() {
         <p style="margin: 0; font-size: 13px; opacity: 0.8;">Membership stored in BDO • Form will reset in 3 seconds...</p>
       `;
     } else {
-      successMessage.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
-        <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product Uploaded Successfully!</h3>
-        <p style="margin: 0 0 10px 0; font-size: 15px;">Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.</p>
-        <p style="margin: 0; font-size: 13px; opacity: 0.8;">Form will reset automatically in 3 seconds...</p>
-      `;
+      // Check if BDO was created via spell
+      if (result.usedSpell && result.emojiShortcode) {
+        successMessage.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 15px;">🪄✅</div>
+          <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product + BDO Created Successfully!</h3>
+          <p style="margin: 0 0 10px 0; font-size: 15px;">
+            Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.<br>
+            <strong>🎁 Bonus:</strong> A shareable BDO was also created!
+          </p>
+          <div style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; padding: 12px; border-radius: 8px; margin: 10px 0; font-family: monospace;">
+            <div style="font-weight: bold; margin-bottom: 5px;">😀 Emoji Shortcode (for easy sharing):</div>
+            <div style="font-size: 16px; word-break: break-all; background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px;">
+              ${result.emojiShortcode}
+            </div>
+            <button onclick="navigator.clipboard.writeText('${result.emojiShortcode}'); this.textContent='✅ Copied!'; setTimeout(() => this.textContent='📋 Copy to Clipboard', 2000)"
+                    style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-top: 8px;">
+              📋 Copy to Clipboard
+            </button>
+          </div>
+          ${result.bdo?.pubKey ?
+            `<p style="margin: 0 0 10px 0; font-size: 13px; color: #155724; background: #d1e7dd; padding: 8px; border-radius: 4px;">
+              🔑 BDO PubKey: ${result.bdo.pubKey.substring(0, 16)}...
+            </p>` : ''
+          }
+          <p style="margin: 0; font-size: 13px; opacity: 0.8;">🪄 Created via enchant-product spell (200 MP) • Form will reset in 3 seconds...</p>
+        `;
+      } else {
+        successMessage.innerHTML = `
+          <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+          <h3 style="margin: 0 0 10px 0; font-size: 20px; color: #155724;">Product Uploaded Successfully!</h3>
+          <p style="margin: 0 0 10px 0; font-size: 15px;">Your ${typeConfig.label.toLowerCase()} has been uploaded to Sanora.</p>
+          <p style="margin: 0; font-size: 13px; opacity: 0.8;">Form will reset automatically in 3 seconds...</p>
+        `;
+      }
     }
     
     return successMessage;
@@ -3728,6 +3810,123 @@ function enhanceMenuForm(form) {
     
   } catch (error) {
     console.error('❌ Failed to enhance menu form:', error);
+  }
+}
+
+/**
+ * Cast enchant-product spell to create product + BDO together
+ * Uses MAGIC protocol (costs 200 MP)
+ */
+async function castEnchantProductSpell(productData) {
+  console.log('🪄 Casting enchant-product spell...');
+  console.log('📦 Product data:', productData);
+
+  try {
+    // Check if Tauri is available
+    if (!invoke) {
+      throw new Error('Tauri not available - this function requires the desktop app');
+    }
+
+    // Get current environment config
+    const sanoraUrl = getServiceUrl('sanora');
+    console.log('🌐 Using Sanora URL:', sanoraUrl);
+
+    // Create Sanora user first
+    console.log('👤 Ensuring Sanora user exists...');
+    let userUuid;
+    try {
+      const sanoraUser = await invoke('create_sanora_user', {
+        sanoraUrl: sanoraUrl
+      });
+      console.log('✅ Sanora user ready:', sanoraUser);
+      userUuid = sanoraUser.uuid;
+    } catch (error) {
+      console.error('❌ Failed to create Sanora user:', error);
+      throw new Error('Could not create Sanora user: ' + error.message);
+    }
+
+    // Extract product info from form data
+    const title = productData.formData.Title || productData.formData.title || 'Untitled Product';
+    const description = productData.formData.Description || productData.formData.description || '';
+    const price = productData.formData.Price || productData.formData.price || '9.99';
+
+    console.log(`📝 Product: "${title}" - $${price}`);
+
+    // Prepare spell components
+    const spellComponents = {
+      title: title,
+      description: description,
+      price: Math.round(parseFloat(price) * 100), // Convert to cents
+      tags: [productData.productType || 'general'],
+      category: productData.productType || 'general',
+      contentType: productData.productType || 'physical',
+      productId: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+      metadata: {
+        createdVia: 'ninefy',
+        productType: productData.productType,
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    console.log('🪄 Spell components:', spellComponents);
+
+    // Cast the spell via HTTP (MAGIC endpoint)
+    const spellPayload = {
+      casterUUID: userUuid,
+      gateway: {
+        timestamp: Date.now().toString(),
+        uuid: userUuid,
+        minimumCost: 200,
+        ordinal: 0
+        // Signature would be added by backend/Tauri
+      },
+      components: spellComponents
+    };
+
+    console.log('📤 Casting spell to:', `${sanoraUrl}/magic/spell/enchant-product`);
+
+    // Use Tauri's fetch to cast the spell
+    const response = await fetch(`${sanoraUrl}/magic/spell/enchant-product`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(spellPayload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Spell casting failed: ${response.status} - ${errorText}`);
+    }
+
+    const spellResult = await response.json();
+    console.log('✅ Spell cast successfully:', spellResult);
+
+    if (!spellResult.success) {
+      throw new Error(spellResult.error || 'Spell casting failed');
+    }
+
+    // Return result in format compatible with existing success handler
+    return {
+      success: true,
+      productId: spellResult.product?.uuid || Date.now().toString(),
+      productType: productData.productType,
+      title: title,
+      price: price,
+      sanoraUrl: sanoraUrl,
+      bdo: spellResult.bdo,
+      emojiShortcode: spellResult.bdo?.emojiShortcode,
+      details: spellResult,
+      usedSpell: true // Flag to indicate spell was used
+    };
+
+  } catch (error) {
+    console.error('❌ Spell casting failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      details: error
+    };
   }
 }
 
