@@ -5,8 +5,23 @@
 
 // Environment configuration for grocary
 function getEnvironmentConfig() {
-  const env = localStorage.getItem('nullary-env') || 'dev';
-  
+  // Check for environment variable first (set via GROCARY_ENV), then localStorage, then default to 'dev'
+  let env = localStorage.getItem('nullary-env') || 'dev';
+
+  // Check if running in Tauri and read from environment variable
+  if (window.__TAURI__) {
+    try {
+      const envVar = window.__GROCARY_ENV__;
+      if (envVar) {
+        env = envVar;
+        // Store in localStorage for consistency
+        localStorage.setItem('nullary-env', env);
+      }
+    } catch (e) {
+      console.log('No environment variable set, using:', env);
+    }
+  }
+
   const configs = {
     dev: {
       sanora: 'https://dev.sanora.allyabase.com/',
@@ -100,6 +115,12 @@ let grocaryState = {
   searchResults: []
 };
 
+// Get grocery service URL based on environment
+function getGroceryServiceUrl() {
+  const config = getEnvironmentConfig();
+  return config.env === 'test' ? 'http://127.0.0.1:5118' : 'http://127.0.0.1:3007';
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('🛒 Grocary app starting...');
@@ -118,25 +139,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function checkGroceryServiceStatus() {
   const statusElement = document.getElementById('service-status');
   const statusDot = document.querySelector('.status-dot');
-  
+
   try {
-    // Try to connect to grocery service on localhost:3007
-    const response = await fetch('http://localhost:3007/health', {
-      method: 'GET',
-      mode: 'cors'
-    }).catch(() => null);
-    
-    if (response && response.ok) {
+    // Check if Tauri API is available
+    if (!window.__TAURI__) {
+      throw new Error('Tauri API not available');
+    }
+
+    // Use Tauri command to check service (all HTTP requests must go through Rust)
+    const serviceUrl = getGroceryServiceUrl();
+    console.log('🔍 [JS] Step 1: Calling Rust with service URL:', serviceUrl);
+
+    const isConnected = await window.__TAURI__.core.invoke('check_grocery_service', { serviceUrl });
+
+    console.log('🔍 [JS] Step 3: Got response from Rust, isConnected:', isConnected);
+
+    if (isConnected) {
+      console.log('✅ [JS] Service is connected!');
       grocaryState.groceryServiceConnected = true;
       statusElement.textContent = 'Connected';
       statusDot.classList.add('connected');
       enableGroceryFeatures();
     } else {
+      console.log('⚠️ [JS] Service returned false (not connected)');
       throw new Error('Service not available');
     }
   } catch (error) {
+    console.error('❌ [JS] Error checking service:', error);
     grocaryState.groceryServiceConnected = false;
-    statusElement.textContent = 'Offline (Start grocery service on port 3007)';
+    const serviceUrl = getGroceryServiceUrl();
+    statusElement.textContent = `Offline (${error.message})`;
     statusDot.classList.add('error');
     disableGroceryFeatures();
   }
@@ -185,34 +217,40 @@ async function createGroceryUser() {
     updateAccountStatus('Grocery service not available', 'error');
     return;
   }
-  
+
   const button = document.getElementById('create-user-btn');
   const originalText = button.textContent;
   button.innerHTML = '<span class="loading"></span> Creating...';
   button.disabled = true;
-  
+
   try {
-    // TODO: Implement sessionless key generation
-    // For now, use a mock public key
-    const mockPubKey = 'mock_public_key_' + Date.now();
-    const timestamp = Date.now();
-    const mockSignature = 'mock_signature';
-    
-    const response = await fetch('http://localhost:3007/user/create', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        pubKey: mockPubKey,
-        timestamp: timestamp,
-        signature: mockSignature
-      })
+    console.log('🔑 [JS] Generating sessionless keypair...');
+
+    // Generate real sessionless keys
+    const keysText = await window.__TAURI__.core.invoke('generate_keys');
+    const keys = JSON.parse(keysText);
+
+    console.log('🔑 [JS] Keys generated, public key:', keys.publicKey);
+
+    // Store private key for future use
+    grocaryState.privateKey = keys.privateKey;
+    grocaryState.publicKey = keys.publicKey;
+    saveState();
+
+    console.log('🔍 [JS] Creating user via Rust command...');
+
+    // Use Tauri command with real sessionless signature
+    const serviceUrl = getGroceryServiceUrl();
+    const resultText = await window.__TAURI__.core.invoke('create_grocery_user', {
+      serviceUrl,
+      privateKeyHex: keys.privateKey
     });
-    
-    const result = await response.json();
-    
-    if (response.ok && result.uuid) {
+
+    console.log('🔍 [JS] Got response:', resultText);
+
+    const result = JSON.parse(resultText);
+
+    if (result.uuid) {
       grocaryState.user = result;
       saveState();
       updateAccountStatus(`Account created! UUID: ${result.uuid}`, 'success');
@@ -237,32 +275,35 @@ async function connectKroger() {
     updateAccountStatus('Please create an account first', 'error');
     return;
   }
-  
+
   const button = document.getElementById('connect-kroger-btn');
   const originalText = button.textContent;
   button.innerHTML = '<span class="loading"></span> Connecting...';
   button.disabled = true;
-  
+
   try {
-    const response = await fetch(`http://localhost:3007/user/${grocaryState.user.uuid}/oauth/kroger/authorize`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        timestamp: Date.now(),
-        signature: 'mock_signature' // TODO: Real sessionless signature
-      })
+    console.log('🔍 [JS] Connecting to Kroger via Rust command...');
+
+    // Use Tauri command instead of fetch
+    const serviceUrl = getGroceryServiceUrl();
+    const timestamp = Date.now();
+    const resultText = await window.__TAURI__.core.invoke('connect_kroger', {
+      serviceUrl,
+      userUuid: grocaryState.user.uuid,
+      timestamp,
+      signature: 'mock_signature' // TODO: Real sessionless signature
     });
-    
-    const result = await response.json();
-    
-    if (response.ok && result.authURL) {
+
+    console.log('🔍 [JS] Got Kroger response:', resultText);
+
+    const result = JSON.parse(resultText);
+
+    if (result.authURL) {
       // Open Kroger OAuth URL in external browser
       window.open(result.authURL, '_blank');
       updateAccountStatus('Redirected to Kroger. Complete authorization in browser.', 'success');
       button.textContent = 'Connecting to Kroger...';
-      
+
       // TODO: Implement OAuth callback handling
       // For now, just reset button after delay
       setTimeout(() => {

@@ -1,0 +1,32 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="#9b59b6"/>
+  
+  <!-- Title -->
+  <text x="540" y="400" font-size="80" font-weight="bold" fill="white" text-anchor="middle" font-family="Arial, sans-serif">
+    Welcome to
+  </text>
+  <text x="540" y="520" font-size="120" font-weight="bold" fill="#f1c40f" text-anchor="middle" font-family="Arial, sans-serif">
+    Contentary
+  </text>
+  
+  <!-- Content -->
+  <text x="540" y="800" font-size="50" fill="white" text-anchor="middle" font-family="Arial, sans-serif">
+    Your vertical slide
+  </text>
+  <text x="540" y="880" font-size="50" fill="white" text-anchor="middle" font-family="Arial, sans-serif">
+    maker for
+  </text>
+  <text x="540" y="960" font-size="50" fill="white" text-anchor="middle" font-family="Arial, sans-serif">
+    TikTok &amp; Reels
+  </text>
+  
+  <!-- Icon -->
+  <circle cx="540" cy="1400" r="100" fill="#27ae60"/>
+  <text x="540" y="1440" font-size="100" text-anchor="middle">📊</text>
+  
+  <!-- Footer -->
+  <text x="540" y="1700" font-size="35" fill="#ecf0f1" text-anchor="middle" font-family="Arial, sans-serif">
+    Slide 1
+  </text>
+</svg>

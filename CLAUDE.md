@@ -428,10 +428,32 @@ appEnv.current();        // Check current environment
 </svg>
 ```
 
-### 8. Additional Apps
+### 8. Contentary - Vertical Slide Presenter
+**Location**: `/contentary/`
+**Status**: ✅ Production Ready (November 2025)
+
+**Key Features**:
+- Vertical slide presenter for TikTok/Instagram Reels (9:16 aspect ratio)
+- SVG-only slide imports (designed in Figma, Illustrator, etc.)
+- Camera picture-in-picture recording in bottom-right corner
+- Video recording with MediaRecorder API (WebM format)
+- Timeline navigation with thumbnail previews
+- Folder-based project export (SVG slides + metadata JSON)
+
+**Technical Details**:
+- Tauri v2 desktop app (405x720 window for accurate preview)
+- Native file dialogs and filesystem access
+- macOS camera/microphone permissions via Info.plist
+- No shared infrastructure (standalone utility app)
+- Vanilla JavaScript with HTML5/CSS3 UI
+
+**Unique Characteristics**:
+Contentary is the first "utility app" in The Nullary family rather than a social/marketplace platform. It operates completely offline with no server integration, base connections, or allyabase ecosystem dependencies. This makes it fundamentally different from other Nullary apps which focus on federated content sharing.
+
+### 9. Additional Apps
 
 **Lexary** - Text-focused social feeds
-**Photary** - Photo sharing and galleries  
+**Photary** - Photo sharing and galleries
 **Viewary** - Short-form video platform
 **Eventary** - Event management and coordination
 **Blogary** - Simple blogging interface
@@ -688,6 +710,7 @@ This system represents the first working implementation of intelligent decision 
 - **`/stackchat/CLAUDE.md`** - StackChat P2P messaging
 - **`/mybase/CLAUDE.md`** - MyBase aggregation platform
 - **`/covenant/CLAUDE.md`** - Covenant contract management
+- **`/contentary/contentary/CLAUDE.md`** - Contentary vertical slide presenter
 
 ## Current Status Summary
 
@@ -701,7 +724,7 @@ This system represents the first working implementation of intelligent decision 
 - **Testing System** - Comprehensive 6-phase ecosystem validation
 
 ### 🎯 **PRODUCTION READINESS**
-- **All Apps Functional** - 15+ applications with shared infrastructure
+- **All Apps Functional** - 16+ applications (15 with shared infrastructure + contentary standalone)
 - **No Critical Gaps** - All major technical issues resolved
 - **Comprehensive Testing** - Multi-base ecosystem validation
 - **Documentation Complete** - Full technical and user documentation

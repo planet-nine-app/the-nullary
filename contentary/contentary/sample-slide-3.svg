@@ -1,0 +1,39 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="#27ae60"/>
+  
+  <!-- Title -->
+  <text x="540" y="400" font-size="90" font-weight="bold" fill="white" text-anchor="middle" font-family="Arial, sans-serif">
+    Get Started!
+  </text>
+  
+  <!-- Steps -->
+  <circle cx="180" cy="750" r="50" fill="white"/>
+  <text x="180" y="775" font-size="50" font-weight="bold" fill="#27ae60" text-anchor="middle">1</text>
+  <text x="300" y="775" font-size="45" fill="white" font-family="Arial, sans-serif">
+    Create your SVGs
+  </text>
+  
+  <circle cx="180" cy="950" r="50" fill="white"/>
+  <text x="180" y="975" font-size="50" font-weight="bold" fill="#27ae60" text-anchor="middle">2</text>
+  <text x="300" y="975" font-size="45" fill="white" font-family="Arial, sans-serif">
+    Import to contentary
+  </text>
+  
+  <circle cx="180" cy="1150" r="50" fill="white"/>
+  <text x="180" y="1175" font-size="50" font-weight="bold" fill="#27ae60" text-anchor="middle">3</text>
+  <text x="300" y="1175" font-size="45" fill="white" font-family="Arial, sans-serif">
+    Record with camera
+  </text>
+  
+  <circle cx="180" cy="1350" r="50" fill="white"/>
+  <text x="180" y="1375" font-size="50" font-weight="bold" fill="#27ae60" text-anchor="middle">4</text>
+  <text x="300" y="1375" font-size="45" fill="white" font-family="Arial, sans-serif">
+    Share on socials!
+  </text>
+  
+  <!-- Footer -->
+  <text x="540" y="1700" font-size="35" fill="#ecf0f1" text-anchor="middle" font-family="Arial, sans-serif">
+    Slide 3
+  </text>
+</svg>

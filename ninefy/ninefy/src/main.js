@@ -1215,7 +1215,7 @@ function createProductCard(product) {
     const userUuid = product.userUuid || product.uuid || 'unknown';
     const productTitle = encodeURIComponent(product.title || 'untitled');
     const currentEnv = getEnvironmentConfig();
-    const sanoraUrl = getServiceUrl('sanora');
+    const sanoraUrl = getServiceUrl('sanora').replace(/\/$/, ''); // Remove trailing slash
     productUrl = `${sanoraUrl}/products/${userUuid}/${productTitle}`;
   }
 
@@ -3828,7 +3828,7 @@ async function castEnchantProductSpell(productData) {
     }
 
     // Get current environment config
-    const sanoraUrl = getServiceUrl('sanora');
+    const sanoraUrl = getServiceUrl('sanora').replace(/\/$/, ''); // Remove trailing slash
     console.log('🌐 Using Sanora URL:', sanoraUrl);
 
     // Create Sanora user first
@@ -3949,11 +3949,11 @@ async function uploadProductToSanora(productData) {
     }
     
     console.log('✅ Tauri invoke is available:', typeof invoke);
-    
+
     // Get current environment config
-    const sanoraUrl = getServiceUrl('sanora');
+    const sanoraUrl = getServiceUrl('sanora').replace(/\/$/, ''); // Remove trailing slash
     console.log('🌐 Using Sanora URL:', sanoraUrl);
-    
+
     // Generate user UUID (in a real app, this would come from sessionless auth)
     let userUuid = generateMockUuid();
     console.log('👤 Using initial UUID:', userUuid);

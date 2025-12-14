@@ -91,12 +91,79 @@ grocery/
 - ✅ File-based persistence (JSON storage)
 - ✅ Comprehensive error handling and validation
 
+**Tauri Rust Backend** (January 2025):
+- ✅ Complete sessionless cryptographic integration with secp256k1
+- ✅ Real keypair generation using `sessionless::Sessionless::new()`
+- ✅ Cryptographic signature creation with `serialize_compact()`
+- ✅ HTTP proxy commands for all network calls (Tauri security requirement)
+- ✅ Commands: `check_grocery_service`, `generate_keys`, `create_grocery_user`, `connect_kroger`
+- ✅ Proper serialization of PublicKey (`.serialize()`), SecretKey (`.as_ref()`), Signature (`.serialize_compact()`)
+
 **Client SDK**:
 - ✅ JavaScript client library for grocery service integration
 - ✅ sessionless signature generation and authentication
 - ✅ User management methods (create, get, delete)
 - ✅ OAuth flow initiation and status checking
 - ✅ Browser and Node.js compatibility
+
+## Technical Implementation Notes
+
+### sessionless Cryptography in Rust
+
+The Tauri backend uses the `sessionless` crate (v0.1.1) which wraps `secp256k1` for cryptographic operations:
+
+**Key Generation**:
+```rust
+let sessionless = sessionless::Sessionless::new();
+let private_key_hex = hex::encode(sessionless.private_key().as_ref());  // SecretKey: 32 bytes
+let public_key_hex = hex::encode(sessionless.public_key().serialize()); // PublicKey: 33 bytes (compressed)
+```
+
+**Signature Creation**:
+```rust
+let timestamp = chrono::Utc::now().timestamp_millis();
+let message = timestamp.to_string();
+let signature = sessionless.sign(message.as_bytes());
+let signature_hex = hex::encode(signature.serialize_compact());  // Signature: 64 bytes
+```
+
+**Key Reconstruction from Hex**:
+```rust
+let private_key_bytes = hex::decode(&private_key_hex)?;
+let private_key = sessionless::PrivateKey::from_slice(&private_key_bytes)?;
+let sessionless = sessionless::Sessionless::from_private_key(private_key);
+```
+
+**Critical Methods**:
+- `PublicKey::serialize()` → `[u8; 33]` (compressed public key)
+- `SecretKey::as_ref()` → `&[u8; 32]` (private key bytes reference)
+- `SecretKey::from_slice()` → `Result<SecretKey, Error>` (construct from bytes)
+- `Signature::serialize_compact()` → `[u8; 64]` (ECDSA compact signature)
+
+### Tauri Security Architecture
+
+**All HTTP requests must go through Rust commands** - JavaScript `fetch()` is blocked by Tauri's security model:
+
+```javascript
+// ❌ WRONG - fetch() doesn't work in Tauri
+const response = await fetch('http://localhost:3007/user/create', { ... });
+
+// ✅ CORRECT - Use Tauri invoke
+const result = await window.__TAURI__.core.invoke('create_grocery_user', {
+  serviceUrl: 'http://127.0.0.1:5118',
+  privateKeyHex: keys.privateKey
+});
+```
+
+**Rust Command Pattern**:
+```rust
+#[command]
+async fn create_grocery_user(service_url: String, private_key_hex: String) -> Result<String, String> {
+    // Generate sessionless signature
+    // Make HTTP request with reqwest
+    // Return JSON string result
+}
+```
 
 ### Planned Enhancements 🚧
 
@@ -405,14 +472,17 @@ const bdoUrl = getServiceUrl('bdo');
 - ✅ OAuth2.0 flow for Kroger API integration
 - ✅ Tauri application with modern UI and responsive design
 - ✅ Service health monitoring and connection status
-- ✅ Real user account creation and management with sessionless
+- ✅ **Real sessionless key generation with secp256k1 cryptography** (January 2025)
+- ✅ **Complete Rust backend with HTTP proxy commands** (January 2025)
+- ✅ **Proper cryptographic signature serialization** (January 2025)
 - ✅ Store locator interface with geolocation support
 - ✅ Product search interface and results display
 - ✅ State persistence and error handling
 - ✅ Client SDK for service integration
+- ✅ Environment configuration (dev/test/local) support
 
 ### In Progress 🚧
-- 🚧 Real sessionless key generation and management
+- 🚧 Debugging service-side signature verification (receiving 403 auth errors)
 - 🚧 Kroger API integration (store locator, product search)
 - 🚧 Shopping cart functionality
 - 🚧 Order placement and pickup scheduling

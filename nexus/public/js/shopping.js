@@ -197,14 +197,73 @@ function displayProducts(products) {
     // Clear existing content
     container.innerHTML = '';
 
-    // Create product cards
-    products.forEach(product => {
-        const productCard = createProductCard(product);
-        container.appendChild(productCard);
-    });
+    // Check if BDO display system is available
+    if (window.BDODisplay && products.some(p => p.svgContent)) {
+        console.log('✨ Using BDO display system for products with SVG content');
+
+        // Separate BDO products from regular products
+        const bdoProducts = products.filter(p => p.svgContent);
+        const regularProducts = products.filter(p => !p.svgContent);
+
+        // Get current user (placeholder for now)
+        const currentUser = getCurrentUser();
+
+        // Display BDO products using BDO display system
+        bdoProducts.forEach(bdo => {
+            window.BDODisplay.display(bdo, container, {
+                showDuplicateButton: true,
+                user: currentUser
+            });
+        });
+
+        // Display regular products with traditional cards
+        regularProducts.forEach(product => {
+            const productCard = createProductCard(product);
+            container.appendChild(productCard);
+        });
+    } else {
+        // Fallback to traditional product cards
+        products.forEach(product => {
+            const productCard = createProductCard(product);
+            container.appendChild(productCard);
+        });
+    }
 
     // Show products container
     showProductsState();
+}
+
+/**
+ * Get current user for BDO operations
+ * TODO: Integrate with actual user authentication
+ */
+function getCurrentUser() {
+    // Placeholder - should be replaced with actual user data
+    // In production, this would come from sessionless authentication
+    return {
+        uuid: 'test-user-' + Date.now(),
+        pubKey: 'test-pubkey-' + Date.now(),
+        experience: 1000 // Start with 1000 MP
+    };
+}
+
+/**
+ * Get environment config for BDO operations
+ */
+function getEnvironmentConfigForBDO() {
+    // Use existing environment config if available
+    if (typeof getEnvironmentConfig === 'function') {
+        return getEnvironmentConfig();
+    }
+
+    // Fallback config
+    return {
+        env: currentEnvironment,
+        services: {
+            fount: currentEnvironment === 'dev' ? 'https://dev.fount.allyabase.com' : 'http://localhost:3006',
+            bdo: currentEnvironment === 'dev' ? 'https://dev.bdo.allyabase.com' : 'http://localhost:3002'
+        }
+    };
 }
 
 /**

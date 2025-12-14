@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>contentary - Vertical Slide Creator</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <div id="app">
+      <!-- Top Bar -->
+      <div id="top-bar" class="top-bar">
+        <div class="logo">contentary</div>
+        <button id="export" class="export-btn">Export 📤</button>
+      </div>
+
+      <!-- Camera Preview (Picture-in-Picture) -->
+      <div id="camera-pip" class="camera-pip">
+        <video id="camera-preview" autoplay playsinline></video>
+        <button id="toggle-camera" class="pip-control">📷</button>
+        <button id="toggle-recording" class="pip-control recording-btn">⏺️</button>
+      </div>
+
+      <!-- Main Content Area -->
+      <div id="main-content" class="main-content">
+        <!-- Instructions Panel -->
+        <div id="instructions" class="instructions">
+          <h2>How to Use Contentary</h2>
+          <ol>
+            <li><strong>Create SVG Slides</strong> - Design your vertical slides (1080x1920) in your favorite tool</li>
+            <li><strong>Import SVGs</strong> - Click the "+ Add Slide" button in the timeline below</li>
+            <li><strong>Enable Camera</strong> - Click the 📷 button to show your picture-in-picture</li>
+            <li><strong>Record</strong> - Click ⏺️ to start/stop recording your presentation</li>
+            <li><strong>Export</strong> - Save your recordings and slide data</li>
+          </ol>
+
+          <h3>SVG Requirements</h3>
+          <ul>
+            <li>Dimensions: 1080x1920 (9:16 aspect ratio)</li>
+            <li>Format: SVG files only</li>
+            <li>Vertical orientation (portrait mode)</li>
+            <li>Clean, scalable graphics work best</li>
+          </ul>
+
+          <div class="tip">
+            <strong>💡 Pro Tip:</strong> Design your slides in tools like Figma, Adobe Illustrator, or Inkscape,
+            then export as SVG. This app focuses on presenting your slides with camera overlay -
+            perfect for TikTok, Instagram Reels, and YouTube Shorts!
+          </div>
+        </div>
+
+        <!-- Slide Canvas -->
+        <div id="slide-container" class="slide-container">
+          <div id="empty-state" class="empty-state">
+            <h2>No slides yet</h2>
+            <p>Click "+ Add Slide" below to import your first SVG</p>
+            <div class="empty-icon">📊</div>
+          </div>
+          <div id="slide-display"></div>
+        </div>
+      </div>
+
+      <!-- Slide Timeline -->
+      <div id="timeline" class="timeline">
+        <div id="slide-thumbnails" class="slide-thumbnails"></div>
+      </div>
+    </div>
+  </body>
+</html>
