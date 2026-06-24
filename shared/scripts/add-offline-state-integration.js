@@ -25,7 +25,6 @@ const NULLARY_APPS = [
   'photary/photary',
   'stackchat/stackchat',
   'mybase/mybase',
-  'covenant/covenant',
   'idothis/idothis'
 ];
 

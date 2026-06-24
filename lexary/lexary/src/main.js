@@ -19,7 +19,6 @@ function getEnvironmentConfig() {
       joan: 'https://dev.joan.allyabase.com/',
       aretha: 'https://dev.aretha.allyabase.com/',
       minnie: 'https://dev.minnie.allyabase.com/',
-      covenant: 'https://dev.covenant.allyabase.com/'
     },
     test: {
       sanora: 'http://localhost:5121/',
@@ -33,7 +32,6 @@ function getEnvironmentConfig() {
       joan: 'http://localhost:5115/',
       aretha: 'http://localhost:5120/',
       minnie: 'http://localhost:5119/',
-      covenant: 'http://localhost:5122/'
     },
     local: {
       sanora: 'http://localhost:7243/',
@@ -47,7 +45,6 @@ function getEnvironmentConfig() {
       joan: 'http://localhost:3004/',
       aretha: 'http://localhost:7277/',
       minnie: 'http://localhost:2525/',
-      covenant: 'http://localhost:3011/'
     }
   };
   
@@ -99,7 +96,12 @@ const appState = {
     textPosts: [],
     bases: [],
     sessionless: null,
-    loading: false
+    loading: false,
+    newPost: {
+        title: '',
+        content: '',
+        tags: []
+    }
 };
 
 // Text Feed Component (inline from shared/feeds/text-feed.js)
@@ -393,6 +395,9 @@ async function loadScreenData(screenName) {
         case 'planet-nine':
             loadPlanetNineContent();
             break;
+        case 'new-post':
+            loadNewPostForm();
+            break;
     }
 }
 
@@ -653,6 +658,99 @@ async function leaveBase(baseName) {
     }
 }
 
+// New Post Functions
+function loadNewPostForm() {
+    const content = document.querySelector('#new-post-screen .content');
+    if (!content) return;
+
+    content.innerHTML = `
+        <div class="new-post-form">
+            <h2>Create New Post</h2>
+
+            <div class="form-group">
+                <label for="post-title">Title</label>
+                <input type="text" id="post-title" class="post-input" placeholder="Enter post title..." value="${appState.newPost.title}">
+            </div>
+
+            <div class="form-group">
+                <label for="post-content">Content</label>
+                <textarea id="post-content" class="post-textarea" placeholder="Write your post content..." rows="10">${appState.newPost.content}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="post-tags">Tags (comma-separated)</label>
+                <input type="text" id="post-tags" class="post-input" placeholder="text, blog, programming..." value="${appState.newPost.tags.join(', ')}">
+            </div>
+
+            <div class="form-actions">
+                <button class="base-button secondary" onclick="clearPostForm()">Clear</button>
+                <button class="base-button primary" onclick="submitPost()">Publish Post</button>
+            </div>
+
+            <div id="post-status" class="post-status"></div>
+        </div>
+    `;
+}
+
+async function submitPost() {
+    const title = document.getElementById('post-title').value.trim();
+    const content = document.getElementById('post-content').value.trim();
+    const tagsInput = document.getElementById('post-tags').value.trim();
+    const statusDiv = document.getElementById('post-status');
+
+    // Validation
+    if (!title) {
+        statusDiv.innerHTML = '<p class="error">Please enter a title</p>';
+        return;
+    }
+    if (!content) {
+        statusDiv.innerHTML = '<p class="error">Please enter some content</p>';
+        return;
+    }
+
+    // Parse tags
+    const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag) : ['text'];
+
+    // Update state
+    appState.newPost = { title, content, tags };
+
+    // Show loading
+    statusDiv.innerHTML = '<p class="loading">Publishing post...</p>';
+
+    try {
+        const doloresUrl = getServiceUrl('dolores');
+        const result = await invoke('create_post', {
+            doloresUrl: doloresUrl,
+            title: title,
+            content: content,
+            tags: tags
+        });
+
+        if (result.success) {
+            statusDiv.innerHTML = '<p class="success">✓ Post published successfully!</p>';
+
+            // Clear form after 2 seconds and switch to feed
+            setTimeout(() => {
+                clearPostForm();
+                showScreen('feed');
+            }, 2000);
+        } else {
+            statusDiv.innerHTML = `<p class="error">Failed to publish post: ${result.error || 'Unknown error'}</p>`;
+        }
+    } catch (error) {
+        console.error('Error creating post:', error);
+        statusDiv.innerHTML = `<p class="error">Error: ${error}</p>`;
+    }
+}
+
+function clearPostForm() {
+    appState.newPost = { title: '', content: '', tags: [] };
+    document.getElementById('post-title').value = '';
+    document.getElementById('post-content').value = '';
+    document.getElementById('post-tags').value = '';
+    document.getElementById('post-status').innerHTML = '';
+}
+
 // Planet Nine Content
 function loadPlanetNineContent() {
     const content = document.querySelector('#planet-nine-screen .content');
@@ -685,7 +783,7 @@ function loadPlanetNineContent() {
 // App Structure Creation
 function createAppStructure() {
     const app = document.getElementById('app');
-    
+
     app.innerHTML = `
         <!-- Feed Screen -->
         <div id="feed-screen" class="screen active">
@@ -693,6 +791,7 @@ function createAppStructure() {
                 <div class="nav-title">📖 Lexary</div>
                 <div class="nav-buttons">
                     <button class="nav-button active" data-screen="feed">Feed</button>
+                    <button class="nav-button" data-screen="new-post">✏️ New Post</button>
                     <button class="nav-button" data-screen="bases">Bases</button>
                     <button class="nav-button" data-screen="planet-nine">Planet Nine</button>
                 </div>
@@ -702,12 +801,29 @@ function createAppStructure() {
             </div>
         </div>
 
+        <!-- New Post Screen -->
+        <div id="new-post-screen" class="screen">
+            <nav class="nav-bar">
+                <div class="nav-title">✏️ New Post</div>
+                <div class="nav-buttons">
+                    <button class="nav-button" data-screen="feed">Feed</button>
+                    <button class="nav-button active" data-screen="new-post">✏️ New Post</button>
+                    <button class="nav-button" data-screen="bases">Bases</button>
+                    <button class="nav-button" data-screen="planet-nine">Planet Nine</button>
+                </div>
+            </nav>
+            <div class="content">
+                <div class="loading-posts">Loading post form...</div>
+            </div>
+        </div>
+
         <!-- Bases Screen -->
         <div id="bases-screen" class="screen">
             <nav class="nav-bar">
                 <div class="nav-title">🏗️ Base Management</div>
                 <div class="nav-buttons">
                     <button class="nav-button" data-screen="feed">Feed</button>
+                    <button class="nav-button" data-screen="new-post">✏️ New Post</button>
                     <button class="nav-button active" data-screen="bases">Bases</button>
                     <button class="nav-button" data-screen="planet-nine">Planet Nine</button>
                 </div>
@@ -723,6 +839,7 @@ function createAppStructure() {
                 <div class="nav-title">🪐 Planet Nine</div>
                 <div class="nav-buttons">
                     <button class="nav-button" data-screen="feed">Feed</button>
+                    <button class="nav-button" data-screen="new-post">✏️ New Post</button>
                     <button class="nav-button" data-screen="bases">Bases</button>
                     <button class="nav-button active" data-screen="planet-nine">Planet Nine</button>
                 </div>
@@ -750,6 +867,8 @@ window.loadTextFeed = loadTextFeed;
 window.loadBases = loadBases;
 window.joinBase = joinBase;
 window.leaveBase = leaveBase;
+window.submitPost = submitPost;
+window.clearPostForm = clearPostForm;
 
 // Initialize the application
 async function initApp() {

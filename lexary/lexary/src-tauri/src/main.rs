@@ -13,15 +13,16 @@ fn main() {
             get_bases,
             join_base,
             leave_base,
-            
+
             // Feed management (text/blog focused)
             get_text_feed,
             refresh_text_feed,
-            
+            create_post,
+
             // User management
             create_bdo_user,
             create_dolores_user,
-            
+
             // Utilities
             get_sessionless_info,
             health_check,

@@ -6,11 +6,12 @@ Lexary is a standalone text and blog feed application extracted from screenary, 
 
 ## Architecture
 
-### Three-Screen Design
+### Four-Screen Design
 
 1. **Feed Screen**: Main text/blog feed with SVG-rendered posts and multi-image support
-2. **Bases Screen**: Management of connected base servers with lexary-specific tags
-3. **Planet Nine Screen**: Ecosystem overview with animated Planet Nine logo
+2. **New Post Screen**: Text posting interface with title, content, and tags (January 2026)
+3. **Bases Screen**: Management of connected base servers with lexary-specific tags
+4. **Planet Nine Screen**: Ecosystem overview with animated Planet Nine logo
 
 ### Technology Stack
 
@@ -20,6 +21,14 @@ Lexary is a standalone text and blog feed application extracted from screenary, 
 - **Services**: BDO (storage), Dolores (text/blog feeds), Sessionless (authentication)
 
 ## Key Features
+
+### Text Posting (January 2026)
+- **Create Posts**: Users can create text posts with title, content, and tags through a dedicated posting UI
+- **Post to Home Base**: Posts are saved to the user's connected Dolores instance via sessionless authentication
+- **Form Validation**: Real-time validation ensures title and content are provided before posting
+- **Auto-tagging**: Default "text" tag with support for custom comma-separated tags
+- **Success Feedback**: Visual confirmation and automatic redirect to feed after successful post
+- **Draft Preservation**: Form state preserved in app state during navigation
 
 ### Text Feed
 - **Text-First Content**: Filters for text-based posts with minimal or no images
@@ -346,4 +355,138 @@ Testing follows Planet Nine patterns:
 - **Color Independence**: Information not conveyed by color alone
 - **Motion Sensitivity**: Reduced motion options for animations
 
-Lexary demonstrates the power of focusing on a single content type while maintaining the full richness of The Nullary's shared component architecture. It provides a premium reading experience for text content within the Planet Nine ecosystem, emphasizing quality writing and distraction-free consumption.
+## Posting Implementation (January 2026)
+
+### Backend Architecture
+
+**Dolores-rs Client** (`/dolores/src/client/rust/dolores-rs/src/lib.rs`):
+```rust
+pub async fn put_post(&self, uuid: &str, post: serde_json::Value)
+    -> Result<DoloresUser, Box<dyn std::error::Error>> {
+    let timestamp = Self::get_timestamp();
+    let message = format!("{}{}", timestamp, uuid);
+    let signature = self.sessionless.sign(&message).to_hex();
+
+    let payload = json!({
+        "timestamp": timestamp,
+        "post": post,
+        "signature": signature
+    });
+
+    let url = format!("{}user/{}/post", self.base_url, uuid);
+    let res = self.put(&url, serde_json::Value::Object(payload)).await?;
+    let user: DoloresUser = res.json().await?;
+
+    Ok(user)
+}
+```
+
+**Lexary Tauri Command** (`/the-nullary/lexary/lexary/src-tauri/src/lib.rs`):
+```rust
+#[command]
+pub async fn create_post(
+    dolores_url: Option<String>,
+    title: String,
+    content: String,
+    tags: Option<Vec<String>>
+) -> ServiceResponse<serde_json::Value> {
+    let sessionless = get_sessionless().await?;
+
+    let post = serde_json::json!({
+        "title": title,
+        "content": content,
+        "tags": tags.unwrap_or_else(|| vec!["text".to_string()]),
+        "author": sessionless.public_key.to_hex(),
+        "timestamp": chrono::Utc::now().timestamp_millis(),
+        "uuid": sessionless::generate_uuid()
+    });
+
+    dolores_client.put_post(&sessionless.uuid, post).await
+}
+```
+
+### Frontend Implementation
+
+**New Post Screen** (`/the-nullary/lexary/lexary/src/main.js`):
+- Form with title input, content textarea, and tags input
+- Real-time validation before submission
+- Status messages (loading, success, error)
+- Auto-clear and redirect after successful post
+
+**Posting Flow**:
+1. User clicks "✏️ New Post" navigation button
+2. Form loads with preserved draft state (if any)
+3. User fills title, content, and optional tags
+4. Click "Publish Post" triggers validation
+5. Frontend calls `create_post` Tauri command
+6. Backend creates post object with author and timestamp
+7. Dolores-rs client PUTs post to Dolores service
+8. Success confirmation shown, then redirect to feed
+9. New post appears in feed after refresh
+
+**Dolores Endpoint** (`PUT /user/:uuid/post`):
+- Validates sessionless signature (message: `timestamp + uuid`)
+- Saves post to Redis via `db.savePost()`
+- Returns updated user object
+
+### Post Object Structure
+```javascript
+{
+  "title": "Getting Started with Rust",
+  "content": "Rust is a systems programming language...",
+  "tags": ["text", "programming", "rust"],
+  "author": "02a1b2c3d4e5f6...", // Public key hex
+  "timestamp": 1736521200000,
+  "uuid": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+### Signature Authentication
+- **Message**: `timestamp + userUUID`
+- **Signed by**: User's sessionless private key
+- **Verified by**: Dolores backend using stored public key
+- **Used for**: All post creation requests
+
+## Critical Fixes (January 10, 2026)
+
+### Fixed API Mismatch Issues
+
+**1. Feed API Call Fix**:
+- **Problem**: dolores-rs `get_feed` expects `&str` for tags, but lexary was passing `Vec<String>`
+- **Fix**: Join tags with "+" separator: `tags.join("+")`
+- **Location**: `/the-nullary/lexary/lexary/src-tauri/src/lib.rs:205`
+
+**2. Feed Struct Handling Fix**:
+- **Problem**: Code treated `Feed` struct as `Vec`, but it has `allPosts` field
+- **Fix**: Access `feed.allPosts` instead of iterating over `feed` directly
+- **Location**: `/the-nullary/lexary/lexary/src-tauri/src/lib.rs:210`
+
+**3. Feed Integration Fix**:
+- **Problem**: Local posts saved via `db.savePost()` were never returned in feed
+- **Fix**: Updated Dolores `/user/:uuid/feed` endpoint to include `db.getPosts()` in combined feed
+- **Location**: `/dolores/src/server/node/dolores.js:298-299`
+
+**4. User Key Management Fix**:
+- **Problem**: All users shared same hardcoded development private key
+- **Fix**: Generate unique key per session, support `LEXARY_PRIVATE_KEY` env var for persistence
+- **Location**: `/the-nullary/lexary/lexary/src-tauri/src/lib.rs:54-79`
+
+### User Identity Management
+
+Users now get unique identities:
+```bash
+# First run generates new key
+Generating new Lexary user key...
+New key generated. Set LEXARY_PRIVATE_KEY=abc123... to persist this identity
+Public Key: 02def456...
+UUID: uuid-789...
+
+# Persist identity across sessions
+export LEXARY_PRIVATE_KEY=abc123...
+npm run dev
+```
+
+## Last Updated
+January 10, 2026 - **BREAKING FIXES**: Fixed critical API mismatches, feed integration, and user identity management. Local posts now appear in feed. Each user gets unique posting identity (persisted via LEXARY_PRIVATE_KEY env var).
+
+Lexary demonstrates the power of focusing on a single content type while maintaining the full richness of The Nullary's shared component architecture. It provides a premium reading AND writing experience for text content within the Planet Nine ecosystem, emphasizing quality writing and distraction-free consumption.

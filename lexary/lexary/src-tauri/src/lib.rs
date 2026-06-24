@@ -50,17 +50,31 @@ pub struct ServiceResponse<T> {
     pub error: Option<String>,
 }
 
-// Get sessionless instance with development key
+// Get or create sessionless instance with user-specific key
 async fn get_sessionless() -> Result<Sessionless, String> {
-    let private_key = env::var("PRIVATE_KEY").unwrap_or_else(|_| {
-        // Development key - in production, this should be user-specific
-        String::from("b75011b167c5e3a6b0de97d8e1950cd9548f83bb67f47112bed6a082db795496")
-    });
-    
+    // Try to get key from environment or generate new one
+    let private_key = match env::var("LEXARY_PRIVATE_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            // Generate a new key and save it
+            println!("Generating new Lexary user key...");
+            let new_sessionless = Sessionless::new();
+            let new_key = new_sessionless.private_key().to_hex();
+
+            // In production, this should be saved to a config file
+            // For now, we'll just use the generated key for this session
+            println!("New key generated. Set LEXARY_PRIVATE_KEY={} to persist this identity", new_key);
+            println!("Public Key: {}", new_sessionless.public_key().to_hex());
+            println!("UUID: {}", new_sessionless.uuid);
+
+            new_key
+        }
+    };
+
     let sessionless = Sessionless::from_private_key(
         PrivateKey::from_hex(private_key).map_err(|e| format!("Invalid private key: {}", e))?
     );
-    
+
     Ok(sessionless)
 }
 
@@ -197,13 +211,17 @@ pub async fn get_text_feed(dolores_url: Option<String>, tags: Option<Vec<String>
 async fn get_text_feed_internal(dolores_url: Option<String>, tags: Option<Vec<String>>) -> Result<TextFeedData, String> {
     let sessionless = get_sessionless().await?;
     let dolores_url = dolores_url.unwrap_or_else(|| "https://dev.dolores.allyabase.com/".to_string());
-    
+
     // Try to get real feed from Dolores
     match DoloresClient::new(dolores_url.clone(), sessionless.clone()) {
         Ok(dolores_client) => {
-            match dolores_client.get_feed(sessionless.uuid.clone(), tags.unwrap_or_else(|| vec!["text".to_string(), "blogs".to_string()])).await {
-                Ok(feed_items) => {
-                    let text_posts: Vec<serde_json::Value> = feed_items
+            // Join tags with + separator as expected by dolores-rs
+            let tags_string = tags.unwrap_or_else(|| vec!["text".to_string(), "blogs".to_string()]).join("+");
+
+            match dolores_client.get_feed(&sessionless.uuid, &tags_string).await {
+                Ok(feed) => {
+                    // Feed is a struct with allPosts field, not a Vec
+                    let text_posts: Vec<serde_json::Value> = feed.allPosts
                         .into_iter()
                         .filter(|item| {
                             // Filter for text-based posts (no images or minimal images)
@@ -412,6 +430,48 @@ pub async fn health_check() -> ServiceResponse<serde_json::Value> {
         success: true,
         data: Some(health_info),
         error: None,
+    }
+}
+
+#[command]
+pub async fn create_post(dolores_url: Option<String>, title: String, content: String, tags: Option<Vec<String>>) -> ServiceResponse<serde_json::Value> {
+    match create_post_internal(dolores_url, title, content, tags).await {
+        Ok(result) => ServiceResponse {
+            success: true,
+            data: Some(result),
+            error: None,
+        },
+        Err(e) => ServiceResponse {
+            success: false,
+            data: None,
+            error: Some(e),
+        },
+    }
+}
+
+async fn create_post_internal(dolores_url: Option<String>, title: String, content: String, tags: Option<Vec<String>>) -> Result<serde_json::Value, String> {
+    let sessionless = get_sessionless().await?;
+    let dolores_url = dolores_url.unwrap_or_else(|| "https://dev.dolores.allyabase.com/".to_string());
+
+    // Create post object
+    let post = serde_json::json!({
+        "title": title,
+        "content": content,
+        "tags": tags.unwrap_or_else(|| vec!["text".to_string()]),
+        "author": sessionless.public_key.to_hex(),
+        "timestamp": chrono::Utc::now().timestamp_millis(),
+        "uuid": sessionless::generate_uuid()
+    });
+
+    // Post to Dolores
+    match DoloresClient::new(dolores_url, sessionless.clone()) {
+        Ok(dolores_client) => {
+            match dolores_client.put_post(&sessionless.uuid, post).await {
+                Ok(user) => Ok(serde_json::to_value(user).unwrap()),
+                Err(e) => Err(format!("Failed to create post: {}", e)),
+            }
+        }
+        Err(e) => Err(format!("Failed to create Dolores client: {}", e)),
     }
 }
 

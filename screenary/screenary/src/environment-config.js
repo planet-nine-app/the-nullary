@@ -24,7 +24,6 @@ const ENVIRONMENT_CONFIGS = {
       joan: 'https://dev.joan.allyabase.com/',
       aretha: 'https://dev.aretha.allyabase.com/',
       minnie: 'https://dev.minnie.allyabase.com/',
-      covenant: 'https://dev.covenant.allyabase.com/'
     }
   },
   test: {
@@ -43,7 +42,6 @@ const ENVIRONMENT_CONFIGS = {
       joan: 'http://127.0.0.1:5115/',
       aretha: 'http://127.0.0.1:5120/',
       minnie: 'http://127.0.0.1:5119/',
-      covenant: 'http://127.0.0.1:5122/'
     }
   },
   local: {
@@ -62,7 +60,6 @@ const ENVIRONMENT_CONFIGS = {
       joan: 'http://127.0.0.1:3004/',
       aretha: 'http://127.0.0.1:7277/',
       minnie: 'http://127.0.0.1:2525/',
-      covenant: 'http://127.0.0.1:3011/'
     }
   }
 };

@@ -13,7 +13,7 @@ StackChat is a peer-to-peer messaging application built on the Planet Nine ecosy
 - **Connection Storage**: Local storage of connections with real julia UUIDs
 - **UI Components**: Complete RPG-style messaging interface with animations
 - **No Mock Data**: All production code, no mock data or test stubs
-- **Universal Spell System**: Complete integration with castSpell.js and signCovenant.js for cross-app compatibility
+- **Universal Spell System**: Complete integration with castSpell.js for cross-app compatibility
 
 ### 🚧 In Progress: Julia Association Flow
 
@@ -127,16 +127,16 @@ curl -X POST http://127.0.0.1:5111/message -d '{...}'
 
 ### Three-Screen Messaging Platform
 
-1. **Connections Screen**: Manage covenant connections with other users
+1. **Connections Screen**: Manage P2P connections with other users
 2. **Messaging Screen**: RPG-style dialog interface for conversations  
 3. **Planet Nine Screen**: Ecosystem overview highlighting P2P messaging capabilities
 
 ### Technology Stack
 
 - **Frontend**: Tauri v2.x application with gaming-inspired UI (1000x700 default window)
-- **Backend**: Rust with covenant service and joint BDO integration
+- **Backend**: Rust with julia service and joint BDO integration
 - **UI Design**: RPG-style dialog boxes with CSS animations and space-flight effects
-- **Services**: Covenant (connections), BDO (shared storage), Sessionless (authentication)
+- **Services**: Julia (connections), BDO (shared storage), Sessionless (authentication)
 
 ## Key Features
 
@@ -148,9 +148,9 @@ curl -X POST http://127.0.0.1:5111/message -d '{...}'
 - **Input Dialog**: Fixed bottom position with purple gradient styling
 - **Space Animation**: Messages fly off to space when sent with rocket trail effects
 
-### Covenant Connection Management
+### P2P Connection Management
 
-- **P2P Connections**: Direct user-to-user connections via covenant service
+- **P2P Connections**: Direct user-to-user connections via julia service
 - **Joint BDO Storage**: Shared message storage between connected users
 - **Connection Status**: Active, Pending, and Blocked states with visual indicators
 - **Unread Counters**: Visual badges showing unread message counts
@@ -167,7 +167,7 @@ curl -X POST http://127.0.0.1:5111/message -d '{...}'
 
 StackChat integrates with core Planet Nine services:
 
-### Covenant Service Integration (`covenant-rs`)
+### Julia Service Integration
 
 - **Connection Creation**: Establish P2P relationships between users
 - **Joint BDO Setup**: Automatic shared storage provisioning
@@ -184,7 +184,7 @@ StackChat integrates with core Planet Nine services:
 ### Data Flow Architecture
 
 ```
-User Authentication (sessionless) → Covenant Creation → Joint BDO Setup → Message Exchange
+User Authentication (sessionless) → Julia Association → Joint BDO Setup → Message Exchange
 ```
 
 ## Component Structure
@@ -284,9 +284,9 @@ const appState = {
 Backend integrates with Planet Nine services for messaging:
 
 ```rust
-// Covenant service for connection management
-let covenant_client = CovenantClient::new(covenant_url)?;
-let covenant = covenant_client.create_covenant(sessionless, covenant_data).await?;
+// Julia service for connection management
+let julia_client = JuliaClient::new(julia_url)?;
+let association = julia_client.create_association(sessionless, association_data).await?;
 
 // Joint BDO for message storage
 let bdo_client = BdoClient::new(joint_bdo_url, sessionless)?;
@@ -314,10 +314,10 @@ stackchat/
 │   └── index.html       # RPG-styled HTML with CSS animations
 ├── src-tauri/
 │   ├── src/
-│   │   ├── lib.rs       # Backend covenant/BDO integration  
+│   │   ├── lib.rs       # Backend julia/BDO integration  
 │   │   ├── main.rs      # Tauri application entry
 │   │   └── build.rs     # Build configuration
-│   ├── Cargo.toml       # Rust dependencies including covenant-rs
+│   ├── Cargo.toml       # Rust dependencies including julia-rs
 │   └── tauri.conf.json  # Tauri desktop configuration
 ├── CLAUDE.md           # This documentation
 └── package.json        # Frontend dependencies
@@ -329,7 +329,7 @@ stackchat/
 
 - `tauri`: Cross-platform application framework
 - `serde`: Serialization/deserialization with datetime support
-- `covenant-rs`: Covenant service client for P2P connections
+- `julia-rs`: Julia service client for P2P connections
 - `bdo-rs`: Big Dumb Object storage client for joint storage
 - `sessionless`: Authentication protocol
 - `chrono`: DateTime handling for message timestamps
@@ -354,16 +354,16 @@ stackchat/
     recipient_uuid: "recipient-uuid",
     content: "Hello from StackChat!",
     timestamp: "2024-01-15T10:30:00Z",
-    covenant_uuid: "covenant-uuid",
+    association_uuid: "association-uuid",
     read: false
 }
 ```
 
-### Covenant Connection Structure
+### P2P Connection Structure
 
 ```javascript
 {
-    uuid: "covenant-uuid",
+    uuid: "association-uuid",
     partner_uuid: "partner-uuid",
     partner_name: "Bob Creator",
     partner_public_key: "03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
@@ -379,7 +379,7 @@ stackchat/
 
 ```javascript
 {
-    connection: CovenantConnection,
+    connection: P2PConnection,
     messages: [Message],
     total_count: 25
 }
@@ -390,7 +390,7 @@ stackchat/
 ### Connection Flow
 
 1. **Connection Discovery**: Find users through public keys or invitations
-2. **Covenant Creation**: Establish P2P connection via covenant service
+2. **Association Creation**: Establish P2P connection via julia service
 3. **Joint BDO Setup**: Automatic shared storage provisioning  
 4. **Connection Acceptance**: Partner accepts or blocks connection request
 5. **Active Messaging**: Real-time messaging through shared storage
@@ -459,12 +459,12 @@ const bdoUrl = getServiceUrl('bdo');
 2. **Build Application**: `npm run tauri build`
 3. **Backend Changes**: Modify `src-tauri/src/lib.rs`
 4. **Frontend Changes**: Modify `src/main.js` or `src/index.html`
-5. **Covenant Service**: Ensure covenant service running on `localhost:3008`
+5. **Julia Service**: Ensure julia service running on `localhost:3000`
 6. **BDO Service**: Ensure BDO service running on `localhost:3006`
 
 ## Integration Points
 
-### With Covenant Service
+### With Julia Service
 
 - **Connection Management**: Create, accept, and manage P2P connections
 - **Joint BDO Provisioning**: Automatic shared storage setup
@@ -499,7 +499,7 @@ const bdoUrl = getServiceUrl('bdo');
 - **Access Control**: Joint BDO accessible only to connected users
 - **Data Isolation**: Each conversation in separate storage instance
 - **Authentication Required**: All operations require valid sessionless signatures
-- **Connection Verification**: Covenant service validates relationships
+- **Connection Verification**: Julia service validates relationships
 
 ## Performance Considerations
 
@@ -514,7 +514,7 @@ const bdoUrl = getServiceUrl('bdo');
 
 - **Connection Caching**: Frequent connections cached locally
 - **Status Updates**: Efficient real-time status synchronization
-- **Batch Operations**: Optimized covenant service calls
+- **Batch Operations**: Optimized julia service calls
 - **UI Responsiveness**: Non-blocking operations with loading states
 
 ## Future Enhancements
@@ -529,7 +529,7 @@ const bdoUrl = getServiceUrl('bdo');
 
 ### Advanced Features
 
-- **Group Conversations**: Multi-user covenant connections
+- **Group Conversations**: Multi-user P2P connections
 - **Message Encryption**: Client-side encryption for additional security
 - **Voice Messages**: Audio message support with RPG styling
 - **Message Reactions**: Emoji reactions to messages
@@ -547,9 +547,9 @@ const bdoUrl = getServiceUrl('bdo');
 
 Testing follows Planet Nine patterns:
 
-- **Backend Logic**: Rust unit tests for covenant/BDO integration
+- **Backend Logic**: Rust unit tests for julia/BDO integration
 - **Frontend Testing**: Tauri development environment testing
-- **Integration Testing**: Against development covenant/BDO services
+- **Integration Testing**: Against development julia/BDO services
 - **Animation Testing**: CSS animation performance and compatibility
 - **P2P Testing**: Multi-user conversation scenarios
 

@@ -66,18 +66,17 @@ This directory contains the **complete production-ready infrastructure** used ac
 - Intelligent caching
 
 ### 6. Universal Spell System Integration
-**Purpose**: Cross-app spell casting and covenant contract signing capabilities
+**Purpose**: Cross-app spell casting capabilities
 
 **Features**:
 - Dynamic castSpell.js loading from fount service
-- signCovenant.js integration from covenant service  
 - Environment-aware service discovery
 - Graceful fallback when services unavailable
 - 100ms initialization delay for environment readiness
 - Consistent loadSpellSystems() implementation across all apps
 
 **Implementation Pattern**:
-All nullary apps now include identical spell system loading in their index.html files, enabling universal access to MAGIC protocol spells and covenant contracts regardless of deployment environment.
+All nullary apps now include identical spell system loading in their index.html files, enabling universal access to MAGIC protocol spells regardless of deployment environment.
 
 ### 7. Simple Theme System (`/themes/simple-theme.js`)
 **Purpose**: Consistent Planet Nine theming across all apps

@@ -27,7 +27,6 @@ function getEnvironmentConfig() {
       joan: 'https://dev.joan.allyabase.com/',
       aretha: 'https://dev.aretha.allyabase.com/',
       minnie: 'https://dev.minnie.allyabase.com/',
-      covenant: 'https://dev.covenant.allyabase.com/'
     },
     test: {
       sanora: 'http://localhost:5121/',
@@ -41,7 +40,6 @@ function getEnvironmentConfig() {
       joan: 'http://localhost:5115/',
       aretha: 'http://localhost:5120/',
       minnie: 'http://localhost:5119/',
-      covenant: 'http://localhost:5122/'
     },
     local: {
       sanora: 'http://localhost:7243/',
@@ -55,7 +53,6 @@ function getEnvironmentConfig() {
       joan: 'http://localhost:3004/',
       aretha: 'http://localhost:7277/',
       minnie: 'http://localhost:2525/',
-      covenant: 'http://localhost:3011/'
     }
   };
   

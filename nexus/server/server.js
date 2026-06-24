@@ -26,7 +26,6 @@ const SERVICES = {
     addie: 'https://dev.addie.allyabase.com',
     dolores: 'https://dev.dolores.allyabase.com',
     sanora: 'https://dev.sanora.allyabase.com',
-    covenant: 'https://dev.covenant.allyabase.com'
 };
 
 // Create Express app
