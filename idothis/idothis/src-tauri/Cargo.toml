@@ -1,7 +1,7 @@
 [package]
 name = "idothis"
 version = "0.1.0"
-description = "IDothis - Professional showcase platform for Planet Nine ecosystem"
+description = "IDothis - Professional discovery platform for Planet Nine ecosystem"
 authors = ["Planet Nine"]
 license = "MIT"
 repository = "https://github.com/planet-nine-app/planet-nine"
@@ -15,28 +15,17 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.6.2", features = [] }
-tauri-plugin-shell = "2.0"
-tauri-plugin-fs = "2.2.1"
+tauri = { version = "2", features = [] }
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-app-group = { path = "tauri-plugin-app-group" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-reqwest = { version = "0.12.4", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls"] }
 sessionless = "0.1.1"
-chrono = { version = "0.4", features = ["serde"] }
-base64 = "0.21"
+hex = "0.4"
 
-# Planet Nine service clients
 [dependencies.bdo-rs]
 path = "../../../../bdo/src/client/rust/bdo-rs"
-
-[dependencies.dolores-rs]
-path = "../../../../dolores/src/client/rust/dolores-rs"
-
-[dependencies.sanora-rs]
-path = "../../../../sanora/src/client/rust/sanora-rs"
-
-[dependencies.prof-rs]
-path = "../../../../prof/src/client/rust/prof-rs"
 
 [features]
 default = ["custom-protocol"]

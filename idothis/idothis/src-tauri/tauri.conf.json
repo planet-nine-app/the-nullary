@@ -15,13 +15,14 @@
     },
     "windows": [
       {
-        "title": "IDothis - Professional Showcase",
-        "width": 1200,
-        "height": 800,
+        "title": "IDothis",
+        "width": 390,
+        "height": 844,
         "resizable": true,
         "fullscreen": false,
-        "minWidth": 800,
-        "minHeight": 600
+        "decorations": true,
+        "transparent": false,
+        "backgroundColor": "#0a001a"
       }
     ]
   },
@@ -34,11 +35,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
-  },
-  "plugins": {
-    "shell": {
-      "open": true
+    ],
+    "iOS": {
+      "minimumSystemVersion": "15.0",
+      "developmentTeam": "RLJ2FY35FD"
     }
   }
 }

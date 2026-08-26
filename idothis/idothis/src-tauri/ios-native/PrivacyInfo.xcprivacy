@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- TODO before first TestFlight upload with App Group sharing:
+				     tauri-plugin-app-group/ios/Sources/AppGroupPlugin.swift reads/
+				     writes UserDefaults(suiteName: "group.freyja.idothis"), shared
+				     with BizBuz and Linkitylink. Look up the current correct
+				     Required Reason API code for App-Group-scoped UserDefaults
+				     access on Apple's published Privacy Manifest Files docs rather
+				     than guessing here, then add it as a <string> entry in this
+				     array (mirrors the same TODO in bizbuz's and linkitylink's
+				     own PrivacyInfo.xcprivacy). This only affects the App Store
+				     Connect privacy report at upload time, not the build itself,
+				     so it's safe to leave open until then. -->
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

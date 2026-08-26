@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for IDothis",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "app-group:default",
+    "dialog:allow-open",
+    "fs:allow-read-file"
+  ]
+}

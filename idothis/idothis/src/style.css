@@ -1,0 +1,533 @@
+:root {
+    --green: #10b981;
+    --green-dark: #059669;
+    --purple: #a78bfa;
+    --bg: #0a001a;
+    --white-70: rgba(255, 255, 255, 0.7);
+    --white-10: rgba(255, 255, 255, 0.1);
+    --white-05: rgba(255, 255, 255, 0.05);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: white;
+    min-height: 100vh;
+}
+
+#app {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(24px + env(safe-area-inset-top))
+             calc(20px + env(safe-area-inset-right))
+             calc(90px + env(safe-area-inset-bottom))
+             calc(20px + env(safe-area-inset-left));
+}
+
+.view-header {
+    margin-bottom: 24px;
+}
+
+h1 {
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--green) 0%, var(--purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--white-70);
+    margin-top: 6px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--white-70);
+}
+
+input, textarea, select {
+    background: var(--white-05);
+    border: 1px solid var(--white-10);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: white;
+    font-size: 15px;
+    font-family: inherit;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--green);
+}
+
+textarea {
+    resize: vertical;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.section-label {
+    font-size: 14px;
+    color: var(--purple);
+    margin-top: 8px;
+}
+
+.from-note {
+    font-size: 13px;
+    color: var(--white-70);
+    background: var(--white-05);
+    border: 1px solid var(--white-10);
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.btn {
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+    width: 100%;
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-secondary {
+    background: var(--white-10);
+    color: white;
+    border: 1px solid var(--white-10);
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.form-actions .btn {
+    flex: 1;
+    margin-top: 0;
+}
+
+#new-profile-btn {
+    margin-bottom: 20px;
+}
+
+.card {
+    background: var(--white-05);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 24px;
+    padding: 36px 28px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.1);
+}
+
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+    background-size: cover;
+    background-position: center;
+}
+
+.avatar-editable {
+    cursor: pointer;
+}
+
+/* ── Profile list (My Profiles / Liked) ──────────────────────────────────── */
+
+.profile-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--white-05);
+    border: 1px solid var(--white-10);
+    border-radius: 14px;
+    cursor: pointer;
+}
+
+.profile-list-text {
+    min-width: 0;
+    flex: 1;
+}
+
+.profile-list-category {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--purple);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-list-sub {
+    font-size: 12px;
+    color: var(--white-70);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-list-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--white-70);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+/* ── Category list (Discover) ────────────────────────────────────────────── */
+
+.discover-filter {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.discover-filter input {
+    flex: 1;
+}
+
+.discover-filter select {
+    flex-shrink: 0;
+    width: auto;
+}
+
+.category-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.category-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--white-05);
+    border: 1px solid var(--white-10);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.category-list-item .arrow {
+    color: var(--green);
+    font-weight: 400;
+}
+
+/* ── Swipe stack ──────────────────────────────────────────────────────────── */
+
+.swipe-stack {
+    position: relative;
+    height: 420px;
+    margin-bottom: 20px;
+}
+
+.swipe-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: var(--white-05);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 24px;
+    padding: 28px 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.swipe-card:active {
+    cursor: grabbing;
+}
+
+.swipe-card-category {
+    font-size: 13px;
+    color: var(--purple);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.swipe-card-name {
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 8px;
+}
+
+.swipe-card-zip {
+    font-size: 13px;
+    color: var(--white-70);
+    margin-top: 4px;
+}
+
+.swipe-card-bio {
+    font-size: 15px;
+    line-height: 1.5;
+    margin-top: 20px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.swipe-indicator {
+    position: absolute;
+    top: 24px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    pointer-events: none;
+    border: 3px solid;
+}
+
+.swipe-indicator.like {
+    right: 24px;
+    color: var(--green);
+    border-color: var(--green);
+    transform: rotate(12deg);
+}
+
+.swipe-indicator.pass {
+    left: 24px;
+    color: #ef4444;
+    border-color: #ef4444;
+    transform: rotate(-12deg);
+}
+
+.swipe-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 8px;
+}
+
+.swipe-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.swipe-btn.pass {
+    background: var(--white-10);
+    color: #ef4444;
+}
+
+.swipe-btn.like {
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+    color: white;
+}
+
+/* ── Canonical profile field editor (shared pattern) ─────────────────────── */
+
+.link-entries {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.link-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--white-05);
+    border: 1px solid var(--white-10);
+    border-radius: 10px;
+}
+
+.link-entry-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.link-entry-edit-fields {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.link-entry-edit-fields input {
+    padding: 8px 10px;
+    font-size: 13px;
+}
+
+.link-entry-label {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.link-entry-url {
+    font-size: 12px;
+    color: var(--white-70);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.link-entry-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.link-entry-actions button {
+    background: var(--white-10);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.link-entry-actions button:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.link-entry-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hint {
+    font-size: 12px;
+    color: var(--white-70);
+}
+
+/* ── Profile / Discover nav buttons ──────────────────────────────────────── */
+
+.profile-nav-btn,
+.discover-nav-btn {
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    background: var(--white-10);
+    border: 1px solid var(--white-10);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 22px;
+    border-radius: 14px;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.profile-nav-btn {
+    right: calc(20px + env(safe-area-inset-right));
+}
+
+.discover-nav-btn {
+    left: calc(20px + env(safe-area-inset-left));
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%);
+    border-color: transparent;
+}
+
+.status-msg {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: var(--white-70);
+    background: var(--white-10);
+    padding: 8px 16px;
+    border-radius: 10px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 200;
+}
+
+.status-msg.visible {
+    opacity: 1;
+}

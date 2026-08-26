@@ -1,843 +1,687 @@
-// IDothis - Professional Showcase Platform
-// No-modules approach for Tauri compatibility
+const { core, dialog, fs } = window.__TAURI__;
 
-// Use the global environment configuration from environment-config.js
-function getEnvironmentConfig() {
-  if (window.PlanetNineEnvironment) {
-    return window.PlanetNineEnvironment.getEnvironmentConfig();
-  }
-  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
-  return { env: 'dev', services: {}, name: 'dev' };
+// Keep in sync with MAX_CANONICAL_FIELDS in src-tauri/src/lib.rs.
+const MAX_PROFILE_FIELDS = 20;
+
+const listView = document.getElementById('list-view');
+const createView = document.getElementById('create-view');
+const categoriesView = document.getElementById('categories-view');
+const swipeView = document.getElementById('swipe-view');
+const likedView = document.getElementById('liked-view');
+const profileView = document.getElementById('profile-view');
+const profileNavBtn = document.getElementById('profile-nav-btn');
+const discoverNavBtn = document.getElementById('discover-nav-btn');
+const statusMsg = document.getElementById('status-msg');
+
+const newProfileBtn = document.getElementById('new-profile-btn');
+const profileListEl = document.getElementById('profile-list');
+const emptyHint = document.getElementById('empty-hint');
+
+const createTitle = document.getElementById('create-title');
+const profileForm = document.getElementById('profile-form');
+const fromNote = document.getElementById('from-note');
+const fieldCategory = document.getElementById('field-category');
+const fieldBusinessName = document.getElementById('field-business-name');
+const fieldBio = document.getElementById('field-bio');
+const fieldZip = document.getElementById('field-zip');
+const saveProfileBtn = document.getElementById('save-profile-btn');
+const cancelProfileBtn = document.getElementById('cancel-profile-btn');
+const deleteProfileBtn = document.getElementById('delete-profile-btn');
+
+const discoverZip = document.getElementById('discover-zip');
+const discoverRadius = document.getElementById('discover-radius');
+const categoryListEl = document.getElementById('category-list');
+const viewLikedBtn = document.getElementById('view-liked-btn');
+
+const swipeTitle = document.getElementById('swipe-title');
+const swipeStats = document.getElementById('swipe-stats');
+const swipeStackEl = document.getElementById('swipe-stack');
+const swipeEmptyHint = document.getElementById('swipe-empty-hint');
+const passBtn = document.getElementById('pass-btn');
+const likeBtn = document.getElementById('like-btn');
+const swipeBackBtn = document.getElementById('swipe-back-btn');
+
+const likedListEl = document.getElementById('liked-list');
+const likedEmptyHint = document.getElementById('liked-empty-hint');
+const likedBackBtn = document.getElementById('liked-back-btn');
+
+const profileForm2 = document.getElementById('canonical-profile-form');
+const profilePhotoPreview = document.getElementById('profile-photo-preview');
+const profileChoosePhotoBtn = document.getElementById('profile-choose-photo-btn');
+const profileFieldsEl = document.getElementById('profile-fields');
+const profileNewFieldName = document.getElementById('profile-new-field-name');
+const profileNewFieldValue = document.getElementById('profile-new-field-value');
+const profileAddFieldBtn = document.getElementById('profile-add-field-btn');
+const profileFieldLimitHint = document.getElementById('profile-field-limit-hint');
+const profileCloseBtn = document.getElementById('profile-close-btn');
+
+const PHOTO_SIZE = 480;
+const PHOTO_QUALITY = 0.85;
+
+let profiles = [];
+let categories = []; // [{slug, label}], loaded once from Rust
+let editingProfileId = null; // null while creating; set while editing
+let currentCategory = null;
+let discoverQueue = [];
+let discoverIndex = 0;
+let likedProfiles = [];
+
+// ── View / status helpers ────────────────────────────────────────────────────
+
+function showView(name) {
+    listView.hidden = name !== 'list';
+    createView.hidden = name !== 'create';
+    categoriesView.hidden = name !== 'categories';
+    swipeView.hidden = name !== 'swipe';
+    likedView.hidden = name !== 'liked';
+    profileView.hidden = name !== 'profile';
+    const hideNav = ['create', 'swipe', 'liked', 'profile'].includes(name);
+    profileNavBtn.hidden = hideNav;
+    discoverNavBtn.hidden = hideNav;
 }
 
-function getServiceUrl(serviceName) {
-  if (window.PlanetNineEnvironment) {
-    return window.PlanetNineEnvironment.getServiceUrl(serviceName);
-  }
-  console.error('🚨 PlanetNineEnvironment not available, environment-config.js may not have loaded');
-  return 'https://dev.sanora.allyabase.com/';
+let statusTimeout = null;
+function setStatus(message) {
+    statusMsg.textContent = message;
+    statusMsg.classList.add('visible');
+    clearTimeout(statusTimeout);
+    statusTimeout = setTimeout(() => statusMsg.classList.remove('visible'), 2500);
 }
 
-const { invoke } = window.__TAURI__.core;
+function categoryLabel(slug) {
+    return categories.find((c) => c.slug === slug)?.label || slug;
+}
 
-// Global app state
-const appState = {
-    currentScreen: 'profiles',
-    currentProfile: null,
-    profiles: [], // All discovered profiles
-    currentProfileIndex: 0,
-    likedProfiles: [],
-    passedProfiles: [],
-    sessionless: null,
-    loading: false,
-    swipeThreshold: 100
-};
+// ── My Profiles ──────────────────────────────────────────────────────────────
 
-// Initialize environment
-async function initializeEnvironment() {
+function renderProfileList() {
+    profileListEl.innerHTML = '';
+    emptyHint.hidden = profiles.length > 0;
+
+    const sorted = [...profiles].sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
+    for (const p of sorted) {
+        const li = document.createElement('li');
+        li.className = 'profile-list-item';
+
+        const text = document.createElement('div');
+        text.className = 'profile-list-text';
+        text.innerHTML = '<div class="profile-list-category"></div><div class="profile-list-sub"></div>';
+        text.querySelector('.profile-list-category').textContent = p.businessName || categoryLabel(p.category);
+        text.querySelector('.profile-list-sub').textContent = [
+            p.businessName ? categoryLabel(p.category) : null,
+            p.zip,
+        ].filter(Boolean).join(' · ');
+
+        li.appendChild(text);
+        li.addEventListener('click', () => openEditForm(p));
+        profileListEl.appendChild(li);
+    }
+}
+
+async function loadProfiles() {
+    profiles = await core.invoke('load_profiles');
+    renderProfileList();
+}
+
+// ── Create / Edit Profile ────────────────────────────────────────────────────
+
+function populateCategorySelect() {
+    fieldCategory.innerHTML = '';
+    for (const c of categories) {
+        const opt = document.createElement('option');
+        opt.value = c.slug;
+        opt.textContent = c.label;
+        fieldCategory.appendChild(opt);
+    }
+}
+
+async function openCreateForm() {
+    editingProfileId = null;
+    createTitle.textContent = 'New Profile';
+    deleteProfileBtn.hidden = true;
+    fieldCategory.value = categories[0]?.slug || '';
+    fieldBusinessName.value = '';
+    fieldBio.value = '';
+    fieldZip.value = '';
+
     try {
-        if (invoke) {
-            const envFromRust = await invoke('get_env_config');
-            if (envFromRust && ['dev', 'test', 'local'].includes(envFromRust)) {
-                console.log(`🌍 Environment from Rust: ${envFromRust}`);
-                localStorage.setItem('nullary-env', envFromRust);
-                return envFromRust;
-            }
-        }
-    } catch (error) {
-        console.log('⚠️ Could not get environment from Rust, using localStorage/default');
+        const profile = await core.invoke('load_canonical_profile');
+        const nameField = (profile?.fields || []).find((f) => f.slug === 'name');
+        fromNote.textContent = nameField?.value
+            ? `From: ${nameField.value}`
+            : 'No shared profile name set yet — set one in Profile so people know who this is.';
+    } catch {
+        fromNote.textContent = '';
     }
-    return localStorage.getItem('nullary-env') || 'dev';
+
+    showView('create');
 }
 
-// Screen Management
-function showScreen(screenName) {
-    // Hide all screens
-    document.querySelectorAll('.screen').forEach(screen => {
-        screen.classList.remove('active');
-    });
-    
-    // Update navigation buttons
-    document.querySelectorAll('.nav-button').forEach(button => {
-        button.classList.remove('active');
-        if (button.dataset.screen === screenName) {
-            button.classList.add('active');
-        }
-    });
-    
-    // Show the requested screen
-    const screen = document.getElementById(`${screenName}-screen`);
-    if (screen) {
-        screen.classList.add('active');
-        appState.currentScreen = screenName;
-        
-        // Load screen-specific data
-        loadScreenData(screenName);
-    }
+function openEditForm(p) {
+    editingProfileId = p.id;
+    createTitle.textContent = 'Edit Profile';
+    deleteProfileBtn.hidden = false;
+    fieldCategory.value = p.category;
+    fieldBusinessName.value = p.businessName || '';
+    fieldBio.value = p.bio || '';
+    fieldZip.value = p.zip || '';
+    fromNote.textContent = p.fromName ? `From: ${p.fromName}` : '';
+    showView('create');
 }
 
-// Load data for specific screens
-async function loadScreenData(screenName) {
-    switch (screenName) {
-        case 'profile':
-            await loadMyProfile();
-            break;
-        case 'connected-apps':
-            displayConnectedApps();
-            break;
-    }
-}
+newProfileBtn.addEventListener('click', openCreateForm);
+cancelProfileBtn.addEventListener('click', () => showView('list'));
 
-// Profile Management
-async function loadMyProfile() {
-    try {
-        appState.loading = true;
-        updateUI();
-        
-        const profile = await invoke('get_profile');
-        appState.currentProfile = profile;
-        displayProfile(profile);
-    } catch (error) {
-        console.error('Error loading profile:', error);
-        showCreateProfileForm();
-    } finally {
-        appState.loading = false;
-        updateUI();
-    }
-}
-
-function displayProfile(profile) {
-    const container = document.getElementById('profileDisplay');
-    
-    if (!profile) {
-        showCreateProfileForm();
+profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const category = fieldCategory.value;
+    const zip = fieldZip.value.trim();
+    if (!category || !/^\d{5}$/.test(zip)) {
+        setStatus('Enter a valid 5-digit zip code.');
         return;
     }
-    
-    // Clear container and create post widget for profile
-    container.innerHTML = '';
-    
-    // Create a widget container for the profile post
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'post-widget-container';
-    container.appendChild(widgetContainer);
-    
-    // Create post widget instance
-    const profilePost = new PostWidget(widgetContainer, { debug: false });
-    
-    // Add profile name as the main title
-    profilePost.addElement('name', profile.name || 'Professional Profile');
-    
-    // Add profile image if available
-    if (profile.imageUrl || profile.imageFilename) {
-        profilePost.addElement('image', profile.imageUrl, { 
-            alt: `${profile.name}'s profile picture`,
-            layout: 'mixed'
+    const businessName = fieldBusinessName.value.trim() || undefined;
+    const bio = fieldBio.value.trim() || undefined;
+
+    saveProfileBtn.disabled = true;
+    setStatus('Saving & publishing…');
+    try {
+        const saved = await core.invoke('save_profile', {
+            id: editingProfileId || undefined,
+            category,
+            businessName,
+            bio,
+            zip,
         });
-    }
-    
-    // Add profile description combining idothis, bio, and details
-    let profileDescription = '';
-    if (profile.idothis) {
-        profileDescription += `💼 ${profile.idothis}\n\n`;
-    }
-    if (profile.bio) {
-        profileDescription += `${profile.bio}\n\n`;
-    }
-    
-    // Add contact details
-    let contactDetails = '';
-    if (profile.email) {
-        contactDetails += `📧 ${profile.email}\n`;
-    }
-    if (profile.website) {
-        contactDetails += `🌐 ${profile.website}\n`;
-    }
-    if (profile.location) {
-        contactDetails += `📍 ${profile.location}`;
-    }
-    
-    if (contactDetails) {
-        profileDescription += contactDetails;
-    }
-    
-    if (profileDescription) {
-        profilePost.addElement('description', profileDescription);
-    }
-    
-    // Add action buttons
-    const editButton = profilePost.addElement('button', 'Edit Profile');
-    
-    // Add a spacer and delete button
-    profilePost.addSpacer({ minHeight: '20px' });
-    const deleteButton = profilePost.addElement('button', 'Delete Profile');
-    
-    // Add event listeners to buttons after they're created
-    setTimeout(() => {
-        const buttons = widgetContainer.querySelectorAll('button');
-        if (buttons[0]) {
-            buttons[0].addEventListener('click', showEditProfileForm);
-            buttons[0].style.backgroundColor = '#667eea';
-        }
-        if (buttons[1]) {
-            buttons[1].addEventListener('click', deleteProfile);
-            buttons[1].style.backgroundColor = '#f44336';
-        }
-    }, 100);
-}
-
-function showCreateProfileForm() {
-    const container = document.getElementById('profileDisplay');
-    container.innerHTML = `
-        <div class="profile-card">
-            <h3>Create Your Professional Profile</h3>
-            <div class="widget-container" id="profileFormContainer"></div>
-        </div>
-    `;
-    
-    // Create form configuration for profile creation
-    const formConfig = {
-        "Name": { type: "text", required: true },
-        "Email": { type: "text", required: true },
-        "I do this": { type: "text", required: true },
-        "Bio": { type: "textarea", charLimit: 500, required: false },
-        "Website": { type: "text", required: false },
-        "Location": { type: "text", required: false },
-        "Profile Image": { type: "image", required: false }
-    };
-    
-    // Handle form submission
-    function handleProfileCreation(formData) {
-        console.log('🚀 Creating profile with form data:', formData);
-        
-        const profileData = {
-            name: formData["Name"] || '',
-            email: formData["Email"] || '',
-            idothis: formData["I do this"] || '',
-            bio: formData["Bio"] || '',
-            website: formData["Website"] || '',
-            location: formData["Location"] || ''
-        };
-        
-        // Get image data if provided
-        let imageData = null;
-        if (formData["Profile Image"] && formData["Profile Image"].dataUrl) {
-            imageData = formData["Profile Image"].dataUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-        }
-        
-        // Call the existing create profile function
-        createProfileFromData(profileData, imageData);
-    }
-    
-    // Create and append the form widget
-    const formWidget = window.getForm(formConfig, handleProfileCreation);
-    document.getElementById('profileFormContainer').appendChild(formWidget);
-}
-
-function showEditProfileForm() {
-    if (!appState.currentProfile) return;
-    
-    const profile = appState.currentProfile;
-    const container = document.getElementById('profileDisplay');
-    
-    container.innerHTML = `
-        <div class="profile-card">
-            <h3>Edit Your Profile</h3>
-            <div class="widget-container" id="profileEditFormContainer"></div>
-            <div style="margin-top: 20px; text-align: center;">
-                <button type="button" class="form-button secondary" onclick="loadMyProfile()">Cancel</button>
-            </div>
-        </div>
-    `;
-    
-    // Create form configuration for profile editing with current values
-    const formConfig = {
-        "Name": { type: "text", required: true },
-        "Email": { type: "text", required: true },
-        "I do this": { type: "text", required: true },
-        "Bio": { type: "textarea", charLimit: 500, required: false },
-        "Website": { type: "text", required: false },
-        "Location": { type: "text", required: false },
-        "Profile Image": { type: "image", required: false }
-    };
-    
-    // Handle form submission
-    function handleProfileUpdate(formData) {
-        console.log('🚀 Updating profile with form data:', formData);
-        
-        const profileData = {
-            name: formData["Name"] || '',
-            email: formData["Email"] || '',
-            idothis: formData["I do this"] || '',
-            bio: formData["Bio"] || '',
-            website: formData["Website"] || '',
-            location: formData["Location"] || ''
-        };
-        
-        // Get image data if provided
-        let imageData = null;
-        if (formData["Profile Image"] && formData["Profile Image"].dataUrl) {
-            imageData = formData["Profile Image"].dataUrl.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-        }
-        
-        // Call the existing update profile function
-        updateProfileFromData(profileData, imageData);
-    }
-    
-    // Create and append the form widget
-    const formWidget = window.getForm(formConfig, handleProfileUpdate);
-    document.getElementById('profileEditFormContainer').appendChild(formWidget);
-    
-    // Pre-populate the form with current profile data
-    setTimeout(() => {
-        // Fill in current values
-        const nameInput = document.getElementById('NameInput');
-        const emailInput = document.getElementById('EmailInput');
-        const idothisInput = document.getElementById('IdothisInput');
-        const bioTextarea = document.getElementById('BioTextarea');
-        const websiteInput = document.getElementById('WebsiteInput');
-        const locationInput = document.getElementById('LocationInput');
-        
-        if (nameInput) nameInput.value = profile.name || '';
-        if (emailInput) emailInput.value = profile.email || '';
-        if (idothisInput) idothisInput.value = profile.idothis || '';
-        if (bioTextarea) bioTextarea.value = profile.bio || '';
-        if (websiteInput) websiteInput.value = profile.website || '';
-        if (locationInput) locationInput.value = profile.location || '';
-        
-        // Trigger validation after pre-populating
-        if (window.validateFormAndUpdateSubmit && window.currentFormJSON) {
-            window.validateFormAndUpdateSubmit(window.currentFormJSON);
-        }
-    }, 300);
-}
-
-// Profile creation and management
-async function createProfile(event) {
-    event.preventDefault();
-    
-    const profileData = {
-        name: document.getElementById('profileName').value,
-        email: document.getElementById('profileEmail').value,
-        idothis: document.getElementById('profileIdothis').value,
-        bio: document.getElementById('profileBio').value,
-        website: document.getElementById('profileWebsite').value,
-        location: document.getElementById('profileLocation').value
-    };
-    
-    const imageFile = document.getElementById('profileImage').files[0];
-    let imageData = null;
-    
-    if (imageFile) {
-        imageData = await fileToBase64(imageFile);
-    }
-    
-    await createProfileFromData(profileData, imageData);
-}
-
-// Helper function for profile creation from widget data
-async function createProfileFromData(profileData, imageData) {
-    try {
-        appState.loading = true;
-        updateUI();
-        
-        const result = await invoke('create_profile', { profileData, imageData });
-        console.log('Profile created:', result);
-        
-        await loadMyProfile();
-    } catch (error) {
-        console.error('Error creating profile:', error);
-        alert('Error creating profile: ' + error);
+        const index = profiles.findIndex((p) => p.id === saved.id);
+        if (index === -1) profiles.push(saved); else profiles[index] = saved;
+        renderProfileList();
+        showView('list');
+        setStatus('Profile saved!');
+    } catch (err) {
+        setStatus(`Couldn't save: ${err}`);
     } finally {
-        appState.loading = false;
-        updateUI();
+        saveProfileBtn.disabled = false;
     }
-}
+});
 
-async function updateProfile(event) {
-    event.preventDefault();
-    
-    const profileData = {
-        name: document.getElementById('profileName').value,
-        email: document.getElementById('profileEmail').value,
-        idothis: document.getElementById('profileIdothis').value,
-        bio: document.getElementById('profileBio').value,
-        website: document.getElementById('profileWebsite').value,
-        location: document.getElementById('profileLocation').value
-    };
-    
-    const imageFile = document.getElementById('profileImage').files[0];
-    let imageData = null;
-    
-    if (imageFile) {
-        imageData = await fileToBase64(imageFile);
-    }
-    
-    await updateProfileFromData(profileData, imageData);
-}
-
-// Helper function for profile update from widget data
-async function updateProfileFromData(profileData, imageData) {
+deleteProfileBtn.addEventListener('click', async () => {
+    if (!editingProfileId) return;
+    deleteProfileBtn.disabled = true;
     try {
-        appState.loading = true;
-        updateUI();
-        
-        const result = await invoke('update_profile', { profileData, imageData });
-        console.log('Profile updated:', result);
-        
-        await loadMyProfile();
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        alert('Error updating profile: ' + error);
+        await core.invoke('delete_profile', { id: editingProfileId });
+        profiles = profiles.filter((p) => p.id !== editingProfileId);
+        renderProfileList();
+        showView('list');
+        setStatus('Profile deleted.');
+    } catch (err) {
+        setStatus(`Couldn't delete: ${err}`);
     } finally {
-        appState.loading = false;
-        updateUI();
+        deleteProfileBtn.disabled = false;
     }
-}
+});
 
-async function deleteProfile() {
-    if (!confirm('Are you sure you want to delete your profile? This cannot be undone.')) {
-        return;
-    }
-    
+// ── Discover: categories ─────────────────────────────────────────────────────
+
+const DISCOVER_FILTER_KEY = 'idothis.discoverFilter';
+
+function loadDiscoverFilter() {
     try {
-        appState.loading = true;
-        updateUI();
-        
-        await invoke('delete_profile');
-        console.log('Profile deleted');
-        
-        appState.currentProfile = null;
-        showCreateProfileForm();
-    } catch (error) {
-        console.error('Error deleting profile:', error);
-        alert('Error deleting profile: ' + error);
-    } finally {
-        appState.loading = false;
-        updateUI();
+        const stored = JSON.parse(localStorage.getItem(DISCOVER_FILTER_KEY) || '{}');
+        discoverZip.value = stored.zip || '';
+        discoverRadius.value = stored.radiusMiles || '25';
+    } catch {
+        // Ignore a corrupt/missing stored filter — the fields just stay blank.
     }
 }
 
-// Swipeable Profile Discovery
-async function loadProfilesForSwipe() {
+function saveDiscoverFilter() {
+    localStorage.setItem(DISCOVER_FILTER_KEY, JSON.stringify({
+        zip: discoverZip.value.trim(),
+        radiusMiles: discoverRadius.value,
+    }));
+}
+
+function renderCategoryList() {
+    categoryListEl.innerHTML = '';
+    for (const c of categories) {
+        const li = document.createElement('li');
+        li.className = 'category-list-item';
+        li.innerHTML = `<span></span><span class="arrow">→</span>`;
+        li.querySelector('span').textContent = c.label;
+        li.addEventListener('click', () => openCategory(c.slug));
+        categoryListEl.appendChild(li);
+    }
+}
+
+discoverNavBtn.addEventListener('click', () => {
+    if (categories.length === 0) return;
+    showView('categories');
+});
+
+viewLikedBtn.addEventListener('click', async () => {
+    await loadLiked();
+    showView('liked');
+});
+
+// ── Discover: swipe stack ────────────────────────────────────────────────────
+
+async function openCategory(category) {
+    currentCategory = category;
+    saveDiscoverFilter();
+    swipeTitle.textContent = categoryLabel(category);
+    setStatus('Finding profiles…');
     try {
-        appState.loading = true;
-        updateUI();
-        
-        // Get all profiles except our own
-        const profiles = await invoke('get_all_profiles');
-        appState.profiles = profiles.filter(profile => 
-            profile.uuid !== appState.currentProfile?.uuid
-        );
-        appState.currentProfileIndex = 0;
-        
-        displaySwipeableProfiles();
-    } catch (error) {
-        console.error('Error loading profiles:', error);
-        displayNoProfiles();
-    } finally {
-        appState.loading = false;
-        updateUI();
+        const zip = discoverZip.value.trim() || undefined;
+        const radiusMiles = zip ? Number(discoverRadius.value) : undefined;
+        discoverQueue = await core.invoke('discover_by_category', { category, zip, radiusMiles });
+        discoverIndex = 0;
+        renderSwipeStack();
+        showView('swipe');
+    } catch (err) {
+        setStatus(`Couldn't load profiles: ${err}`);
     }
 }
 
-function displaySwipeableProfiles() {
-    const container = document.getElementById('swipeContainer');
-    
-    if (!appState.profiles || appState.profiles.length === 0) {
-        displayNoProfiles();
-        return;
-    }
-    
-    const remainingProfiles = appState.profiles.slice(appState.currentProfileIndex);
-    
-    if (remainingProfiles.length === 0) {
-        displayNoMoreProfiles();
-        return;
-    }
-    
-    container.innerHTML = `
-        <div class="swipe-stats">
-            <div class="stat">
-                <span class="stat-number">${remainingProfiles.length}</span>
-                <span class="stat-label">Remaining</span>
-            </div>
-            <div class="stat">
-                <span class="stat-number">${appState.likedProfiles.length}</span>
-                <span class="stat-label">Liked</span>
-            </div>
-            <div class="stat">
-                <span class="stat-number">${appState.passedProfiles.length}</span>
-                <span class="stat-label">Passed</span>
-            </div>
-        </div>
-        
-        <div class="swipe-area">
-            <div class="swipe-instructions">
-                Swipe right to like, left to pass
-            </div>
-            <div class="swipe-stack" id="swipeStack">
-                ${generateSwipeCards(remainingProfiles.slice(0, 3))}
-            </div>
-            <div class="swipe-actions">
-                <button class="swipe-button pass" onclick="swipeProfile('pass')">👎 Pass</button>
-                <button class="swipe-button like" onclick="swipeProfile('like')">👍 Like</button>
-            </div>
-        </div>
-    `;
-    
-    // Add swipe listeners to the top card
-    const topCard = container.querySelector('.swipe-card:first-child');
-    if (topCard) {
-        addSwipeListeners(topCard);
-    }
+function currentSwipeEntries() {
+    return discoverQueue.slice(discoverIndex, discoverIndex + 3);
 }
 
-function generateSwipeCards(profiles) {
-    return profiles.map((profile, index) => `
-        <div class="swipe-card" data-profile-uuid="${profile.uuid}" style="z-index: ${10 - index}; transform: scale(${1 - index * 0.05}) translateY(${index * 10}px);">
-            <div class="card-content">
-                <div class="profile-header">
-                    <div class="profile-avatar">
-                        ${profile.imageFilename ? 
-                            `<img src="${profile.imageUrl || '#'}" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <div class="avatar-fallback" style="display:none;">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>` :
-                            `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
-                        }
-                    </div>
-                    <div class="profile-info">
-                        <h3 class="profile-name">${profile.name || 'No Name'}</h3>
-                        <p class="profile-idothis">${profile.idothis || 'Professional'}</p>
-                        ${profile.location ? `<p class="profile-location">📍 ${profile.location}</p>` : ''}
-                    </div>
-                </div>
-                
-                ${profile.bio ? `<div class="profile-bio">${profile.bio}</div>` : ''}
-                ${profile.website ? `<div class="profile-website"><a href="${profile.website}" target="_blank">🌐 Website</a></div>` : ''}
-                
-                <div class="swipe-indicator left">PASS</div>
-                <div class="swipe-indicator right">LIKE</div>
-            </div>
-        </div>
-    `).join('');
+function renderSwipeStack() {
+    swipeStackEl.innerHTML = '';
+    const remaining = discoverQueue.length - discoverIndex;
+    swipeStats.textContent = remaining > 0 ? `${remaining} remaining` : '';
+    swipeEmptyHint.hidden = remaining > 0;
+    passBtn.disabled = remaining === 0;
+    likeBtn.disabled = remaining === 0;
+
+    const visible = currentSwipeEntries();
+    visible.forEach((entry, i) => {
+        const card = document.createElement('div');
+        card.className = 'swipe-card';
+        card.style.zIndex = String(10 - i);
+        card.style.transform = `scale(${1 - i * 0.04}) translateY(${i * 10}px)`;
+        card.style.opacity = i === 0 ? '1' : String(1 - i * 0.3);
+        card.innerHTML = `
+            <div class="swipe-indicator like">LIKE</div>
+            <div class="swipe-indicator pass">PASS</div>
+            <div class="swipe-card-category"></div>
+            <div class="swipe-card-name"></div>
+            <div class="swipe-card-zip"></div>
+            <div class="swipe-card-bio"></div>
+        `;
+        card.querySelector('.swipe-card-category').textContent = categoryLabel(entry.category);
+        card.querySelector('.swipe-card-name').textContent = entry.businessName || entry.fromName || 'Someone';
+        card.querySelector('.swipe-card-zip').textContent = entry.zip ? `📍 ${entry.zip}` : '';
+        card.querySelector('.swipe-card-bio').textContent = entry.bio || '';
+
+        if (i === 0) addSwipeListeners(card, entry);
+        swipeStackEl.appendChild(card);
+    });
 }
 
-// Swipe functionality
-function addSwipeListeners(card) {
+function addSwipeListeners(card, entry) {
     let startX = 0;
-    let startY = 0;
     let currentX = 0;
-    let currentY = 0;
-    let isDragging = false;
-    
-    function handleStart(e) {
-        isDragging = true;
-        const point = e.touches ? e.touches[0] : e;
-        startX = point.clientX;
-        startY = point.clientY;
-        card.style.transition = 'none';
+
+    function onMove(clientX) {
+        currentX = clientX - startX;
+        card.style.transform = `translateX(${currentX}px) rotate(${currentX * 0.05}deg)`;
+        const likeEl = card.querySelector('.swipe-indicator.like');
+        const passEl = card.querySelector('.swipe-indicator.pass');
+        likeEl.style.opacity = currentX > 30 ? String(Math.min(1, (currentX - 30) / 100)) : '0';
+        passEl.style.opacity = currentX < -30 ? String(Math.min(1, (-currentX - 30) / 100)) : '0';
     }
-    
-    function handleMove(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-        
-        const point = e.touches ? e.touches[0] : e;
-        currentX = point.clientX - startX;
-        currentY = point.clientY - startY;
-        
-        // Apply transform
-        const rotation = currentX * 0.1;
-        card.style.transform = `translateX(${currentX}px) translateY(${currentY}px) rotate(${rotation}deg)`;
-        
-        // Show indicators
-        const leftIndicator = card.querySelector('.swipe-indicator.left');
-        const rightIndicator = card.querySelector('.swipe-indicator.right');
-        
-        if (currentX < -50) {
-            leftIndicator.style.opacity = Math.min(1, Math.abs(currentX) / 100);
-            rightIndicator.style.opacity = 0;
-        } else if (currentX > 50) {
-            rightIndicator.style.opacity = Math.min(1, currentX / 100);
-            leftIndicator.style.opacity = 0;
+    function onMouseMove(e) { onMove(e.clientX); }
+    function onTouchMove(e) { onMove(e.touches[0].clientX); }
+
+    function endDrag() {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', onTouchMove);
+        document.removeEventListener('touchend', endDrag);
+
+        if (Math.abs(currentX) > 100) {
+            commitSwipe(currentX > 0 ? 'like' : 'pass', card, entry);
         } else {
-            leftIndicator.style.opacity = 0;
-            rightIndicator.style.opacity = 0;
+            card.style.transform = '';
+            card.querySelector('.swipe-indicator.like').style.opacity = '0';
+            card.querySelector('.swipe-indicator.pass').style.opacity = '0';
         }
     }
-    
-    function handleEnd() {
-        if (!isDragging) return;
-        isDragging = false;
-        
-        card.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-        
-        // Determine swipe direction
-        if (Math.abs(currentX) > appState.swipeThreshold) {
-            const direction = currentX > 0 ? 'like' : 'pass';
-            swipeCard(card, direction);
-        } else {
-            // Snap back
-            card.style.transform = 'translateX(0) translateY(0) rotate(0deg)';
-            card.querySelectorAll('.swipe-indicator').forEach(indicator => {
-                indicator.style.opacity = 0;
-            });
-        }
-        
+
+    function startDrag(clientX) {
+        startX = clientX;
         currentX = 0;
-        currentY = 0;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', endDrag);
     }
-    
-    // Mouse events
-    card.addEventListener('mousedown', handleStart);
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-    
-    // Touch events
-    card.addEventListener('touchstart', handleStart);
-    card.addEventListener('touchmove', handleMove);
-    card.addEventListener('touchend', handleEnd);
+
+    card.addEventListener('mousedown', (e) => startDrag(e.clientX));
+    card.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), { passive: true });
 }
 
-function swipeProfile(direction) {
-    const topCard = document.querySelector('.swipe-card:first-child');
-    if (topCard) {
-        swipeCard(topCard, direction);
-    }
-}
+async function commitSwipe(direction, card, entry) {
+    card.style.transform = `translateX(${direction === 'like' ? '120vw' : '-120vw'}) rotate(${direction === 'like' ? 30 : -30}deg)`;
+    card.style.opacity = '0';
 
-function swipeCard(card, direction) {
-    const profileUuid = card.dataset.profileUuid;
-    const profile = appState.profiles.find(p => p.uuid === profileUuid);
-    
-    if (profile) {
-        if (direction === 'like') {
-            appState.likedProfiles.push(profile);
-        } else {
-            appState.passedProfiles.push(profile);
+    if (direction === 'like') {
+        try {
+            await core.invoke('like_profile', { entry });
+        } catch {
+            // Non-fatal — the swipe still advances even if persisting the like fails.
         }
     }
-    
-    // Animate card out
-    const translateX = direction === 'like' ? '100vw' : '-100vw';
-    card.style.transform = `translateX(${translateX}) rotate(${direction === 'like' ? '30' : '-30'}deg)`;
-    card.style.opacity = '0';
-    
-    // Move to next profile
-    appState.currentProfileIndex++;
-    
-    setTimeout(() => {
-        displaySwipeableProfiles();
-    }, 300);
+
+    discoverIndex++;
+    setTimeout(renderSwipeStack, 300);
 }
 
-// Display functions for empty states
-function displayNoProfiles() {
-    const container = document.getElementById('swipeContainer');
-    container.innerHTML = `
-        <div class="empty-state">
-            <h3>No Profiles Found</h3>
-            <p>There are no other profiles to discover yet.</p>
-            <button class="form-button" onclick="loadProfilesForSwipe()">Refresh</button>
-        </div>
-    `;
-}
+passBtn.addEventListener('click', () => {
+    const card = swipeStackEl.querySelector('.swipe-card');
+    const entry = currentSwipeEntries()[0];
+    if (card && entry) commitSwipe('pass', card, entry);
+});
 
-function displayNoMoreProfiles() {
-    const container = document.getElementById('swipeContainer');
-    container.innerHTML = `
-        <div class="empty-state">
-            <h3>All Done! 🎉</h3>
-            <p>You've seen all available profiles.</p>
-            <div class="swipe-stats">
-                <div class="stat">
-                    <span class="stat-number">${appState.likedProfiles.length}</span>
-                    <span class="stat-label">Liked</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-number">${appState.passedProfiles.length}</span>
-                    <span class="stat-label">Passed</span>
-                </div>
-            </div>
-            <button class="form-button" onclick="loadProfilesForSwipe()">Start Over</button>
-        </div>
-    `;
-}
+likeBtn.addEventListener('click', () => {
+    const card = swipeStackEl.querySelector('.swipe-card');
+    const entry = currentSwipeEntries()[0];
+    if (card && entry) commitSwipe('like', card, entry);
+});
 
-// Liked profiles display
-function displayLikedProfiles() {
-    const container = document.getElementById('likedProfilesContainer');
-    
-    if (appState.likedProfiles.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>No Liked Profiles Yet</h3>
-                <p>Profiles you like will appear here.</p>
-            </div>
-        `;
-        return;
+swipeBackBtn.addEventListener('click', () => showView('categories'));
+
+// ── Liked ─────────────────────────────────────────────────────────────────────
+
+function renderLikedList() {
+    likedListEl.innerHTML = '';
+    likedEmptyHint.hidden = likedProfiles.length > 0;
+
+    for (const entry of likedProfiles) {
+        const li = document.createElement('li');
+        li.className = 'profile-list-item';
+
+        const text = document.createElement('div');
+        text.className = 'profile-list-text';
+        text.innerHTML = '<div class="profile-list-category"></div><div class="profile-list-sub"></div>';
+        text.querySelector('.profile-list-category').textContent = entry.businessName || entry.fromName || categoryLabel(entry.category);
+        text.querySelector('.profile-list-sub').textContent = [categoryLabel(entry.category), entry.zip].filter(Boolean).join(' · ');
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'profile-list-remove';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            try {
+                await core.invoke('unlike_profile', { profileId: entry.profileId });
+                likedProfiles = likedProfiles.filter((l) => l.profileId !== entry.profileId);
+                renderLikedList();
+            } catch (err) {
+                setStatus(`Couldn't remove: ${err}`);
+            }
+        });
+
+        li.append(text, removeBtn);
+        likedListEl.appendChild(li);
     }
-    
-    container.innerHTML = `
-        <div class="liked-profiles-grid">
-            ${appState.likedProfiles.map(profile => `
-                <div class="profile-card liked-profile">
-                    <div class="profile-avatar">
-                        ${profile.imageFilename ? 
-                            `<img src="${profile.imageUrl || '#'}" alt="Profile">` :
-                            `<div class="avatar-fallback">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`
-                        }
-                    </div>
-                    <h4 class="profile-name">${profile.name || 'No Name'}</h4>
-                    <p class="profile-idothis">${profile.idothis || 'Professional'}</p>
-                    ${profile.location ? `<p class="profile-location">📍 ${profile.location}</p>` : ''}
-                    ${profile.website ? `<a href="${profile.website}" target="_blank" class="profile-website">🌐 Website</a>` : ''}
-                </div>
-            `).join('')}
-        </div>
-    `;
 }
 
-// Connected Apps display
-function displayConnectedApps() {
-    const container = document.getElementById('connectedAppsDisplay');
-    
-    container.innerHTML = `
-        <div class="profile-card">
-            <h2 style="margin-bottom: 20px; color: #333;">🔗 Connected Apps</h2>
-            <div style="text-align: center; color: #666; padding: 40px 20px;">
-                <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.5;">🚧</div>
-                <h3 style="color: #667eea; margin-bottom: 15px;">Coming Soon</h3>
-                <p style="line-height: 1.6; margin-bottom: 20px;">
-                    This screen will show all the Planet Nine apps you're connected to via Julia coordinating keys. 
-                    You'll be able to link your IDothis profile to apps like Ninefy for seamless cross-platform functionality.
-                </p>
-                <div style="background: rgba(103, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-top: 20px;">
-                    <strong style="color: #667eea;">Future Features:</strong><br>
-                    • Link to Ninefy for ebook publishing<br>
-                    • Connect with other Planet Nine services<br>
-                    • Manage cross-app permissions<br>
-                    • Coordinate keys with Julia service
-                </div>
-            </div>
-        </div>
-    `;
+async function loadLiked() {
+    likedProfiles = await core.invoke('load_liked_profiles');
+    renderLikedList();
 }
 
-// Utility functions
-async function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = error => reject(error);
+likedBackBtn.addEventListener('click', () => showView('list'));
+
+// ── Canonical profile ────────────────────────────────────────────────────────
+//
+// A separate, App-Group-shared record — independent of `profiles` above.
+// Mirrors slugify() in src-tauri/src/lib.rs.
+
+let preProfileView = 'list';
+let pendingProfilePhoto = null;
+let pendingProfileFields = [];
+let editingProfileFieldIndex = null;
+
+function getInitials(name) {
+    if (!name) return '?';
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => word[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+}
+
+function setAvatarContent(el, photo, name) {
+    if (photo) {
+        el.style.backgroundImage = `url(data:image/jpeg;base64,${photo})`;
+        el.textContent = '';
+    } else {
+        el.style.backgroundImage = '';
+        el.textContent = getInitials(name);
+    }
+}
+
+async function resizeImageToJpegBase64(bytes) {
+    const blob = new Blob([bytes]);
+    const bitmap = await createImageBitmap(blob);
+
+    const scale = Math.min(1, PHOTO_SIZE / Math.max(bitmap.width, bitmap.height));
+    const width = Math.round(bitmap.width * scale);
+    const height = Math.round(bitmap.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0, width, height);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', PHOTO_QUALITY);
+    return dataUrl.split(',')[1];
+}
+
+function slugify(s) {
+    return s
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+}
+
+function renderProfileFields() {
+    profileFieldsEl.innerHTML = '';
+
+    pendingProfileFields.forEach((entry, index) => {
+        const li = document.createElement('li');
+        li.className = 'link-entry';
+
+        if (index === editingProfileFieldIndex) {
+            const fields = document.createElement('div');
+            fields.className = 'link-entry-edit-fields';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Field';
+            nameInput.maxLength = 40;
+            nameInput.value = entry.name;
+
+            const valueInput = document.createElement('input');
+            valueInput.type = 'text';
+            valueInput.placeholder = 'Value';
+            valueInput.value = entry.value;
+
+            const commit = () => {
+                entry.name = nameInput.value.trim();
+                entry.value = valueInput.value.trim();
+                entry.slug = slugify(entry.name);
+                editingProfileFieldIndex = null;
+                renderProfileFields();
+            };
+            const onEnter = (e) => { if (e.key === 'Enter') commit(); };
+            nameInput.addEventListener('keydown', onEnter);
+            valueInput.addEventListener('keydown', onEnter);
+
+            fields.append(nameInput, valueInput);
+            li.appendChild(fields);
+
+            const doneBtn = document.createElement('button');
+            doneBtn.type = 'button';
+            doneBtn.textContent = '✓';
+            doneBtn.addEventListener('click', commit);
+
+            const actions = document.createElement('div');
+            actions.className = 'link-entry-actions';
+            actions.appendChild(doneBtn);
+            li.appendChild(actions);
+
+            profileFieldsEl.appendChild(li);
+            nameInput.focus();
+            return;
+        }
+
+        const text = document.createElement('div');
+        text.className = 'link-entry-text';
+        text.innerHTML = '<div class="link-entry-label"></div><div class="link-entry-url"></div>';
+        text.querySelector('.link-entry-label').textContent = entry.name || entry.slug;
+        text.querySelector('.link-entry-url').textContent = entry.value;
+        text.addEventListener('click', () => {
+            editingProfileFieldIndex = index;
+            renderProfileFields();
+        });
+        li.appendChild(text);
+
+        const actions = document.createElement('div');
+        actions.className = 'link-entry-actions';
+
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.textContent = '↑';
+        upBtn.disabled = index === 0;
+        upBtn.addEventListener('click', () => {
+            [pendingProfileFields[index - 1], pendingProfileFields[index]] = [pendingProfileFields[index], pendingProfileFields[index - 1]];
+            renderProfileFields();
+        });
+
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.textContent = '↓';
+        downBtn.disabled = index === pendingProfileFields.length - 1;
+        downBtn.addEventListener('click', () => {
+            [pendingProfileFields[index], pendingProfileFields[index + 1]] = [pendingProfileFields[index + 1], pendingProfileFields[index]];
+            renderProfileFields();
+        });
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+            pendingProfileFields.splice(index, 1);
+            if (editingProfileFieldIndex === index) editingProfileFieldIndex = null;
+            renderProfileFields();
+        });
+
+        actions.append(upBtn, downBtn, removeBtn);
+        li.appendChild(actions);
+        profileFieldsEl.appendChild(li);
     });
+
+    const atLimit = pendingProfileFields.length >= MAX_PROFILE_FIELDS;
+    profileAddFieldBtn.disabled = atLimit;
+    profileFieldLimitHint.hidden = !atLimit;
 }
 
-function previewImage(input) {
-    const preview = document.getElementById('imagePreview');
-    preview.innerHTML = '';
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            preview.innerHTML = `
-                <div class="image-preview-container">
-                    <img src="${e.target.result}" alt="Preview" class="image-preview-img">
-                    <p class="image-preview-text">Image selected</p>
-                </div>
-            `;
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
+profileAddFieldBtn.addEventListener('click', () => {
+    const name = profileNewFieldName.value.trim();
+    const value = profileNewFieldValue.value.trim();
+    if (!name || !value || pendingProfileFields.length >= MAX_PROFILE_FIELDS) return;
 
-// UI Update
-function updateUI() {
-    // Update loading states
-    const loadingElements = document.querySelectorAll('.loading-posts');
-    loadingElements.forEach(el => {
-        el.style.display = appState.loading ? 'flex' : 'none';
-    });
-    
-    // Update main loading
-    const mainLoading = document.querySelector('.loading');
-    if (mainLoading) {
-        mainLoading.style.display = appState.loading ? 'flex' : 'none';
-    }
-}
+    pendingProfileFields.push({ slug: slugify(name), name, value });
+    profileNewFieldName.value = '';
+    profileNewFieldValue.value = '';
+    renderProfileFields();
+});
 
-// App Initialization
-async function initializeApp() {
-    console.log('🚀 Initializing IDothis...');
-    
-    // Initialize environment
-    await initializeEnvironment();
-    
+profileChoosePhotoBtn.addEventListener('click', async () => {
     try {
-        // Get sessionless info
-        const sessionlessInfo = await invoke('get_sessionless_info');
-        appState.sessionless = sessionlessInfo;
-        console.log('🔑 Sessionless initialized:', sessionlessInfo.uuid);
-        
-        // Create app structure
-        createAppStructure();
-        
-        // Show initial screen
-        showScreen('profile');
-        
-        console.log('✅ IDothis initialized successfully');
-    } catch (error) {
-        console.error('❌ Failed to initialize IDothis:', error);
-        
-        // Show error state
-        document.getElementById('app').innerHTML = `
-            <div class="loading">
-                <div style="text-align: center; color: white;">
-                    <h2>Failed to Initialize</h2>
-                    <p>Error: ${error}</p>
-                    <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: white; color: #667eea; border: none; border-radius: 5px; cursor: pointer;">
-                        Retry
-                    </button>
-                </div>
-            </div>
-        `;
+        const path = await dialog.open({
+            multiple: false,
+            filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'heic'] }],
+        });
+        if (!path) return;
+
+        const bytes = await fs.readFile(path);
+        pendingProfilePhoto = await resizeImageToJpegBase64(bytes);
+        setAvatarContent(profilePhotoPreview, pendingProfilePhoto, '');
+    } catch (err) {
+        setStatus(`Couldn't set photo: ${err}`);
     }
+});
+
+function fillProfileForm(profile) {
+    pendingProfilePhoto = profile?.photo || null;
+    pendingProfileFields = (profile?.fields || []).map((f) => ({ ...f }));
+    editingProfileFieldIndex = null;
+    setAvatarContent(profilePhotoPreview, profile?.photo, '');
+    renderProfileFields();
 }
 
-// App Structure Creation
-function createAppStructure() {
-    document.getElementById('app').innerHTML = `
-        <!-- Navigation -->
-        <nav class="nav-bar">
-            <div class="nav-title">
-                💼 IDothis
-            </div>
-            <div class="nav-buttons">
-                <button class="nav-button active" data-screen="profile" onclick="showScreen('profile')">Profile</button>
-                <button class="nav-button" data-screen="connected-apps" onclick="showScreen('connected-apps')">Connected Apps</button>
-            </div>
-        </nav>
-
-        <!-- Profile Screen -->
-        <div id="profile-screen" class="screen active">
-            <div class="content">
-                <div id="profileDisplay"></div>
-            </div>
-        </div>
-
-        <!-- Connected Apps Screen -->
-        <div id="connected-apps-screen" class="screen">
-            <div class="content">
-                <div id="connectedAppsDisplay"></div>
-            </div>
-        </div>
-    `;
+function canonicalProfileFromForm() {
+    return {
+        photo: pendingProfilePhoto || undefined,
+        fields: pendingProfileFields,
+    };
 }
 
-// Start the app when DOM is loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
+function currentViewName() {
+    if (!createView.hidden) return 'create';
+    if (!categoriesView.hidden) return 'categories';
+    if (!swipeView.hidden) return 'swipe';
+    if (!likedView.hidden) return 'liked';
+    return 'list';
 }
+
+profileNavBtn.addEventListener('click', async () => {
+    preProfileView = currentViewName();
+    try {
+        const profile = await core.invoke('load_canonical_profile');
+        fillProfileForm(profile);
+        showView('profile');
+    } catch (err) {
+        setStatus(`Couldn't load profile: ${err}`);
+    }
+});
+
+profileForm2.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+        await core.invoke('save_canonical_profile', { profile: canonicalProfileFromForm() });
+        setStatus('Profile saved — shared across your apps.');
+        showView(preProfileView);
+    } catch (err) {
+        setStatus(`Couldn't save: ${err}`);
+    }
+});
+
+profileCloseBtn.addEventListener('click', () => showView(preProfileView));
+
+// ── Startup ───────────────────────────────────────────────────────────────────
+
+async function init() {
+    try {
+        categories = await core.invoke('get_categories');
+    } catch {
+        categories = [];
+    }
+    populateCategorySelect();
+    renderCategoryList();
+    loadDiscoverFilter();
+    showView('list');
+    await loadProfiles();
+}
+
+init();

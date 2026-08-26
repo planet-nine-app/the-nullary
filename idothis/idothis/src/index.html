@@ -2,1142 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IDothis - Professional Showcase</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            overflow: hidden;
-        }
-
-        #app {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: white;
-            font-size: 18px;
-        }
-
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-
-        /* Screen containers */
-        .screen {
-            display: none;
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        .screen.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Navigation */
-        .nav-bar {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 15px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-title {
-            color: white;
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 15px;
-        }
-
-        .nav-button {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
-        }
-
-        .nav-button.active {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        /* Content area */
-        .content {
-            flex: 1;
-            padding: 30px;
-            overflow-y: auto;
-        }
-
-        /* Social feed styles */
-        .social-feed {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .social-post {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .social-post:hover {
-            transform: translateY(-2px);
-        }
-
-        .post-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .author-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 18px;
-            margin-right: 15px;
-        }
-
-        .author-info {
-            flex: 1;
-        }
-
-        .author-name {
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 2px;
-        }
-
-        .post-time {
-            color: #666;
-            font-size: 12px;
-        }
-
-        .post-type-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .post-type-badge.text {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4CAF50;
-        }
-
-        .post-type-badge.photo {
-            background: rgba(233, 30, 99, 0.2);
-            color: #E91E63;
-        }
-
-        .post-type-badge.video {
-            background: rgba(255, 87, 34, 0.2);
-            color: #FF5722;
-        }
-
-        .post-content {
-            margin-bottom: 15px;
-        }
-
-        .post-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #333;
-        }
-
-        .post-description {
-            line-height: 1.6;
-            color: #555;
-            margin-bottom: 10px;
-        }
-
-        .post-images {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .post-image {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px;
-        }
-
-        .post-video {
-            width: 100%;
-            height: 300px;
-            background: #000;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            margin-bottom: 10px;
-        }
-
-        .post-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        .tag {
-            background: rgba(103, 126, 234, 0.1);
-            color: #667eea;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .post-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 20px;
-        }
-
-        .action-button {
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 14px;
-            transition: color 0.3s ease;
-        }
-
-        .action-button:hover {
-            color: #667eea;
-        }
-
-        /* Profile management styles */
-        .profile-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 40px;
-            max-width: 90%;
-            width: 100%;
-            min-height: calc(100vh - 200px);
-            margin: 0 auto;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box;
-        }
-
-        .profile-avatar-large {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 36px;
-            margin: 0 auto 20px;
-        }
-
-        .profile-name {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .profile-bio {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        .profile-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-            text-align: left;
-        }
-
-        .profile-detail {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #555;
-        }
-
-        .profile-skills {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .skill-tag {
-            background: rgba(103, 126, 234, 0.1);
-            color: #667eea;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        /* Base management styles */
-        .base-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .base-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .base-name {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .base-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .base-status.joined {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4CAF50;
-        }
-
-        .base-status.not-joined {
-            background: rgba(255, 152, 0, 0.2);
-            color: #FF9800;
-        }
-
-        .base-description {
-            color: #666;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-
-        .base-stats {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 15px;
-            font-size: 14px;
-            color: #555;
-        }
-
-        .base-stat {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .base-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        /* Form styles */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid rgba(103, 126, 234, 0.2);
-            border-radius: 8px;
-            background: white;
-            color: #333;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .form-textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .form-button {
-            background: #667eea;
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .form-button:hover {
-            background: #5a6fd8;
-            transform: translateY(-1px);
-        }
-
-        .form-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .form-button.secondary {
-            background: rgba(103, 126, 234, 0.1);
-            color: #667eea;
-        }
-
-        .form-button.danger {
-            background: #f44336;
-        }
-
-        .form-button.danger:hover {
-            background: #d32f2f;
-        }
-
-        /* Create post modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            max-width: 600px;
-            width: 95%;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-
-        /* Widget container styles */
-        .widget-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 20px 0;
-            min-height: 400px;
-        }
-
-        .widget-container svg {
-            width: 100%;
-            height: auto;
-            min-height: 400px;
-        }
-
-        /* Post widget styles for feed display */
-        .post-widget-container {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        /* Post widget CSS integration */
-        .post-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            min-height: 200px;
-        }
-
-        .post-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .post-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .post-top-section {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
-
-        .post-top-section::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .post-top-section::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        .post-top-section::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 3px;
-        }
-
-        .post-image, .post-image-full {
-            flex: 0 0 auto;
-            width: 200px;
-            height: 150px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #f5f5f5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .post-image-full {
-            width: 100%;
-        }
-
-        .post-image img, .post-image-full img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .post-description-container {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .post-description {
-            color: #555;
-            line-height: 1.6;
-            max-height: 150px;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-
-        .post-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .post-datetime-container {
-            margin-bottom: 15px;
-        }
-
-        .post-datetime-scroll {
-            display: flex;
-            gap: 15px;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
-
-        .post-datetime {
-            flex: 0 0 auto;
-            background: rgba(103, 126, 234, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-            min-width: 140px;
-        }
-
-        .post-datetime-day-date {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-        }
-
-        .post-datetime-time {
-            color: #667eea;
-            font-size: 14px;
-        }
-
-        .post-address-container {
-            margin-bottom: 15px;
-        }
-
-        .post-address-text {
-            background: rgba(255, 152, 0, 0.1);
-            border-radius: 8px;
-            padding: 12px;
-        }
-
-        .post-address-line1 {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-        }
-
-        .post-address-line2 {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .post-buttons-container {
-            margin-top: auto;
-            padding-top: 15px;
-        }
-
-        .post-button {
-            background: #667eea;
-            border: none;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .post-button:hover {
-            background: #5a6fd8;
-            transform: translateY(-1px);
-        }
-
-        /* Spacer styles for post widgets */
-        .post-spacer {
-            flex: 1;
-            min-height: var(--spacer-min-height, 0px);
-            max-height: var(--spacer-max-height, none);
-            background: var(--spacer-bg, transparent);
-            visibility: var(--spacer-visibility, visible);
-        }
-
-        .post-spacer.debug {
-            background: rgba(255, 0, 0, 0.1) !important;
-            border: 1px dashed red;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .close-button {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .post-type-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .post-type-button {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid rgba(103, 126, 234, 0.2);
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .post-type-button.active {
-            border-color: #667eea;
-            background: rgba(103, 126, 234, 0.1);
-        }
-
-        /* Floating action button */
-        .fab {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #667eea;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(103, 126, 234, 0.4);
-            transition: all 0.3s ease;
-            z-index: 100;
-        }
-
-        .fab:hover {
-            transform: scale(1.1);
-        }
-
-        /* Empty states */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .empty-state h3 {
-            color: white;
-            margin-bottom: 10px;
-            font-size: 20px;
-        }
-
-        .empty-state p {
-            margin-bottom: 20px;
-        }
-
-        /* Loading states */
-        .loading-posts {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        /* IDothis - Professional Profile Display */
-        .profile-idothis {
-            color: #667eea;
-            font-weight: 600;
-            font-size: 16px;
-            margin-bottom: 10px;
-            padding: 8px 12px;
-            background: rgba(103, 126, 234, 0.1);
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-
-        /* Swipeable Interface Styles */
-        .swipe-stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .stat {
-            text-align: center;
-            color: white;
-        }
-
-        .stat-number {
-            display: block;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            display: block;
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        .swipe-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: calc(100vh - 200px);
-        }
-
-        .swipe-instructions {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
-        .swipe-stack {
-            position: relative;
-            width: 350px;
-            height: 500px;
-            margin-bottom: 30px;
-        }
-
-        .swipe-card {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            cursor: grab;
-            user-select: none;
-            overflow: hidden;
-        }
-
-        .swipe-card:active {
-            cursor: grabbing;
-        }
-
-        .card-content {
-            padding: 30px;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: flex-start;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .profile-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            overflow: hidden;
-        }
-
-        .profile-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .avatar-fallback {
-            color: white;
-            font-weight: bold;
-            font-size: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-        }
-
-        .profile-info {
-            flex: 1;
-        }
-
-        .profile-name {
-            font-size: 24px;
-            font-weight: bold;
-            margin: 0 0 8px 0;
-            color: #333;
-        }
-
-        .profile-idothis {
-            font-size: 16px;
-            color: #667eea;
-            font-weight: 600;
-            margin: 0 0 8px 0;
-        }
-
-        .profile-location {
-            font-size: 14px;
-            color: #666;
-            margin: 0;
-        }
-
-        .profile-bio {
-            color: #555;
-            line-height: 1.6;
-            margin-bottom: 15px;
-            flex: 1;
-        }
-
-        .profile-website {
-            margin-bottom: 15px;
-        }
-
-        .profile-website a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .swipe-indicator {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 24px;
-            font-weight: bold;
-            padding: 15px 25px;
-            border-radius: 15px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
-
-        .swipe-indicator.left {
-            left: 20px;
-            background: rgba(255, 87, 87, 0.9);
-            color: white;
-        }
-
-        .swipe-indicator.right {
-            right: 20px;
-            background: rgba(76, 175, 80, 0.9);
-            color: white;
-        }
-
-        .swipe-actions {
-            display: flex;
-            gap: 40px;
-        }
-
-        .swipe-button {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .swipe-button.pass {
-            background: #ff5757;
-            color: white;
-        }
-
-        .swipe-button.like {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .swipe-button:hover {
-            transform: scale(1.1);
-        }
-
-        /* Liked Profiles Grid */
-        .liked-profiles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            padding: 20px 0;
-        }
-
-        .liked-profile {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: transform 0.3s ease;
-        }
-
-        .liked-profile:hover {
-            transform: translateY(-5px);
-        }
-
-        .liked-profile .profile-avatar {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 15px;
-        }
-
-        .liked-profile .profile-name {
-            font-size: 18px;
-            margin-bottom: 8px;
-        }
-
-        .liked-profile .profile-idothis {
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-
-        .liked-profile .profile-location {
-            font-size: 12px;
-            margin-bottom: 10px;
-        }
-
-        .liked-profile .profile-website {
-            font-size: 12px;
-        }
-
-        /* Image Preview */
-        .image-preview {
-            margin-top: 10px;
-        }
-
-        .image-preview-container {
-            text-align: center;
-        }
-
-        .image-preview-img {
-            max-width: 150px;
-            max-height: 150px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .image-preview-text {
-            color: #666;
-            font-size: 12px;
-        }
-
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .content {
-                padding: 10px;
-            }
-            
-            .swipe-stack {
-                width: 300px;
-                height: 450px;
-            }
-            
-            .nav-title {
-                font-size: 20px;
-            }
-            
-            .liked-profiles-grid {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: 15px;
-            }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>IDothis</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <div class="loading">Loading IDothis</div>
-    </div>
+    <main id="app">
+        <button type="button" class="profile-nav-btn" id="profile-nav-btn">Profile</button>
+        <button type="button" class="discover-nav-btn" id="discover-nav-btn">Discover</button>
 
-    <!-- Environment Configuration (loaded first) -->
-    <script src="environment-config.js"></script>
-    <script>
-        // Initialize environment controls for IDothis
-        if (window.PlanetNineEnvironment) {
-            window.PlanetNineEnvironment.initializeEnvironmentControls('idothis');
-        }
-        
-        // Load spell systems
-        async function loadSpellSystems() {
-            const fountUrl = getServiceUrl('fount');
-            const covenantUrl = getServiceUrl('covenant');
-            
-            // Load castSpell.js from fount
-            const castSpellScript = document.createElement('script');
-            castSpellScript.src = `${fountUrl.replace(/\/$/, '')}/castSpell.js`;
-            castSpellScript.onerror = () => console.log('castSpell.js not available, continuing without spells');
-            document.head.appendChild(castSpellScript);
-            
-            // Load signCovenant.js from covenant
-            const signCovenantScript = document.createElement('script');
-            signCovenantScript.src = `${covenantUrl.replace(/\/$/, '')}/signCovenant.js`;
-            signCovenantScript.onerror = () => console.log('signCovenant.js not available, continuing without covenant signing');
-            document.head.appendChild(signCovenantScript);
-        }
-        
-        // Load spell systems after environment is configured
-        setTimeout(loadSpellSystems, 100);
-    </script>
-    
-    <!-- Widget Scripts -->
-    <script src="form-widget.js"></script>
-    <script src="post-widget.js"></script>
-    
+        <!-- My Profiles view -->
+        <section id="list-view" class="view" hidden>
+            <header class="view-header">
+                <h1>My Profiles</h1>
+                <p class="subtitle">What you do — each profile is one thing you offer, in one category.</p>
+            </header>
+
+            <button type="button" class="btn btn-primary" id="new-profile-btn">+ New Profile</button>
+
+            <ul class="profile-list" id="profile-list"></ul>
+            <p class="hint" id="empty-hint" hidden>No profiles yet — create one to be discoverable.</p>
+        </section>
+
+        <!-- Create / Edit Profile view -->
+        <section id="create-view" class="view" hidden>
+            <header class="view-header">
+                <h1 id="create-title">New Profile</h1>
+                <p class="subtitle">Saving publishes this profile for others to discover.</p>
+            </header>
+
+            <form id="profile-form">
+                <p class="from-note" id="from-note"></p>
+
+                <label>Category
+                    <select id="field-category" required></select>
+                </label>
+                <label>Business Name
+                    <input type="text" id="field-business-name" placeholder="Optional — e.g. Zach's Plumbing">
+                </label>
+                <label>Bio
+                    <textarea id="field-bio" rows="3" placeholder="What should people know?"></textarea>
+                </label>
+                <label>Zip Code
+                    <input type="text" id="field-zip" inputmode="numeric" maxlength="5" placeholder="94102" required>
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="save-profile-btn">Save & Publish</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-profile-btn">Cancel</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-danger" id="delete-profile-btn" hidden>Delete Profile</button>
+            </form>
+        </section>
+
+        <!-- Discover: category picker -->
+        <section id="categories-view" class="view" hidden>
+            <header class="view-header">
+                <h1>Discover</h1>
+                <p class="subtitle">Pick a category to browse.</p>
+            </header>
+
+            <div class="discover-filter">
+                <input type="text" id="discover-zip" inputmode="numeric" maxlength="5" placeholder="Zip code (optional)">
+                <select id="discover-radius">
+                    <option value="10">10 mi</option>
+                    <option value="25" selected>25 mi</option>
+                    <option value="50">50 mi</option>
+                    <option value="100">100 mi</option>
+                </select>
+            </div>
+
+            <ul class="category-list" id="category-list"></ul>
+
+            <button type="button" class="btn btn-secondary" id="view-liked-btn">View Liked</button>
+        </section>
+
+        <!-- Discover: swipe stack -->
+        <section id="swipe-view" class="view" hidden>
+            <header class="view-header">
+                <h1 id="swipe-title">Browsing</h1>
+                <p class="subtitle" id="swipe-stats"></p>
+            </header>
+
+            <div class="swipe-stack" id="swipe-stack"></div>
+            <p class="hint" id="swipe-empty-hint" hidden>No more profiles in this category right now.</p>
+
+            <div class="swipe-buttons">
+                <button type="button" class="swipe-btn pass" id="pass-btn">✕</button>
+                <button type="button" class="swipe-btn like" id="like-btn">♥</button>
+            </div>
+            <button type="button" class="btn btn-secondary" id="swipe-back-btn">Back to Categories</button>
+        </section>
+
+        <!-- Liked profiles -->
+        <section id="liked-view" class="view" hidden>
+            <header class="view-header">
+                <h1>Liked</h1>
+            </header>
+
+            <ul class="profile-list" id="liked-list"></ul>
+            <p class="hint" id="liked-empty-hint" hidden>Nothing liked yet.</p>
+
+            <button type="button" class="btn btn-secondary" id="liked-back-btn">Back</button>
+        </section>
+
+        <!-- Canonical profile view — a separate, App-Group-shared record; not
+             connected to idothis's own profiles in any way. -->
+        <section id="profile-view" class="view" hidden>
+            <header class="view-header">
+                <h1>Shared Profile</h1>
+                <p class="subtitle">Synced across BizBuz, Linkitylink, Gelder, and IDothis.</p>
+            </header>
+
+            <form id="canonical-profile-form">
+                <div class="avatar avatar-editable" id="profile-photo-preview"></div>
+                <button type="button" class="btn btn-secondary" id="profile-choose-photo-btn">Choose Photo</button>
+
+                <p class="section-label">Fields</p>
+                <ul class="link-entries" id="profile-fields"></ul>
+                <div class="link-entry-form">
+                    <input type="text" id="profile-new-field-name" placeholder="Field (e.g. Name)" maxlength="40">
+                    <input type="text" id="profile-new-field-value" placeholder="Value">
+                    <button type="button" class="btn btn-secondary" id="profile-add-field-btn">Add Field</button>
+                </div>
+                <p class="hint" id="profile-field-limit-hint" hidden>Up to 20 fields — remove one to add another.</p>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary" id="profile-close-btn">Close</button>
+                </div>
+            </form>
+        </section>
+
+        <p class="status-msg" id="status-msg"></p>
+    </main>
     <script type="module" src="main.js"></script>
 </body>
 </html>
